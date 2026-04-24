@@ -3,16 +3,15 @@ name: klasee
 description: >
   Klasee project skill. Use for ALL tasks in this monorepo. Covers Next.js App
   Router, TanStack Query/Table/Form, Dexie.js offline-first layer, sync queue,
-  Node.js + Express backend, Mongoose schemas, Better Auth with organization
-  plugin (multi-tenant, session-based), Tailwind CSS v4, shadcn/ui components,
-  and Turborepo monorepo conventions. Triggers on: API routes, Express
-  middleware, MongoDB/Mongoose, React components, useQuery, useMutation,
-  DataTable, TanStack Form, Dexie, sync, offline, auth, Better Auth, sign-in,
-  sign-up, sessions, protect routes, organization, multi-tenant, school,
-  tenant, roles, permissions, student access, student dashboard, teacher,
-  admin, invite member, active org, scope data, shadcn, Tailwind, Next.js
-  pages, layouts, server components, client components, hooks, attendance,
-  scores, grading, teachers, students, classes.
+  Node.js + Express backend, Mongoose schemas, Better Auth (session-based),
+  PWA (@ducanh2912/next-pwa), Tailwind CSS v4, shadcn/ui components, and
+  Turborepo monorepo conventions. Triggers on: API routes, Express middleware,
+  MongoDB/Mongoose, React components, useQuery, useMutation, DataTable,
+  TanStack Form, Dexie, sync, offline, PWA, service worker, manifest, auth,
+  Better Auth, sign-in, sign-up, sessions, protect routes, instructor, student,
+  roles, attendance, scores, assessments, grading, courses, sections,
+  enrollment, at-risk, analytics, topic difficulty, shadcn, Tailwind, Next.js
+  pages, layouts, server components, client components, hooks.
 ---
 
 # Klasee — Project Skill
@@ -33,10 +32,12 @@ description: >
 | ODM | Mongoose | MongoDB schemas + validation |
 | Database | MongoDB Atlas | Cloud sync target |
 | Auth | Better Auth | Session-based auth, email+password, scrypt hashing |
-| Multi-tenancy | Better Auth Organization plugin | School isolation, roles, member management |
+| PWA | @ducanh2912/next-pwa | Service worker, app shell caching, installable |
 | Monorepo | Turborepo + pnpm | Build orchestration, workspace packages |
 | Frontend host | Vercel | `apps/web` deployment |
 | Backend host | Render | `apps/api` deployment |
+
+> **v1 scope**: Single-tenant (one instructor = one account). Better Auth Organization plugin is ready for v2 multi-tenant but NOT activated in v1.
 
 ---
 
@@ -45,10 +46,27 @@ description: >
 ```
 klasee/
 ├── apps/
-│   ├── web/          # Next.js frontend (Vercel)
-│   └── api/          # Express backend  (Render)
+│   ├── web/                  # Next.js frontend (Vercel)
+│   │   ├── app/              # App Router pages
+│   │   ├── components/       # Page-specific composite components
+│   │   ├── hooks/            # Custom hooks (use-*.ts)
+│   │   ├── lib/
+│   │   │   ├── auth/         # Better Auth client config
+│   │   │   ├── dexie/        # Local IndexedDB schema + helpers
+│   │   │   └── sync/         # Sync queue engine + flush functions
+│   │   └── package.json
+│   └── api/                  # Express REST API (Render)
+│       ├── src/
+│       │   ├── models/       # Mongoose schemas
+│       │   ├── routes/       # Express route handlers
+│       │   ├── controllers/  # req/res handlers
+│       │   ├── services/     # Business logic (no req/res)
+│       │   ├── middleware/   # Auth guards, validation, error handler
+│       │   └── lib/          # DB connection, utilities
+│       ├── server.ts         # Entry point
+│       └── package.json
 ├── packages/
-│   ├── ui/           # Shared shadcn/ui components
+│   ├── ui/                   # Shared shadcn/ui component library
 │   ├── eslint-config/
 │   └── typescript-config/
 ├── turbo.json
@@ -70,6 +88,140 @@ klasee/
 - `dev` — persistent, no cache
 - `build` — depends on `^build`, outputs `.next/**`
 - `lint` / `typecheck` — depend on `^lint` / `^typecheck`
+
+---
+
+## Data Model
+
+All Mongoose documents use `{ timestamps: true }` for `createdAt`/`updatedAt`.
+
+```
+User (Better Auth managed)
+  _id, name, email, role ("instructor" | "student"), createdAt
+
+Course
+  _id, instructorId (ref User), name, code, semester, createdAt
+
+Section
+  _id, courseId (ref Course), name, schedule, createdAt
+
+Student
+  _id, userId (ref User), firstName, lastName,
+  email, studentId (school-issued ID), status ("active" | "dropped")
+
+Enrollment
+  _id, studentId (ref Student), sectionId (ref Section)
+  <- flexible: irregular students can enroll in multiple sections
+
+ClassSession  <- named ClassSession to avoid collision with Better Auth "session"
+  _id, courseId (ref Course), sectionId (ref Section),
+  date (ISO string), topic, learningOutcome, remarks
+
+Attendance
+  _id, sessionId (ref ClassSession), studentId (ref Student),
+  status ("present" | "absent" | "late"), updatedAt
+
+Assessment
+  _id, sessionId (ref ClassSession), type ("quiz" | "lab" | "exam" | "other"),
+  title, maxScore
+
+AssessmentScore
+  _id, assessmentId (ref Assessment), studentId (ref Student),
+  score, updatedAt
+```
+
+### At-Risk Logic (computed server-side, never trust client)
+
+```
+attendancePercentage = presents / totalSessions * 100
+averageScore        = mean of all AssessmentScore.score for student in section
+
+at_risk         -> attendancePercentage < 70 AND averageScore < 75
+needs_follow_up -> attendancePercentage < 80 OR averageScore < 80
+doing_well      -> all other cases
+```
+
+Computed on the fly in `/api/students/:studentId/status` and `/api/sections/:sectionId/overview`. Never stored as a field.
+
+---
+
+## Route Structure (`apps/web/app`)
+
+```
+app/
+├── (auth)/
+│   ├── login/page.tsx
+│   └── register/page.tsx
+├── (instructor)/
+│   ├── layout.tsx           <- session guard: redirect if role !== "instructor"
+│   ├── dashboard/page.tsx
+│   ├── courses/
+│   │   └── [courseId]/
+│   │       └── sections/
+│   │           └── [sectionId]/
+│   │               ├── sessions/
+│   │               │   └── [sessionId]/page.tsx  <- attendance + assessments + scores
+│   │               └── students/
+│   │                   └── [studentId]/page.tsx  <- student detail + analytics
+│   └── analytics/page.tsx
+└── (student)/
+    ├── layout.tsx           <- session guard: redirect if role !== "student"
+    ├── dashboard/page.tsx
+    ├── scores/page.tsx
+    └── attendance/page.tsx
+```
+
+---
+
+## API Endpoints (`apps/api`)
+
+Better Auth handles `/api/auth/*` in `apps/web` — not in Express.
+All routes require `authenticate`. Write routes also require `instructorOnly`.
+
+```
+# Courses
+GET  /api/courses
+POST /api/courses
+GET  /api/courses/:courseId
+PUT  /api/courses/:courseId
+
+# Sections
+GET  /api/courses/:courseId/sections
+POST /api/courses/:courseId/sections
+GET  /api/sections/:sectionId
+
+# Students
+GET  /api/sections/:sectionId/students
+POST /api/sections/:sectionId/students
+GET  /api/students/:studentId
+PUT  /api/students/:studentId
+
+# Class Sessions
+GET  /api/sections/:sectionId/sessions
+POST /api/sections/:sectionId/sessions
+GET  /api/sessions/:sessionId
+
+# Attendance (batch upsert — last-write-wins on updatedAt)
+GET  /api/sessions/:sessionId/attendance
+POST /api/sessions/:sessionId/attendance
+
+# Assessments & Scores
+GET  /api/sessions/:sessionId/assessments
+POST /api/sessions/:sessionId/assessments
+GET  /api/assessments/:assessmentId/scores
+POST /api/assessments/:assessmentId/scores
+
+# Analytics
+GET  /api/sections/:sectionId/overview
+GET  /api/students/:studentId/summary?sectionId=
+GET  /api/students/:studentId/status?sectionId=
+GET  /api/courses/:courseId/topic-difficulty
+
+# Student self-access (read-only — always scoped to req.user.id)
+GET  /api/me/attendance?sectionId=
+GET  /api/me/scores?sectionId=
+GET  /api/me/status?sectionId=
+```
 
 ---
 
@@ -489,15 +641,14 @@ export function useLocalAttendance(classId: string, date: string) {
 pnpm add better-auth
 ```
 
-### Auth Server (`lib/auth.ts`)
+### Auth Server (`lib/auth/auth.ts`)
 
 ```ts
-// apps/web/lib/auth.ts
+// apps/web/lib/auth/auth.ts
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { MongoClient } from "mongodb";
 import { nextCookies } from "better-auth/next-js";
-import { organization } from "better-auth/plugins";
 
 const client = new MongoClient(process.env.MONGO_URI!);
 
@@ -510,29 +661,18 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       role: {
-        // app-level role; org membership role is separate
-        type: ["teacher", "admin", "student"],
+        type: ["instructor", "student"],
         required: false,
-        defaultValue: "teacher",
+        defaultValue: "instructor",
         input: false, // Users cannot self-assign roles
-      },
-      schoolId: {
-        // Students: links to organization.id without org membership
-        type: "string",
-        required: false,
-        input: false,
       },
     },
   },
   plugins: [
-    organization({
-      // Only teachers and admins can create schools (organizations)
-      allowUserToCreateOrganization: async (user) =>
-        (user as any).role !== "student",
-      creatorRole: "owner",
-      membershipLimit: 500,
-    }),
     nextCookies(), // Must be last — enables cookie setting in Server Actions
+    // NOTE: Better Auth Organization plugin is NOT activated in v1.
+    // For v2 multi-tenant: import { organization } from "better-auth/plugins"
+    // and add organization({...}) to plugins[] BEFORE nextCookies().
   ],
 });
 ```
@@ -541,23 +681,19 @@ export const auth = betterAuth({
 
 ```ts
 // apps/web/app/api/auth/[...all]/route.ts
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 
 export const { GET, POST } = toNextJsHandler(auth);
 ```
 
-### Auth Client (`lib/auth-client.ts`)
+### Auth Client (`lib/auth/auth-client.ts`)
 
 ```ts
-// apps/web/lib/auth-client.ts
+// apps/web/lib/auth/auth-client.ts
 import { createAuthClient } from "better-auth/react";
-import { organizationClient } from "better-auth/client/plugins";
 
-export const authClient = createAuthClient({
-  // Omit baseURL if client and server are on the same domain
-  plugins: [organizationClient()],
-});
+export const authClient = createAuthClient();
 
 // Named exports for convenience
 export const { signIn, signUp, signOut, useSession } = authClient;
@@ -567,30 +703,29 @@ export const { signIn, signUp, signOut, useSession } = authClient;
 
 ```tsx
 "use client";
-import { useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth/auth-client";
 
 export function UserMenu() {
   const { data: session, isPending } = useSession();
 
   if (isPending) return <Spinner />;
-  if (!session) return <a href="/sign-in">Sign in</a>;
+  if (!session) return <a href="/login">Sign in</a>;
 
   return <span>Welcome, {session.user.name}</span>;
 }
 ```
 
-### Getting Session in Server Components / Server Actions
+### Session in Server Components / Server Actions
 
 ```tsx
 // Server Component
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/sign-in");
-
+  if (!session) redirect("/login");
   return <h1>Welcome, {session.user.name}</h1>;
 }
 ```
@@ -598,539 +733,179 @@ export default async function DashboardPage() {
 ```ts
 // Server Action
 "use server";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
 
-export async function getAuthenticatedUser() {
+export async function requireInstructor() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Unauthorized");
+  if ((session.user as any).role !== "instructor") throw new Error("Forbidden");
   return session.user;
 }
 ```
 
-### Route Protection — Proxy (`proxy.ts`)
+### Route Group Layouts (Session Guards)
 
-Next.js 16 uses `proxy.ts` instead of `middleware.ts`. Use cookie presence for fast optimistic redirects; validate the full session in each protected page/route.
+```tsx
+// app/(instructor)/layout.tsx
+import { auth } from "@/lib/auth/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+export default async function InstructorLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/login");
+  if ((session.user as any).role !== "instructor") redirect("/student/dashboard");
+  return <>{children}</>;
+}
+```
+
+```tsx
+// app/(student)/layout.tsx
+import { auth } from "@/lib/auth/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+export default async function StudentLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/login");
+  if ((session.user as any).role !== "student") redirect("/instructor/dashboard");
+  return <>{children}</>;
+}
+```
+
+### Proxy (`proxy.ts`) — Fast UX Redirect
 
 ```ts
 // apps/web/proxy.ts
+// NOTE: Next.js 16 uses proxy.ts, NOT middleware.ts. Function must be named `proxy`.
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 export async function proxy(request: NextRequest) {
-  // Fast cookie check — NOT a security boundary, just UX redirect
   const sessionCookie = getSessionCookie(request);
-  if (!sessionCookie) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+  const { pathname } = request.nextUrl;
+  const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/register");
+
+  if (!sessionCookie && !isAuthRoute) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  if (sessionCookie && isAuthRoute) {
+    return NextResponse.redirect(new URL("/instructor/dashboard", request.url));
   }
   return NextResponse.next();
 }
 
 export const config = {
-  // Match all dashboard routes
-  matcher: ["/dashboard/:path*", "/classes/:path*", "/attendance/:path*"],
+  matcher: ["/instructor/:path*", "/student/:path*", "/login", "/register"],
 };
 ```
-
-> **Security**: `getSessionCookie` only checks cookie existence. Always call `auth.api.getSession()` in protected Server Components for real authorization.
 
 ### Sign In / Sign Up (Client)
 
 ```tsx
 "use client";
-import { signIn, signUp } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { signIn, signUp, signOut } from "@/lib/auth/auth-client";
 
-// Sign up
+// Register (role defaults to "instructor" server-side)
 await signUp.email({
-  name: "Jane Teacher",
-  email: "jane@school.edu",
+  name: "Maria Santos",
+  email: "maria@dorsu.edu.ph",
   password: "securepassword",
-  callbackURL: "/dashboard",
+  callbackURL: "/instructor/dashboard",
 });
 
 // Sign in
-await signIn.email({
-  email: "jane@school.edu",
+const { error } = await signIn.email({
+  email: "maria@dorsu.edu.ph",
   password: "securepassword",
   rememberMe: true,
+  callbackURL: "/instructor/dashboard",
 });
 
 // Sign out
-await signOut({
-  fetchOptions: { onSuccess: () => router.push("/sign-in") },
-});
+await signOut({ fetchOptions: { onSuccess: () => router.push("/login") } });
 ```
 
-### Express API — Session Verification
+### Better Auth MongoDB Collections
 
-Since Better Auth runs in `apps/web`, the Express API verifies sessions by calling Better Auth's session endpoint with the forwarded cookie.
+Better Auth auto-creates these collections — **no manual migration needed**:
 
-```ts
-// apps/api/middleware/auth.ts
-import { Request, Response, NextFunction } from "express";
-
-export interface AuthRequest extends Request {
-  user?: { id: string; name: string; email: string; role: string };
-}
-
-export const authenticate = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  const cookie = req.headers.cookie;
-  if (!cookie) return res.status(401).json({ message: "Unauthorized" });
-
-  try {
-    const response = await fetch(
-      `${process.env.WEB_URL}/api/auth/get-session`,
-      { headers: { cookie } }
-    );
-    if (!response.ok) return res.status(401).json({ message: "Unauthorized" });
-
-    const session = await response.json();
-    if (!session?.user) return res.status(401).json({ message: "Unauthorized" });
-
-    req.user = session.user;
-    next();
-  } catch {
-    res.status(401).json({ message: "Unauthorized" });
-  }
-};
-```
-
-### Better Auth MongoDB Schema
-
-Better Auth auto-creates these collections in MongoDB Atlas — **no manual migration needed**:
-
-**Core:**
-- `user` — id, name, email, emailVerified, image, role, schoolId, createdAt, updatedAt
-- `session` — id, userId, token, expiresAt, ipAddress, userAgent, **activeOrganizationId**
-- `account` — id, userId, providerId, accountId, password (scrypt hash)
-- `verification` — id, identifier, value, expiresAt
-
-**Organization (added by `organization` plugin):**
-- `organization` — id, name, slug, logo, metadata, createdAt
-- `member` — id, userId, organizationId, role (`owner`/`admin`/`member`), createdAt
-- `invitation` — id, email, inviterId, organizationId, role, status, expiresAt
+| Collection | Key fields |
+|-----------|----------|
+| user | id, name, email, emailVerified, image, role, createdAt, updatedAt |
+| session | id, userId, token, expiresAt, ipAddress, userAgent |
+| account | id, userId, providerId, accountId, password (scrypt) |
+| verification | id, identifier, value, expiresAt |
 
 ---
 
-## Multi-Tenancy — School Organizations
+## Multi-Tenancy — v2 Only
 
-### Tenant Model
-
-Each **school is one Better Auth Organization**. All app data (classes, attendance, scores) is scoped to `organizationId`.
-
-| User type | Better Auth org role | App `role` field | Data access |
-|-----------|---------------------|-----------------|-------------|
-| School creator | `owner` | `admin` | Full school management |
-| Principal / coordinator | `admin` | `admin` | Full school management |
-| Teacher | `member` | `teacher` | Classes they teach |
-| Student | — (not an org member) | `student` | Own attendance + scores (read-only) |
-
-> Students are **not** organization members. They are linked to a school via `user.schoolId`.
-
-### School (Organization) Lifecycle
-
-```tsx
-// 1. Admin signs up — role defaults to "teacher", update server-side to "admin"
-// 2. Admin creates their school
-await authClient.organization.create({
-  name: "Springfield Primary School",
-  slug: "springfield-primary",
-});
-
-// 3. Set it as the active organization
-await authClient.organization.setActive({ organizationSlug: "springfield-primary" });
-
-// 4. Invite teachers (they receive an email, click link, accept)
-await authClient.organization.inviteMember({
-  email: "teacher@school.edu",
-  role: "member", // = teacher in Klasee
-});
-
-// 5. Teacher accepts (on the /accept-invitation/[id] page)
-await authClient.organization.acceptInvitation({ invitationId });
-```
-
-### Reading Active Org in Server Components
-
-Always derive `organizationId` from the session — never trust the client:
-
-```tsx
-// Any protected Server Component
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
-export default async function ClassesPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/sign-in");
-
-  const organizationId = session.session.activeOrganizationId;
-  if (!organizationId) redirect("/onboarding/select-school");
-
-  // Pass organizationId as a prop — never expose it in URL params alone
-  return <ClassList organizationId={organizationId} />;
-}
-```
-
-### useActiveOrganization (Client)
-
-```tsx
-"use client";
-import { authClient } from "@/lib/auth-client";
-
-export function SchoolHeader() {
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  return <h1>{activeOrg?.name ?? "No school selected"}</h1>;
-}
-```
-
-### Permission Check Helper (Server)
+The Better Auth Organization plugin is **not activated in v1**. See the v2 Considerations section at the end. When ready:
 
 ```ts
-// lib/permissions.ts
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+// Add to auth.ts plugins[] BEFORE nextCookies():
+import { organization } from "better-auth/plugins";
+organization({ allowUserToCreateOrganization: ..., creatorRole: "owner" })
 
-const roleRank = { member: 1, admin: 2, owner: 3 } as const;
-type OrgRole = keyof typeof roleRank;
-
-export async function requireOrgRole(minRole: OrgRole) {
-  const [session, member] = await Promise.all([
-    auth.api.getSession({ headers: await headers() }),
-    auth.api.getActiveMember({ headers: await headers() }),
-  ]);
-  if (!session) throw new Error("Unauthorized");
-
-  const memberRole = (member?.data?.role ?? "member") as OrgRole;
-  if ((roleRank[memberRole] ?? 0) < roleRank[minRole]) {
-    throw new Error("Insufficient permissions");
-  }
-  return { session, member: member?.data };
-}
-
-// Usage in a Server Action:
-// await requireOrgRole("admin"); // only admins and owners may proceed
+// Add to auth-client.ts plugins[]:
+import { organizationClient } from "better-auth/client/plugins";
+organizationClient()
 ```
-
-### Proxy — Role-Based Route Splitting
-
-```ts
-// apps/web/proxy.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getCookieCache } from "better-auth/cookies";
-
-export async function proxy(request: NextRequest) {
-  const session = await getCookieCache(request);
-  const { pathname } = request.nextUrl;
-
-  if (!session) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
-  }
-
-  const role = (session.user as any)?.role as string | undefined;
-
-  // Redirect students away from teacher/admin routes
-  if (role === "student" && !pathname.startsWith("/student")) {
-    return NextResponse.redirect(new URL("/student/dashboard", request.url));
-  }
-
-  // Redirect non-students away from student-only routes
-  if (role !== "student" && pathname.startsWith("/student")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  return NextResponse.next();
-}
-
-export const config = {
-  matcher: ["/dashboard/:path*", "/student/:path*", "/classes/:path*", "/attendance/:path*"],
-};
-```
-
-### Express API — Multi-Tenant Auth Middleware
-
-Update `apps/api/middleware/auth.ts` to validate the active org and attach `organizationId` to every request:
-
-```ts
-import { Request, Response, NextFunction } from "express";
-
-export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;        // app-level role: teacher | admin | student
-    organizationId: string; // active school — required for all data queries
-  };
-}
-
-export const authenticate = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  const cookie = req.headers.cookie;
-  if (!cookie) return res.status(401).json({ message: "Unauthorized" });
-
-  try {
-    const response = await fetch(
-      `${process.env.WEB_URL}/api/auth/get-session`,
-      { headers: { cookie } }
-    );
-    if (!response.ok) return res.status(401).json({ message: "Unauthorized" });
-
-    const data = await response.json();
-    if (!data?.user) return res.status(401).json({ message: "Unauthorized" });
-
-    const role = data.user.role as string;
-    // Students: scoped to schoolId, not activeOrganizationId
-    const organizationId =
-      role === "student"
-        ? data.user.schoolId
-        : data.session?.activeOrganizationId;
-
-    if (!organizationId) {
-      return res.status(403).json({ message: "No active school. Select a school first." });
-    }
-
-    req.user = { ...data.user, organizationId };
-    next();
-  } catch {
-    res.status(401).json({ message: "Unauthorized" });
-  }
-};
-
-// Guard: teachers and admins only (blocks students)
-export const teacherOnly = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  if (req.user?.role === "student") {
-    return res.status(403).json({ message: "Students have read-only access via the student API" });
-  }
-  next();
-};
-```
-
-> **Critical**: Every service query must filter by `organizationId`. Never query without it.
-
----
-
-## Student Access
-
-### Student User Model
-
-Students are Better Auth users with `role: "student"` and `schoolId` linking them to a school. They do **not** join the organization as a `member` — this prevents them from accessing org management endpoints.
-
-- Sign in with email + password
-- Read-only access to **their own** attendance and scores
-- Cannot modify any data
-- Scoped to `user.schoolId` (set by admin, not user)
-
-### Creating Student Accounts (Admin-only Server Action)
-
-Students are created by school admins — never self-registered:
-
-```ts
-// Server Action — admin creates a student account
-"use server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireOrgRole } from "@/lib/permissions";
-
-export async function createStudent(data: {
-  name: string;
-  email: string;
-  temporaryPassword: string;
-  classId: string;
-}) {
-  const { session } = await requireOrgRole("admin");
-  const organizationId = session.session.activeOrganizationId!;
-
-  // Create the Better Auth user with student role + schoolId
-  await auth.api.createUser({
-    body: {
-      name: data.name,
-      email: data.email,
-      password: data.temporaryPassword,
-      role: "student",
-      schoolId: organizationId,
-    },
-  });
-
-  // Also create the student record in your app DB (classId, etc.)
-  // await db.students.create({ userId, classId, organizationId })
-}
-```
-
-### Student Sign-In
-
-```tsx
-"use client";
-import { signIn } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-
-export function StudentSignInForm() {
-  const router = useRouter();
-
-  const handleSubmit = async (email: string, password: string) => {
-    const { error } = await signIn.email({
-      email,
-      password,
-      rememberMe: false,
-      callbackURL: "/student/dashboard",
-    });
-    if (error) console.error(error.message);
-  };
-  // ...
-}
-```
-
-### Student Dashboard — Server Component
-
-```tsx
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
-export default async function StudentDashboardPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/sign-in");
-
-  const role = (session.user as any).role as string;
-  if (role !== "student") redirect("/dashboard"); // teachers go elsewhere
-
-  const studentUserId = session.user.id; // stable identifier for this student
-  // Fetch only this student's own data from Express API
-  const [attendance, scores] = await Promise.all([
-    fetchMyAttendance(studentUserId),
-    fetchMyScores(studentUserId),
-  ]);
-
-  return (
-    <>
-      <AttendanceTable records={attendance} readOnly />
-      <ScoreTable records={scores} readOnly />
-    </>
-  );
-}
-```
-
-### Detecting Role in Client Components
-
-```tsx
-"use client";
-import { useSession } from "@/lib/auth-client";
-
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const role = (session?.user as any)?.role as string | undefined;
-
-  if (role === "student") return <StudentLayout>{children}</StudentLayout>;
-  return <TeacherLayout>{children}</TeacherLayout>;
-}
-```
-
-### Express — Student-Scoped Routes
-
-```ts
-// routes/student.ts
-import { Router } from "express";
-import { authenticate } from "../middleware/auth";
-
-const router = Router();
-router.use(authenticate);
-
-// Students can only GET their own records; the service enforces userId scope
-router.get("/attendance", async (req, res, next) => {
-  try {
-    // req.user.id is the student's Better Auth userId
-    const records = await AttendanceService.findByStudent(
-      req.user!.id,
-      req.user!.organizationId
-    );
-    res.json(records);
-  } catch (err) {
-    next(err);
-  }
-});
-
-export const studentRouter = router;
-```
-
-> **Never** allow students to pass an arbitrary `studentId` param. Always use `req.user.id` from the verified session.
 
 ---
 
 ## Backend (`apps/api`)
 
-### Folder Structure
-
-```
-apps/api/
-├── server.ts           # Entry point — listen
-├── app.ts              # Express app setup — no listen
-├── routes/             # Router per resource
-├── controllers/        # req/res handlers
-├── services/           # Business logic (no req/res)
-├── models/             # Mongoose models
-├── middleware/
-│   ├── auth.ts         # Better Auth session verification
-│   ├── errorHandler.ts # Global error handler
-│   └── validate.ts     # Zod request validation
-├── config/
-│   └── db.ts           # MongoDB connection
-└── utils/
-```
-
 ### Express App Setup
 
 ```ts
-// app.ts
+// apps/api/src/app.ts
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { errorHandler } from "./middleware/errorHandler";
-import { authRouter } from "./routes/auth";
+import { coursesRouter } from "./routes/courses";
+import { sectionsRouter } from "./routes/sections";
 import { studentsRouter } from "./routes/students";
+import { sessionsRouter } from "./routes/sessions";
 import { attendanceRouter } from "./routes/attendance";
+import { assessmentsRouter } from "./routes/assessments";
+import { analyticsRouter } from "./routes/analytics";
+import { meRouter } from "./routes/me";
 
 const app = express();
-
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 
-// Auth routes are handled by Better Auth in apps/web, not here
-app.use("/api/students", studentsRouter);
-app.use("/api/attendance", attendanceRouter);
+app.use("/api/courses", coursesRouter);
+app.use("/api", sectionsRouter);
+app.use("/api", studentsRouter);
+app.use("/api", sessionsRouter);
+app.use("/api", attendanceRouter);
+app.use("/api", assessmentsRouter);
+app.use("/api", analyticsRouter);
+app.use("/api/me", meRouter);
+app.use(errorHandler);
 
-app.use(errorHandler); // Must be last
 export { app };
 ```
 
 ```ts
-// server.ts
-import { app } from "./app";
-import { connectDB } from "./config/db";
+// apps/api/server.ts
+import { app } from "./src/app";
+import { connectDB } from "./src/lib/db";
 
 const PORT = process.env.PORT ?? 4000;
-
-connectDB().then(() => {
-  app.listen(PORT, () => console.log(`API running on port ${PORT}`));
-});
+connectDB().then(() => app.listen(PORT, () => console.log(`API running on port ${PORT}`)));
 ```
 
 ### MongoDB Connection
 
 ```ts
-// config/db.ts
+// src/lib/db.ts
 import mongoose from "mongoose";
 
 export const connectDB = async () => {
@@ -1139,68 +914,186 @@ export const connectDB = async () => {
 };
 ```
 
-### Mongoose Schema Pattern
+### Auth Middleware
 
 ```ts
-// models/Student.ts
-import { Schema, model, Document } from "mongoose";
+// src/middleware/auth.ts
+import { Request, Response, NextFunction } from "express";
 
-export interface IStudent extends Document {
-  name: string;
-  email: string;
-  classId: Schema.Types.ObjectId;
-  createdAt: Date;
+export interface AuthRequest extends Request {
+  user?: { id: string; name: string; email: string; role: "instructor" | "student" };
 }
 
-const studentSchema = new Schema<IStudent>(
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const cookie = req.headers.cookie;
+  if (!cookie) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const response = await fetch(`${process.env.WEB_URL}/api/auth/get-session`, {
+      headers: { cookie },
+    });
+    if (!response.ok) return res.status(401).json({ message: "Unauthorized" });
+
+    const data = await response.json();
+    if (!data?.user) return res.status(401).json({ message: "Unauthorized" });
+
+    req.user = { id: data.user.id, name: data.user.name, email: data.user.email, role: data.user.role };
+    next();
+  } catch {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+};
+
+export const instructorOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role !== "instructor") {
+    return res.status(403).json({ message: "Instructors only." });
+  }
+  next();
+};
+```
+
+### Mongoose Schema Patterns
+
+```ts
+// src/models/Course.ts
+import { Schema, model, Document, Types } from "mongoose";
+
+export interface ICourse extends Document {
+  instructorId: Types.ObjectId;
+  name: string; code: string; semester: string;
+}
+
+const courseSchema = new Schema<ICourse>(
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
-    classId: { type: Schema.Types.ObjectId, ref: "Class", required: true },
+    instructorId: { type: Schema.Types.ObjectId, required: true, index: true },
+    name:         { type: String, required: true, trim: true },
+    code:         { type: String, required: true, trim: true },
+    semester:     { type: String, required: true, trim: true },
   },
   { timestamps: true }
 );
 
-export const Student = model<IStudent>("Student", studentSchema);
+export const Course = model<ICourse>("Course", courseSchema);
 ```
 
-### Controller Pattern
+```ts
+// src/models/Attendance.ts
+import { Schema, model, Document, Types } from "mongoose";
+
+export interface IAttendance extends Document {
+  sessionId: Types.ObjectId;
+  studentId: Types.ObjectId;
+  status: "present" | "absent" | "late";
+}
+
+const attendanceSchema = new Schema<IAttendance>(
+  {
+    sessionId: { type: Schema.Types.ObjectId, ref: "ClassSession", required: true, index: true },
+    studentId: { type: Schema.Types.ObjectId, ref: "Student",      required: true, index: true },
+    status:    { type: String, enum: ["present", "absent", "late"], required: true },
+  },
+  { timestamps: true }
+);
+
+// Compound unique index: one record per student per session (enables upsert)
+attendanceSchema.index({ sessionId: 1, studentId: 1 }, { unique: true });
+
+export const Attendance = model<IAttendance>("Attendance", attendanceSchema);
+```
+
+### Batch Upsert Pattern (Last-Write-Wins)
 
 ```ts
-// controllers/studentController.ts
-import { Request, Response, NextFunction } from "express";
-import { StudentService } from "../services/studentService";
-
-export const getStudents = async (req: Request, res: Response, next: NextFunction) => {
+// controllers/attendanceController.ts
+export const batchUpsertAttendance = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const students = await StudentService.findByClass(req.params.classId);
-    res.json(students);
+    const { sessionId } = req.params;
+    const { records } = req.body as { records: { studentId: string; status: string }[] };
+
+    const ops = records.map((r) => ({
+      updateOne: {
+        filter: { sessionId, studentId: r.studentId },
+        update: { $set: { status: r.status }, $setOnInsert: { sessionId, studentId: r.studentId } },
+        upsert: true,
+      },
+    }));
+
+    await Attendance.bulkWrite(ops);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
 };
 ```
 
-### Auth Middleware
-
-See the `authenticate` middleware in the **Better Auth** section above. Import and apply it to protected routes:
+### At-Risk Service
 
 ```ts
-// routes/students.ts
+// src/services/analyticsService.ts
+type AtRiskStatus = "at_risk" | "needs_follow_up" | "doing_well";
+
+export async function computeStudentStatus(studentId: string, sectionId: string) {
+  const sessionIds = await ClassSession.find({ sectionId }).distinct("_id");
+  const total = sessionIds.length;
+
+  const presents = await Attendance.countDocuments({
+    sessionId: { $in: sessionIds }, studentId, status: "present",
+  });
+  const attendancePercentage = total > 0 ? (presents / total) * 100 : 100;
+
+  const assessmentIds = await Assessment.find({ sessionId: { $in: sessionIds } }).distinct("_id");
+  const scores = await AssessmentScore.find({ assessmentId: { $in: assessmentIds }, studentId });
+  const averageScore = scores.length > 0
+    ? scores.reduce((sum, s) => sum + s.score, 0) / scores.length
+    : 100;
+
+  const reasons: string[] = [];
+  if (attendancePercentage < 70) reasons.push(`Attendance ${attendancePercentage.toFixed(1)}% (below 70%)`);
+  if (averageScore < 75) reasons.push(`Average score ${averageScore.toFixed(1)} (below 75)`);
+
+  let status: AtRiskStatus = "doing_well";
+  if (attendancePercentage < 70 && averageScore < 75) status = "at_risk";
+  else if (attendancePercentage < 80 || averageScore < 80) status = "needs_follow_up";
+
+  return { status, attendancePercentage, averageScore, reasons };
+}
+```
+
+### Controller + Route Pattern
+
+```ts
+// src/controllers/courseController.ts
+export const getCourses = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    // Always scope by instructorId - never return another instructor's data
+    const courses = await CourseService.findByInstructor(req.user!.id);
+    res.json(courses);
+  } catch (err) {
+    next(err);
+  }
+};
+```
+
+```ts
+// src/routes/courses.ts
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
-import { getStudents } from "../controllers/studentController";
+import { authenticate, instructorOnly } from "../middleware/auth";
+import { getCourses, createCourse, getCourse, updateCourse } from "../controllers/courseController";
 
 const router = Router();
-router.use(authenticate); // Protect all student routes
-router.get("/:classId", getStudents);
-export const studentsRouter = router;
+router.use(authenticate);
+router.get("/", getCourses);
+router.post("/", instructorOnly, createCourse);
+router.get("/:courseId", getCourse);
+router.put("/:courseId", instructorOnly, updateCourse);
+
+export const coursesRouter = router;
 ```
 
 ### Global Error Handler
 
 ```ts
-// middleware/errorHandler.ts
+// src/middleware/errorHandler.ts
 import { Request, Response, NextFunction } from "express";
 
 export const errorHandler = (err: Error, _req: Request, res: Response, _next: NextFunction) => {
@@ -1209,10 +1102,10 @@ export const errorHandler = (err: Error, _req: Request, res: Response, _next: Ne
 };
 ```
 
-### Zod Request Validation Middleware
+### Zod Validation Middleware
 
 ```ts
-// middleware/validate.ts
+// src/middleware/validate.ts
 import { AnyZodObject, ZodError } from "zod";
 import { Request, Response, NextFunction } from "express";
 
@@ -1222,12 +1115,98 @@ export const validate = (schema: AnyZodObject) =>
       await schema.parseAsync({ body: req.body, params: req.params, query: req.query });
       next();
     } catch (err) {
-      if (err instanceof ZodError) {
-        return res.status(400).json({ errors: err.errors });
-      }
+      if (err instanceof ZodError) return res.status(400).json({ errors: err.errors });
       next(err);
     }
   };
+```
+
+---
+
+## PWA (`apps/web`)
+
+### Installation
+
+```bash
+pnpm add @ducanh2912/next-pwa --filter web
+```
+
+### `next.config.mjs`
+
+```js
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: { disableDevLogs: true },
+});
+
+/** @type {import("next").NextConfig} */
+const nextConfig = {};
+export default withPWA(nextConfig);
+```
+
+### `public/manifest.json`
+
+```json
+{
+  "name": "Klasee",
+  "short_name": "Klasee",
+  "description": "Offline-first attendance and grading for instructors",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
+```
+
+### Link Manifest in Root Layout
+
+```tsx
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  manifest: "/manifest.json",
+  themeColor: "#1a1a2e",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Klasee" },
+};
+```
+
+### Online / Offline Banner
+
+```tsx
+// components/connectivity-banner.tsx
+"use client";
+import { useEffect, useState } from "react";
+
+export function ConnectivityBanner() {
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+  }, []);
+
+  if (online) return null;
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-yellow-500 text-yellow-950 text-center py-2 text-sm font-medium z-50">
+      You are offline — changes are saved locally and will sync when reconnected.
+    </div>
+  );
+}
 ```
 
 ---
@@ -1262,18 +1241,16 @@ import { cn } from "@workspace/ui/lib/utils";
 ## Security Checklist
 
 **Auth:**
-- [ ] **Password hashing**: Better Auth uses `scrypt` by default — do not add bcrypt; do not implement custom hashing unless intentional
-- [ ] **Never expose** the `account` collection's `password` field in any API response
-- [ ] `input: false` on all sensitive `additionalFields` (`role`, `schoolId`) — users cannot self-assign
-- [ ] Always call `auth.api.getSession()` in protected Server Components — never trust cookie existence alone
+- [ ] Better Auth uses `scrypt` by default — do not add bcrypt
+- [ ] `input: false` on `role` additionalField — users cannot self-assign roles
+- [ ] Always call `auth.api.getSession()` in route group layouts and Server Actions
 - [ ] Better Auth sets `httpOnly` + `secure` cookies automatically in production
+- [ ] Never expose `account.password` in any API response
 
-**Multi-tenancy:**
-- [ ] Every Express route handler must filter all DB queries by `req.user.organizationId` — never return cross-tenant data
-- [ ] Students are **not** org members; scope student data by `req.user.id` (their own userId) + `organizationId` (their schoolId)
-- [ ] `teacherOnly` middleware on all write routes — students must never mutate data
-- [ ] Validate `organizationId` is present in `authenticate` middleware before any handler runs
-- [ ] Server-side permission check (`requireOrgRole`) before any admin action — never rely on UI-only guards
+**Data Scoping:**
+- [ ] All instructor routes scope queries by `req.user.id` as `instructorId`
+- [ ] Student `/me/*` routes always scope by `req.user.id` — never accept a `userId` param for self-access
+- [ ] `instructorOnly` middleware on all write routes (POST/PUT/DELETE)
 
 **General:**
 - [ ] Validate all Express request bodies with **Zod** via `validate()` middleware
@@ -1282,6 +1259,7 @@ import { cn } from "@workspace/ui/lib/utils";
 - [ ] Store all secrets (`BETTER_AUTH_SECRET`, `MONGO_URI`, etc.) in environment variables — never hardcode
 - [ ] Use HTTPS in production (handled by Vercel + Render)
 - [ ] Sanitize MongoDB queries — use Mongoose schema types, never raw `$where`
+- [ ] MongoDB Atlas: whitelist only Render's outbound IPs; add indexes on `instructorId`, `sessionId`, `studentId`
 
 ---
 
@@ -1314,3 +1292,32 @@ CLIENT_URL=http://localhost:3000
 - Vercel detects Next.js automatically — set root to `apps/web`
 - Render: set build command `pnpm install && pnpm --filter api build`, start `node apps/api/server.js`
 - Set all environment variables in each platform's dashboard
+- MongoDB Atlas: add Render's outbound IPs to the Atlas IP Access List
+
+---
+
+## Sprint Reference
+
+| Sprint | Weeks | Deliverable |
+|--------|-------|-------------|
+| 0 | 1-2 | Monorepo setup, skeleton deploy, Dexie schema, PWA manifest |
+| 1 | 3-4 | Better Auth, roles (instructor/student), Dexie hydration on login |
+| 2 | 5-6 | Courses, sections, students, enrollment, sync queue engine |
+| 3 | 7-8 | Class sessions, attendance grid (offline), online/offline banner |
+| 4 | 9-10 | Assessments, score sheet (offline), LWW conflict resolution |
+| 5 | 11-12 | Analytics, at-risk engine, topic difficulty aggregation |
+| 6 | 13 | Student portal — dashboard, scores, attendance (read-only) |
+| 7 | 14 | PWA audit, seed script, production env, MongoDB indexes |
+
+---
+
+## v2 Considerations (Not in v1)
+
+| Feature | Notes |
+|---------|-------|
+| Multi-tenant | Better Auth org plugin ready — add `organization()` to `plugins[]` in `lib/auth/auth.ts` |
+| Mobile (Expo) | `apps/api` already serves it; build the React Native client |
+| CSV student import | Class lists from registrar |
+| Grade export (PDF/Excel) | Department submission |
+| Weighted grade computation | Quizzes 30%, midterm 30%, final 40% |
+| Email notifications | At-risk alerts to students |
