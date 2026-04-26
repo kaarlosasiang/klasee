@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
-import z from "zod"
+import { signInSchema, type SignInInput } from "@workspace/validators"
+
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signIn } from "@/lib/config/auth-client"
@@ -19,10 +20,6 @@ import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
 
 const CALLBACK_URL = "/dashboard"
-
-const formSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-})
 
 export function LoginForm({
   className,
@@ -48,13 +45,25 @@ export function LoginForm({
     }
   }
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { email: "" },
+  const form = useForm<SignInInput>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: "", password: "" },
   })
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log("Form submitted with data:", data)
+  const onSubmit = async (data: SignInInput) => {
+    try {
+      setIsLoading(true)
+      const { error } = await signIn.email({
+        email: data.email,
+        password: data.password,
+        callbackURL: CALLBACK_URL,
+      })
+      if (error) throw new Error(error.message ?? "Sign-in failed")
+    } catch (e) {
+      console.error("Sign-in error:", e)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -89,6 +98,25 @@ export function LoginForm({
                   type="email"
                   autoComplete="email"
                   placeholder="m@example.com"
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+          <Controller
+            name="password"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <Input
+                  {...field}
+                  id="password"
+                  aria-invalid={fieldState.invalid}
+                  type="password"
+                  autoComplete="current-password"
                 />
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />

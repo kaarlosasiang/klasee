@@ -1,23 +1,36 @@
-import { app } from "./app.js";
-import { appConfig, connectDB, logger } from "./config/index.js";
+import "dotenv/config"
+import express from "express"
 
-const start = async () => {
-	try {
-		await connectDB();
+import configureApp from "./config/app.js"
 
-		app.listen(appConfig.port, () => {
-			logger.info("API server started", {
-				env: appConfig.nodeEnv,
-				port: appConfig.port,
-			});
-		});
-	} catch (error) {
-		logger.error("Failed to start API server", {
-			error: error instanceof Error ? error.message : "Unknown error",
-		});
-		process.exit(1);
-	}
-};
+import { constants } from "./config/index.js"
+import { dbConnection } from "./config/index.js"
+import logger from "./config/logger.js"
 
-void start();
+const app = express()
 
+configureApp(app)
+
+const startServer = async () => {
+  try {
+    // Connect to database first
+    await dbConnection.connect()
+
+    // Then start the server
+    app.listen(constants.port, () => {
+      logger.info(`Server started on port ${constants.port}`, {
+        port: constants.port,
+        environment: constants.nodeEnv,
+        frontendUrl: constants.frontEndUrl,
+      })
+    })
+  } catch (error) {
+    logger.logError(error as Error, {
+      operation: "server-startup",
+    })
+    process.exit(1)
+  }
+}
+
+// Start the application
+startServer()
