@@ -10,6 +10,7 @@ interface SignUpData {
   name: string
   email: string
   password: string
+  role: UserRole
   confirmPassword: string
 }
 
@@ -27,6 +28,7 @@ export const signUpSchema = z
       .min(8, "Password must be at least 8 characters")
       .regex(/[A-Z]/, "Must contain at least one uppercase letter")
       .regex(/[0-9]/, "Must contain at least one number"),
+    role: z.enum(["student", "instructor", "admin"], { required_error: "Please select a role" }),
     confirmPassword: z.string(),
   })
   .refine((data: SignUpData) => data.password === data.confirmPassword, {

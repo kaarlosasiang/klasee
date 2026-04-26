@@ -14,6 +14,10 @@ import {
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@workspace/ui/components/radio-group"
 
 export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -21,20 +25,29 @@ export default function SignupForm() {
 
   const form = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "student",
+    },
   })
 
   const onSubmit = async (data: SignUpInput) => {
+    const redirect = data.role === "instructor" ? "/dashboard" : "/my-dashboard"
     try {
       setIsLoading(true)
-      const { error } = await signUp.email({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (signUp.email as any)({
         name: data.name,
         email: data.email,
         password: data.password,
-        callbackURL: "/dashboard",
+        role: data.role,
+        callbackURL: redirect,
       })
       if (error) throw new Error(error.message ?? "Sign-up failed")
-      router.push("/dashboard")
+      router.push(redirect)
     } catch (e) {
       console.error("Sign-up error:", e)
     } finally {
@@ -113,6 +126,36 @@ export default function SignupForm() {
                 type="password"
                 autoComplete="new-password"
               />
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          )}
+        />
+        <Controller
+          name="role"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel>I am a</FieldLabel>
+              <RadioGroup
+                value={field.value}
+                onValueChange={field.onChange}
+                className="grid grid-cols-2 gap-3"
+              >
+                <label
+                  htmlFor="role-student"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-input p-3 has-data-checked:border-primary has-data-checked:bg-primary/5"
+                >
+                  <RadioGroupItem value="student" id="role-student" />
+                  <span className="text-sm font-medium">Student</span>
+                </label>
+                <label
+                  htmlFor="role-instructor"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-input p-3 has-data-checked:border-primary has-data-checked:bg-primary/5"
+                >
+                  <RadioGroupItem value="instructor" id="role-instructor" />
+                  <span className="text-sm font-medium">Instructor</span>
+                </label>
+              </RadioGroup>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}
