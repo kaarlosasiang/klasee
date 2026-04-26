@@ -1,29 +1,33 @@
 "use client"
 
 import { createContext, useContext } from "react"
-import { useSession } from "../config/auth-client"
+import {
+  authClient,
+  useSession,
+  signIn as authSignIn,
+  signUp as authSignUp,
+  signOut as authSignOut,
+} from "../config/auth-client"
 import { User } from "better-auth"
+
+const CALLBACK_URL = "/dashboard"
 
 interface AuthContextValue {
   session: ReturnType<typeof useSession>
   user: User | null
   isLoading: boolean
   error: Error | null
-
   signIn: {
-    email: () => Promise<any>
-    social: () => Promise<any>
-    emailOtp: () => Promise<any>
+    email: (email: string, password: string) => Promise<any>
+    social: (provider: "google" | "github") => Promise<any>
+    // emailOtp: (email: string, otp: string) => Promise<any>
   }
-
   signUp: {
-    email: () => Promise<any>
+    email: (name: string, email: string, password: string) => Promise<any>
   }
-
   signOut: () => Promise<any>
-  updateUser: () => Promise<any>
+  updateUser: (data: Record<string, unknown>) => Promise<any>
   refetchSession: () => Promise<any>
-
   emailVerification: {
     sendOtp: (email: string) => Promise<any>
     verifyEmail: (email: string, otp: string) => Promise<any>
@@ -45,19 +49,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading: session?.isPending || false,
         error: session?.error || null,
         signIn: {
-          email: async () => {},
-          social: async () => {},
-          emailOtp: async () => {},
+          email: (email, password) =>
+            authSignIn.email({ email, password, callbackURL: CALLBACK_URL }),
+          social: (provider) =>
+            authSignIn.social({ provider, callbackURL: CALLBACK_URL })
         },
         signUp: {
-          email: async () => {},
+          email: (name, email, password) =>
+            authSignUp.email({ name, email, password, callbackURL: CALLBACK_URL }),
         },
-        signOut: async () => {},
-        updateUser: async () => {},
-        refetchSession: async () => {},
+        signOut: () => authSignOut(),
+        updateUser: (data) => authClient.updateUser(data),
+        refetchSession: () => session.refetch(),
         emailVerification: {
-          sendOtp: async (email: string) => {},
-          verifyEmail: async (email: string, otp: string) => {},
+          sendOtp: async (_email) => {},
+          verifyEmail: async (_email, _otp) => {},
         },
       }}
     >

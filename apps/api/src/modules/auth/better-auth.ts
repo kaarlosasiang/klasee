@@ -48,18 +48,17 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      companyId: { type: "string", required: false }, // Optional for social login
-      role: {
-        type: "string",
-        required: false, // Will be set after social login
-      },
-      first_name: { type: "string", required: false },
-      middle_name: { type: "string", required: false },
-      last_name: { type: "string", required: false },
-      phone_number: { type: "string", required: false },
+      schoolId: { type: "string", required: false },
+      role: { type: "string", required: false }, // "student" | "instructor" | "admin"
+      firstName: { type: "string", required: false },
+      middleName: { type: "string", required: false },
+      lastName: { type: "string", required: false },
+      phoneNumber: { type: "string", required: false },
       username: { type: "string", required: false },
-      // Onboarding tracking fields
-      profileSetupCompletedAt: { type: "string", required: false },
+      dateOfBirth: { type: "string", required: false },
+      isActive: { type: "boolean", required: false },
+      onboardingCompleted: { type: "boolean", required: false },
+      profileSetupCompletedAt: { type: "number", required: false },
     },
   },
   session: {

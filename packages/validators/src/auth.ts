@@ -1,5 +1,11 @@
 import { z } from "zod"
 
+export const UserRole = {
+  STUDENT: "student",
+  INSTRUCTOR: "instructor",
+  ADMIN: "admin",
+} as const
+
 interface SignUpData {
   name: string
   email: string
@@ -35,3 +41,4 @@ export const signInSchema = z.object({
 
 export type SignUpInput = z.infer<typeof signUpSchema>
 export type SignInInput = z.infer<typeof signInSchema>
+export type UserRole = (typeof UserRole)[keyof typeof UserRole]
