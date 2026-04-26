@@ -12,7 +12,7 @@ interface SignInData {
   password: string
 }
 
-export const signUpSchema: z.ZodType<SignUpData> = z
+export const signUpSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Please enter a valid email address"),
@@ -28,7 +28,7 @@ export const signUpSchema: z.ZodType<SignUpData> = z
     path: ["confirmPassword"],
   })
 
-export const signInSchema: z.ZodType<SignInData> = z.object({
+export const signInSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
 })
