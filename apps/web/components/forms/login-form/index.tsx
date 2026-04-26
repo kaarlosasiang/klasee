@@ -19,6 +19,8 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
 
+import { toast } from "sonner"
+
 const CALLBACK_URL = "/dashboard"
 
 export function LoginForm({
@@ -39,8 +41,13 @@ export function LoginForm({
       if (error) {
         throw new Error(error.message ?? "Google sign-in failed")
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("Google sign-in error:", e)
+      toast.error("Google sign-in failed", {
+        description:
+          (e as Error).message ?? "An error occurred during Google sign-in.",
+        position: "top-right",
+      })
       setIsLoading(false)
     }
   }
@@ -58,9 +65,18 @@ export function LoginForm({
         password: data.password,
         callbackURL: CALLBACK_URL,
       })
-      if (error) throw new Error(error.message ?? "Sign-in failed")
-    } catch (e) {
+      if (error) {
+        toast.error("Sign-in failed", {
+          description: error.message ?? "An error occurred during sign-in.",
+          position: "top-right",
+        })
+      }
+    } catch (e: unknown) {
       console.error("Sign-in error:", e)
+      toast.error("Sign-in failed", {
+        description: "An unexpected error occurred.",
+        position: "top-right",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -82,7 +98,7 @@ export function LoginForm({
             </a>
             <h1 className="text-xl font-bold">Welcome to Acme Inc.</h1>
             <FieldDescription>
-              Don&apos;t have an account? <a href="#">Sign up</a>
+              Don&apos;t have an account? <a href="/signup">Sign up</a>
             </FieldDescription>
           </div>
           <Controller
@@ -125,7 +141,9 @@ export function LoginForm({
             )}
           />
           <Field>
-            <Button type="submit">Login</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Login"}
+            </Button>
           </Field>
           <FieldSeparator>Or</FieldSeparator>
           <Field className="grid gap-4 sm:grid-cols-2">
