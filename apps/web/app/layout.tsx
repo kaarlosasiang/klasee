@@ -6,6 +6,29 @@ import { cn } from "@workspace/ui/lib/utils"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { AuthProvider } from "@/lib/contexts/auth-context"
 
+import type { Metadata, Viewport } from "next"
+import { PWARegister } from "@/components/pwa-register"
+
+const APP_NAME = "Klasee"
+const APP_DESCRIPTION = "A modern learning management system"
+
+export const metadata: Metadata = {
+  applicationName: APP_NAME,
+  title: { default: APP_NAME, template: "%s - Klasee" },
+  description: APP_DESCRIPTION,
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: APP_NAME,
+  },
+  formatDetection: { telephone: false },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+}
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 const fontMono = Geist_Mono({
@@ -34,6 +57,7 @@ export default function RootLayout({
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
         <Toaster />
+        <PWARegister />
       </body>
     </html>
   )

@@ -53,6 +53,6 @@ export const config = {
      * - favicon.ico
      * - api routes
      */
-    "/((?!_next/static|_next/image|favicon.ico|api).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api|sw\\.js|workbox-.*|icons|manifest\\.json).*)",
   ],
 }
