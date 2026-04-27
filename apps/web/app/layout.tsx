@@ -8,6 +8,8 @@ import { AuthProvider } from "@/lib/contexts/auth-context"
 
 import type { Metadata, Viewport } from "next"
 import { PWARegister } from "@/components/pwa-register"
+import { Navbar } from "@/components/common/navbar"
+import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 const APP_NAME = "Klasee"
 const APP_DESCRIPTION = "A modern learning management system"
@@ -54,7 +56,9 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
         <Toaster />
         <PWARegister />
