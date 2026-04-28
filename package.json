@@ -3,22 +3,21 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "dev:web": "turbo run dev --filter=web",
-    "dev:api": "turbo run dev --filter=api",
+    "build": "pnpm -r --if-present build",
+    "dev": "pnpm -r --parallel --stream --if-present dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
     "storybook:ui": "pnpm --filter @workspace/ui storybook",
     "build-storybook:ui": "pnpm --filter @workspace/ui build-storybook",
-    "lint": "turbo lint",
-    "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "lint": "pnpm -r --if-present lint",
+    "format": "pnpm -r --if-present format",
+    "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "turbo": "^2.8.17",
     "typescript": "5.9.3"
   },
   "packageManager": "pnpm@9.15.9",

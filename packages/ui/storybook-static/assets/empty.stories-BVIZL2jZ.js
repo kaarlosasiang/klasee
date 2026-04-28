@@ -1,0 +1,16 @@
+import{j as e}from"./iframe-D4FPlWOh.js";import{c as p}from"./index-5lkIbytk.js";import{c as s,S as f}from"./storybook-support-CsbcOoqw.js";import"./preload-helper-PPVm8Dsz.js";function r({className:n,...t}){return e.jsx("div",{"data-slot":"empty",className:s("flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance",n),...t})}function o({className:n,...t}){return e.jsx("div",{"data-slot":"empty-header",className:s("flex max-w-sm flex-col items-center gap-2",n),...t})}const u=p("mb-2 flex shrink-0 items-center justify-center [&_svg]:pointer-events-none [&_svg]:shrink-0",{variants:{variant:{default:"bg-transparent",icon:"flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-4"}},defaultVariants:{variant:"default"}});function i({className:n,variant:t="default",...l}){return e.jsx("div",{"data-slot":"empty-icon","data-variant":t,className:s(u({variant:t,className:n})),...l})}function d({className:n,...t}){return e.jsx("div",{"data-slot":"empty-title",className:s("font-heading text-sm font-medium tracking-tight",n),...t})}function m({className:n,...t}){return e.jsx("div",{"data-slot":"empty-description",className:s("text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",n),...t})}function c({className:n,...t}){return e.jsx("div",{"data-slot":"empty-content",className:s("flex w-full max-w-sm min-w-0 flex-col items-center gap-2.5 text-sm text-balance",n),...t})}r.__docgenInfo={description:"",methods:[],displayName:"Empty"};o.__docgenInfo={description:"",methods:[],displayName:"EmptyHeader"};d.__docgenInfo={description:"",methods:[],displayName:"EmptyTitle"};m.__docgenInfo={description:"",methods:[],displayName:"EmptyDescription"};c.__docgenInfo={description:"",methods:[],displayName:"EmptyContent"};i.__docgenInfo={description:"",methods:[],displayName:"EmptyMedia",props:{variant:{defaultValue:{value:'"default"',computed:!1},required:!1}}};const g={title:"Components/Empty",component:r,tags:["autodocs"]},a={render:()=>e.jsx(f,{className:"w-[28rem]",children:e.jsxs(r,{children:[e.jsxs(o,{children:[e.jsx(i,{variant:"icon",children:"+"}),e.jsx(d,{children:"No story selected"}),e.jsx(m,{children:"Choose a component from the sidebar to inspect it in isolation."})]}),e.jsx(c,{children:"This pattern is handy for dashboards, inboxes, and filtered views with no results."})]})})};a.parameters={...a.parameters,docs:{...a.parameters?.docs,source:{originalSource:`{
+  render: () => <StorySurface className="w-[28rem]">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">+</EmptyMedia>
+            <EmptyTitle>No story selected</EmptyTitle>
+            <EmptyDescription>
+              Choose a component from the sidebar to inspect it in isolation.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            This pattern is handy for dashboards, inboxes, and filtered views with no results.
+          </EmptyContent>
+        </Empty>
+      </StorySurface>
+}`,...a.parameters?.docs?.source}}};const v=["Default"];export{a as Default,v as __namedExportsOrder,g as default};

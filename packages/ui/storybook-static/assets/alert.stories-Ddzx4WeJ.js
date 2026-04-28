@@ -1,0 +1,13 @@
+import{j as t}from"./iframe-D4FPlWOh.js";import{c}from"./index-5lkIbytk.js";import{c as s,S as u}from"./storybook-support-CsbcOoqw.js";import{B as m}from"./button-BeqyZ1PH.js";import"./preload-helper-PPVm8Dsz.js";import"./index-BJBaJUyv.js";const p=c("group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",{variants:{variant:{default:"bg-card text-card-foreground",destructive:"bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current"}},defaultVariants:{variant:"default"}});function o({className:e,variant:r,...d}){return t.jsx("div",{"data-slot":"alert",role:"alert",className:s(p({variant:r}),e),...d})}function n({className:e,...r}){return t.jsx("div",{"data-slot":"alert-title",className:s("font-medium group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground",e),...r})}function i({className:e,...r}){return t.jsx("div",{"data-slot":"alert-description",className:s("text-sm text-balance text-muted-foreground md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",e),...r})}function l({className:e,...r}){return t.jsx("div",{"data-slot":"alert-action",className:s("absolute top-2 right-2",e),...r})}o.__docgenInfo={description:"",methods:[],displayName:"Alert"};n.__docgenInfo={description:"",methods:[],displayName:"AlertTitle"};i.__docgenInfo={description:"",methods:[],displayName:"AlertDescription"};l.__docgenInfo={description:"",methods:[],displayName:"AlertAction"};const _={title:"Components/Alert",component:o,tags:["autodocs"]},a={render:()=>t.jsx(u,{className:"w-[28rem]",children:t.jsxs(o,{children:[t.jsx(n,{children:"Team space updated"}),t.jsx(i,{children:"Your component inventory and docs now share the same visual source of truth."}),t.jsx(l,{asChild:!0,children:t.jsx(m,{size:"sm",children:"Review"})})]})})};a.parameters={...a.parameters,docs:{...a.parameters?.docs,source:{originalSource:`{
+  render: () => <StorySurface className="w-[28rem]">
+        <Alert>
+          <AlertTitle>Team space updated</AlertTitle>
+          <AlertDescription>
+            Your component inventory and docs now share the same visual source of truth.
+          </AlertDescription>
+          <AlertAction asChild>
+            <Button size="sm">Review</Button>
+          </AlertAction>
+        </Alert>
+      </StorySurface>
+}`,...a.parameters?.docs?.source}}};const j=["Default"];export{a as Default,j as __namedExportsOrder,_ as default};

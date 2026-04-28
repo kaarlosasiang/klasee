@@ -1,0 +1,9 @@
+import{r as m,j as t}from"./iframe-D4FPlWOh.js";import{P as c}from"./index-C2NmXINV.js";import{S as l}from"./storybook-support-CsbcOoqw.js";import"./preload-helper-PPVm8Dsz.js";import"./index-CvmSN5S1.js";import"./index-BVy1Us7B.js";import"./index-BJBaJUyv.js";var p="AspectRatio",a=m.forwardRef((r,s)=>{const{ratio:i=1/1,style:d,...n}=r;return t.jsx("div",{style:{position:"relative",width:"100%",paddingBottom:`${100/i}%`},"data-radix-aspect-ratio-wrapper":"",children:t.jsx(c.div,{...n,ref:s,style:{...d,position:"absolute",top:0,right:0,bottom:0,left:0}})})});a.displayName=p;var u=a;function o({...r}){return t.jsx(u,{"data-slot":"aspect-ratio",...r})}o.__docgenInfo={description:"",methods:[],displayName:"AspectRatio"};const j={title:"Components/AspectRatio",component:o,tags:["autodocs"]},e={render:()=>t.jsx(l,{className:"w-[26rem]",children:t.jsx(o,{ratio:16/9,className:"w-full overflow-hidden rounded-xl border bg-muted",children:t.jsx("div",{className:"flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/20 via-background to-secondary",children:t.jsx("span",{className:"text-sm font-medium text-muted-foreground",children:"16:9 media slot"})})})})};e.parameters={...e.parameters,docs:{...e.parameters?.docs,source:{originalSource:`{
+  render: () => <StorySurface className="w-[26rem]">
+        <AspectRatio ratio={16 / 9} className="w-full overflow-hidden rounded-xl border bg-muted">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/20 via-background to-secondary">
+            <span className="text-sm font-medium text-muted-foreground">16:9 media slot</span>
+          </div>
+        </AspectRatio>
+      </StorySurface>
+}`,...e.parameters?.docs?.source}}};const w=["Default"];export{e as Default,w as __namedExportsOrder,j as default};

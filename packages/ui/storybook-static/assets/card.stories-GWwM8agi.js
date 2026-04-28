@@ -1,0 +1,18 @@
+import{j as e}from"./iframe-D4FPlWOh.js";import{c as t,S as p}from"./storybook-support-CsbcOoqw.js";import{B as u}from"./button-BeqyZ1PH.js";import"./preload-helper-PPVm8Dsz.js";import"./index-5lkIbytk.js";import"./index-BJBaJUyv.js";function s({className:a,size:r="default",...m}){return e.jsx("div",{"data-slot":"card","data-size":r,className:t("group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",a),...m})}function o({className:a,...r}){return e.jsx("div",{"data-slot":"card-header",className:t("group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3",a),...r})}function n({className:a,...r}){return e.jsx("div",{"data-slot":"card-title",className:t("font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",a),...r})}function i({className:a,...r}){return e.jsx("div",{"data-slot":"card-description",className:t("text-sm text-muted-foreground",a),...r})}function c({className:a,...r}){return e.jsx("div",{"data-slot":"card-content",className:t("px-4 group-data-[size=sm]/card:px-3",a),...r})}function l({className:a,...r}){return e.jsx("div",{"data-slot":"card-footer",className:t("flex items-center rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3",a),...r})}s.__docgenInfo={description:"",methods:[],displayName:"Card",props:{size:{required:!1,tsType:{name:"union",raw:'"default" | "sm"',elements:[{name:"literal",value:'"default"'},{name:"literal",value:'"sm"'}]},description:"",defaultValue:{value:'"default"',computed:!1}}}};o.__docgenInfo={description:"",methods:[],displayName:"CardHeader"};l.__docgenInfo={description:"",methods:[],displayName:"CardFooter"};n.__docgenInfo={description:"",methods:[],displayName:"CardTitle"};i.__docgenInfo={description:"",methods:[],displayName:"CardDescription"};c.__docgenInfo={description:"",methods:[],displayName:"CardContent"};const v={title:"Components/Card",component:s,tags:["autodocs"]},d={render:()=>e.jsx(p,{className:"w-[24rem]",children:e.jsxs(s,{className:"w-full",children:[e.jsxs(o,{children:[e.jsx(n,{children:"UI package"}),e.jsx(i,{children:"Reusable primitives for forms, navigation, and overlays."})]}),e.jsx(c,{children:e.jsx("p",{className:"text-sm text-muted-foreground",children:"Storybook gives the package one place to browse and validate each state."})}),e.jsx(l,{className:"justify-end",children:e.jsx(u,{size:"sm",children:"Open docs"})})]})})};d.parameters={...d.parameters,docs:{...d.parameters?.docs,source:{originalSource:`{
+  render: () => <StorySurface className="w-[24rem]">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>UI package</CardTitle>
+            <CardDescription>Reusable primitives for forms, navigation, and overlays.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Storybook gives the package one place to browse and validate each state.
+            </p>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button size="sm">Open docs</Button>
+          </CardFooter>
+        </Card>
+      </StorySurface>
+}`,...d.parameters?.docs?.source}}};const N=["Default"];export{d as Default,N as __namedExportsOrder,v as default};

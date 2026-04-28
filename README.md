@@ -1,13 +1,13 @@
 # Klasee
 
-Klasee is an offline-first classroom workflow platform being built in a Turborepo monorepo.
+Klasee is an offline-first classroom workflow platform being built in a pnpm workspace monorepo.
 
 ## Tech Stack
 
-- Next.js 16 (App Router) in apps/web
+- Next.js 16 (App Router, SWC-backed webpack compiler) in apps/web
 - Shared UI package in packages/ui (shadcn/ui-based components)
 - Tailwind CSS v4
-- Turborepo + pnpm workspaces
+- pnpm workspaces
 - TypeScript + ESLint + Prettier
 
 ## Monorepo Structure
@@ -21,7 +21,6 @@ Klasee is an offline-first classroom workflow platform being built in a Turborep
 │   ├── ui/                  # Shared component library
 │   ├── eslint-config/       # Shared lint config
 │   └── typescript-config/   # Shared TS config
-├── turbo.json
 ├── pnpm-workspace.yaml
 └── package.json
 ```
@@ -38,7 +37,7 @@ pnpm install
 pnpm dev
 ```
 
-This runs the monorepo dev pipeline via Turbo.
+This runs the workspace dev scripts through pnpm. The web app itself is configured to use Next.js' webpack plus SWC path instead of Turbopack.
 
 ## Scripts
 

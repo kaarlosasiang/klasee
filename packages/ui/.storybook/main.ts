@@ -16,9 +16,7 @@ function packagePath(packageName: string) {
 const config: StorybookConfig = {
   stories: ["../src/stories/**/*.stories.@(ts|tsx)"],
   addons: [
-    packagePath("@storybook/addon-essentials"),
     packagePath("@storybook/addon-a11y"),
-    packagePath("@storybook/addon-interactions"),
   ],
   framework: {
     name: packagePath("@storybook/react-vite"),
