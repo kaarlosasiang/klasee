@@ -4,27 +4,41 @@ import * as React from "react"
 import {
   Archive,
   BarChart2,
+  BookOpen,
+  CalendarCheck,
   ChartNoAxesCombined,
+  ClipboardList,
   Clock,
   GraduationCap,
   Home,
-  LayoutTemplate,
-  Plus,
+  Layers,
   Search,
   Settings,
-  Share2,
   Users,
-  Zap,
 } from "lucide-react"
 
+import { useRouter } from "next/navigation"
 import { NavMain } from "@/components/common/app-sidebar/nav-main"
 import { NavFavoritesProjects } from "@/components/common/app-sidebar/nav-projects"
-import { NavUser } from "@/components/common/app-sidebar/nav-user"
+import { useSession, signOut } from "@/lib/config/auth-client"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -36,58 +50,25 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
 
+const instructorNav = [
+  { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Courses", url: "/courses", icon: BookOpen },
+  { title: "Sections", url: "/sections", icon: Layers },
+  { title: "Students", url: "/students", icon: Users },
+  { title: "Assessments", url: "/assessments", icon: ClipboardList },
+  { title: "Attendance", url: "/attendance", icon: CalendarCheck },
+]
+
+const studentNav = [
+  { title: "Dashboard", url: "/my-dashboard", icon: Home },
+  { title: "My Courses", url: "/my-courses", icon: BookOpen },
+  { title: "Assessments", url: "/my-assessments", icon: ClipboardList },
+  { title: "Attendance", url: "/my-attendance", icon: CalendarCheck },
+]
+
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    { title: "Recents", url: "#", icon: Clock },
-    { title: "Shared Content", url: "#", icon: Share2 },
-    { title: "Archived", url: "#", icon: Archive },
-    { title: "Templates", url: "#", icon: LayoutTemplate },
-  ],
-  favorites: [
-    {
-      name: "Figma Basic",
-      url: "#",
-      bgClass: "bg-linear-to-br from-blue-500 to-purple-600",
-      label: "Fb",
-    },
-    {
-      name: "Folder NEW 2024",
-      url: "#",
-      bgClass: "bg-emerald-500",
-      label: "F",
-    },
-    {
-      name: "Assignment 101",
-      url: "#",
-      bgClass: "bg-blue-500",
-      label: "A",
-    },
-    {
-      name: "Quiz Figma",
-      url: "#",
-      bgClass: "bg-orange-400",
-      label: "Q",
-    },
-  ],
-  projects: [
-    {
-      name: "Figma basic",
-      url: "#",
-      dotClass: "bg-violet-500",
-      isActive: false,
-    },
-    {
-      name: "Fikri studio",
-      url: "#",
-      dotClass: "bg-pink-400",
-      isActive: true,
-    },
-  ],
+  favorites: [] as { name: string; url: string; bgClass: string; label: string }[],
+  projects: [] as { name: string; url: string; dotClass: string; isActive: boolean }[],
 }
 
 function IconRailBtn({
@@ -107,7 +88,7 @@ function IconRailBtn({
             "flex size-10 items-center justify-center rounded-lg transition-colors",
             active
               ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              : "text-foreground hover:bg-accent hover:text-foreground"
           )}
         >
           <Icon className="size-5" />
@@ -120,6 +101,20 @@ function IconRailBtn({
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const router = useRouter()
+  const { data: session } = useSession()
+  const user = session?.user
+  const role = (user as { role?: "student" | "instructor" | "admin" })?.role
+  const navMain = role === "instructor" || role === "admin" ? instructorNav : studentNav
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "??"
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <div className="flex h-full">
@@ -150,15 +145,45 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <IconRailBtn icon={BarChart2} label="Reports" />
             <IconRailBtn icon={Settings} label="Settings" />
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="flex size-9 items-center justify-center rounded-xl bg-rose-400 text-xs font-bold text-white transition-colors hover:bg-rose-500">
-                  RF
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex size-9 items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="size-9">
+                    <AvatarImage
+                      src={user?.image ?? ""}
+                      alt={user?.name ?? "Profile"}
+                    />
+                    <AvatarFallback className="rounded-full text-xs font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="sr-only">Profile</span>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Profile</TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-56">
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2 px-1 py-1.5">
+                    <Avatar className="size-8 rounded-lg">
+                      <AvatarImage src={user?.image ?? ""} alt={user?.name ?? ""} />
+                      <AvatarFallback className="rounded-lg text-xs font-bold">{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">{user?.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem>Account</DropdownMenuItem>
+                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut({ fetchOptions: { onSuccess: () => router.push("/login") } })}>
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </aside>
 
@@ -180,7 +205,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            <NavMain items={data.navMain} />
+            <NavMain items={navMain} />
             <NavFavoritesProjects
               favorites={data.favorites}
               projects={data.projects}

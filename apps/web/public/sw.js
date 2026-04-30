@@ -22,13 +22,13 @@ self.addEventListener("activate", (event) => {
 })
 
 self.addEventListener("fetch", (event) => {
-  // Only cache GET requests, skip API calls
+  // Only cache GET requests, skip API calls and Next.js internals
   if (event.request.method !== "GET") return
   if (event.request.url.includes("/api/")) return
+  if (event.request.url.includes("/_next/")) return
 
+  // Network-first for all requests — always prefer fresh content, fall back to cache when offline
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached ?? fetch(event.request)
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   )
 })

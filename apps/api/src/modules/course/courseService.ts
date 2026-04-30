@@ -1,4 +1,5 @@
 import { Course } from "../../models/courseModel.js"
+import "../../models/userModel.js" // ensure User schema is registered for populate
 
 export const courseService = {
   async findAll(filter: Record<string, unknown> = {}) {

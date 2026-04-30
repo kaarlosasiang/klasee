@@ -141,7 +141,7 @@ export function LoginForm({
             )}
           />
           <Field>
-            <Button type="submit" disabled={isLoading}>
+            <Button className="font-bold border-0 border-l-3 border-b-4 border-blue-800" size={"lg"} type="submit" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Login"}
             </Button>
           </Field>
