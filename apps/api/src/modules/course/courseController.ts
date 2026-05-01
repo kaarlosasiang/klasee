@@ -17,8 +17,13 @@ export const courseController = {
 
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
+      const role = (req.authUser as any)?.role
+      const userId = (req.authUser as any)?.id
       const course = await courseService.findById(req.params['id'] as string)
       if (!course) return res.status(404).json({ message: "Course not found" })
+      if (role === "instructor" && String((course as any).instructorId?._id ?? course.instructorId) !== userId) {
+        return res.status(403).json({ message: "Forbidden" })
+      }
       res.json(course)
     } catch (err) {
       next(err)

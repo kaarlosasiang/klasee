@@ -11,6 +11,8 @@ const courseSchema = new mongoose.Schema(
     code: { type: String, required: true, unique: true },
     description: { type: String },
     semester: { type: String, required: true },
+    cover: { type: String },
+    icon: { type: String },
   },
   { timestamps: true }
 )

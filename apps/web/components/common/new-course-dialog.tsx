@@ -302,12 +302,13 @@ function Step3Content({ error }: { error: string | null }) {
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
 
-const STEPS = ["Course Overview", "Add Sections", "Review & Publish"]
+const CREATE_STEPS = ["Course Overview", "Add Sections", "Review & Publish"]
+const EDIT_STEPS = ["Course Overview", "Review & Save"]
 
-function StepIndicator({ current }: { current: number }) {
+function StepIndicator({ current, steps }: { current: number; steps: string[] }) {
   return (
     <div className="flex items-center gap-2">
-      {STEPS.map((label, i) => {
+      {steps.map((label, i) => {
         const n = i + 1
         const done = n < current
         const active = n === current
@@ -333,7 +334,7 @@ function StepIndicator({ current }: { current: number }) {
                 {label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div
                 className={cn(
                   "h-px min-w-6 flex-1 transition-colors",
@@ -350,19 +351,83 @@ function StepIndicator({ current }: { current: number }) {
 
 // ─── Main Dialog ──────────────────────────────────────────────────────────────
 
+interface CourseData {
+  _id: string
+  name: string
+  code: string
+  description?: string
+  semester: string
+  cover?: string
+  icon?: string
+}
+
 interface NewCourseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  course?: CourseData
 }
 
-export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
+export function NewCourseDialog({ open, onOpenChange, course }: NewCourseDialogProps) {
+  const isEditMode = !!course
+  // In edit mode: logical steps are 1 (overview) and 3 (review) — we skip step 2
   const [step, setStep] = React.useState<1 | 2 | 3>(1)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const { step1, sections, reset } = useNewCourseStore()
+  const { step1, sections, setStep1, reset } = useNewCourseStore()
+
+  // Seed store when opening in edit mode
+  React.useEffect(() => {
+    if (open && isEditMode && course) {
+      setStep1({
+        title: course.name,
+        code: course.code,
+        description: course.description ?? "",
+        semester: course.semester,
+        coverFile: null,
+        iconFile: null,
+        coverPreview: course.cover ?? null,
+        iconPreview: course.icon ?? null,
+      })
+      setStep(1)
+      setError(null)
+    }
+    if (!open) {
+      // Reset step position on close
+      setStep(1)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const canAdvanceStep2 = sections.every((s) => s.name.trim().length > 0)
+
+  const steps = isEditMode ? EDIT_STEPS : CREATE_STEPS
+  // Map logical step numbers to step indicator position
+  // Edit mode: step 1 → indicator 1, step 3 → indicator 2
+  const indicatorStep = isEditMode ? (step === 1 ? 1 : 2) : step
+
+  function handleNext() {
+    if (isEditMode) {
+      // Skip step 2, go straight to review
+      setStep(3)
+    } else {
+      setStep((s) => (s + 1) as 2 | 3)
+    }
+  }
+
+  function handleBack() {
+    setError(null)
+    if (isEditMode) {
+      setStep(1)
+    } else {
+      setStep((s) => (s - 1) as 1 | 2 | 3)
+    }
+  }
+
+  function backLabel() {
+    if (isEditMode) return "Course Overview"
+    return step === 2 ? "Course Overview" : "Add Sections"
+  }
 
   async function handlePublish() {
     if (!step1.title || !step1.code || !step1.semester) {
@@ -380,28 +445,41 @@ export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
       if (step1.coverFile) coverUrl = await uploadToCloudinary(step1.coverFile)
       if (step1.iconFile) iconUrl = await uploadToCloudinary(step1.iconFile)
 
-      const courseRes = await apiClient.post<{ _id: string }>("/courses", {
-        name: step1.title,
-        code: step1.code,
-        description: step1.description || undefined,
-        semester: step1.semester,
-        ...(coverUrl ? { coverUrl } : {}),
-        ...(iconUrl ? { iconUrl } : {}),
-      })
-
-      const courseId = courseRes.data._id
-
-      for (const section of sections) {
-        await apiClient.post("/sections", {
-          courseId,
-          name: section.name,
-          schedule: section.schedule || undefined,
-          room: section.room || undefined,
-          maxStudents: section.maxStudents,
+      if (isEditMode && course) {
+        // Edit mode — PUT the course, skip section creation
+        await apiClient.put(`/courses/${course._id}`, {
+          name: step1.title,
+          code: step1.code,
+          description: step1.description || undefined,
+          semester: step1.semester,
+          ...(coverUrl ? { cover: coverUrl } : {}),
+          ...(iconUrl ? { icon: iconUrl } : {}),
         })
+      } else {
+        // Create mode — POST course + sections
+        const courseRes = await apiClient.post<{ _id: string }>("/courses", {
+          name: step1.title,
+          code: step1.code,
+          description: step1.description || undefined,
+          semester: step1.semester,
+          ...(coverUrl ? { cover: coverUrl } : {}),
+          ...(iconUrl ? { icon: iconUrl } : {}),
+        })
+
+        const courseId = courseRes.data._id
+
+        for (const section of sections) {
+          await apiClient.post("/sections", {
+            courseId,
+            name: section.name,
+            schedule: section.schedule || undefined,
+            room: section.room || undefined,
+            maxStudents: section.maxStudents,
+          })
+        }
       }
 
-      reset()
+      if (!isEditMode) reset()
       setStep(1)
       onOpenChange(false)
     } catch (err: unknown) {
@@ -417,11 +495,11 @@ export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
         showCloseButton={false}
         className="flex h-[90vh] w-[780px] max-w-[calc(100vw-2rem)] sm:max-w-[780px] flex-col gap-0 rounded-2xl p-0 shadow-2xl"
       >
-        <DialogTitle className="sr-only">Create Course</DialogTitle>
+        <DialogTitle className="sr-only">{isEditMode ? "Edit Course" : "Create Course"}</DialogTitle>
 
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-          <p className="text-sm font-semibold text-foreground">Create Course</p>
+          <p className="text-sm font-semibold text-foreground">{isEditMode ? "Edit Course" : "Create Course"}</p>
           <button
             onClick={() => onOpenChange(false)}
             className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -433,7 +511,7 @@ export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           <div className="mb-5">
-            <StepIndicator current={step} />
+            <StepIndicator current={indicatorStep} steps={steps} />
           </div>
           {step === 1 && <Step1Content />}
           {step === 2 && <Step2Content />}
@@ -444,12 +522,12 @@ export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
         <div className="flex shrink-0 items-center justify-between border-t border-border px-6 py-4">
           {step > 1 ? (
             <button
-              onClick={() => { setError(null); setStep((s) => (s - 1) as 1 | 2 | 3) }}
+              onClick={handleBack}
               disabled={isSubmitting}
               className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               <ChevronLeft className="size-4" />
-              {step === 2 ? "Course Overview" : "Add Sections"}
+              {backLabel()}
             </button>
           ) : (
             <span />
@@ -457,8 +535,8 @@ export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
 
           {step < 3 ? (
             <Button
-              onClick={() => setStep((s) => (s + 1) as 2 | 3)}
-              disabled={step === 2 && !canAdvanceStep2}
+              onClick={handleNext}
+              disabled={!isEditMode && step === 2 && !canAdvanceStep2}
             >
               Continue
               <ChevronRight className="size-4" />
@@ -466,9 +544,9 @@ export function NewCourseDialog({ open, onOpenChange }: NewCourseDialogProps) {
           ) : (
             <Button onClick={handlePublish} disabled={isSubmitting}>
               {isSubmitting ? (
-                <><Loader2 className="size-4 animate-spin" />Publishing…</>
+                <><Loader2 className="size-4 animate-spin" />{isEditMode ? "Saving…" : "Publishing…"}</>
               ) : (
-                "Publish Course"
+                isEditMode ? "Save Changes" : "Publish Course"
               )}
             </Button>
           )}

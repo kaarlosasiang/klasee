@@ -1,19 +1,30 @@
-import { Button } from "@workspace/ui/components/button"
+"use client"
 
-export default function Page() {
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import { useSession } from "@/lib/config/auth-client"
+
+export default function RootPage() {
+  const router = useRouter()
+  const { data: session, isPending } = useSession()
+
+  React.useEffect(() => {
+    if (isPending) return
+    if (!session) {
+      router.replace("/login")
+      return
+    }
+    const role = (session.user as { role?: string })?.role
+    if (role === "student") {
+      router.replace("/my-dashboard")
+    } else {
+      router.replace("/dashboard")
+    }
+  }, [session, isPending, router])
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
+    <div className="flex min-h-svh items-center justify-center">
+      <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-foreground" />
     </div>
   )
 }

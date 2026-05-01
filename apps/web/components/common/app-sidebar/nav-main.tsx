@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar"
+import Link from "next/link"
 
 export function NavMain({
   items,
@@ -26,10 +27,10 @@ export function NavMain({
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
-                <a href={item.url} className="text-muted-foreground">
+                <Link href={item.url} className="text-muted-foreground">
                   <item.icon />
                   <span className="font-medium">{item.title}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

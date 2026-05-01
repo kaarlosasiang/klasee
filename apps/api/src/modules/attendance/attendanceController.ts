@@ -4,10 +4,11 @@ import { attendanceService } from "./attendanceService.js"
 export const attendanceController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { courseId, sectionId, date } = req.query
+      const { courseId, sectionId, studentId, date } = req.query
       const filter: Record<string, unknown> = {}
       if (courseId) filter.courseId = courseId
       if (sectionId) filter.sectionId = sectionId
+      if (studentId) filter.studentId = studentId
       if (date) filter.date = date
       const records = await attendanceService.findAll(filter)
       res.json(records)

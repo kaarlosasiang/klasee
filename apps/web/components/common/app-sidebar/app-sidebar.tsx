@@ -49,6 +49,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
+import Link from "next/link"
 
 const instructorNav = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -121,12 +122,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* ── LEFT ICON RAIL ── */}
         <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border py-3">
           {/* Logo */}
-          <a
+          <Link
             href="#"
             className="mb-3 flex size-9 items-center justify-center rounded-xl bg-primary text-white"
           >
             <GraduationCap className="size-5" />
-          </a>
+          </Link>
 
           <IconRailBtn icon={Home} label="Dashboard" active />
           <IconRailBtn icon={Search} label="Search" />

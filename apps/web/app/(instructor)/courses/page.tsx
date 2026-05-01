@@ -10,7 +10,8 @@ import {
   Search,
   SlidersHorizontal,
 } from "lucide-react"
-import { apiClient } from "@/lib/config/api-client"
+import Link from "next/link"
+import { useCourses, type Course } from "@/hooks/use-courses"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -23,15 +24,6 @@ import {
 } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
 
-interface Course {
-  _id: string
-  name: string
-  code: string
-  description?: string
-  semester: string
-  createdAt: string
-}
-
 const SEMESTER_LABELS: Record<string, string> = {
   "1st": "First Semester",
   "2nd": "Second Semester",
@@ -40,12 +32,31 @@ const SEMESTER_LABELS: Record<string, string> = {
 
 function CourseCard({ course }: { course: Course }) {
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-md">
-      <div className="relative flex h-32 items-end bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 px-5 pb-0">
-        <div className="absolute bottom-0 translate-y-1/2 flex size-11 items-center justify-center overflow-hidden rounded-xl border-2 border-background bg-blue-500 text-white shadow-sm">
-          <GraduationCap className="size-5" />
+    <Link href={`/courses/${course._id}`} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-md">
+      {/* Cover */}
+      <div className="relative h-32 shrink-0 overflow-hidden">
+        {course.cover ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={course.cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        ) : (
+          <div className="absolute inset-0 bg-linear-to-br from-blue-400 via-indigo-500 to-violet-600">
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute -right-6 -top-6 size-32 rounded-full border-16 border-white" />
+              <div className="absolute -bottom-8 -left-4 size-24 rounded-full border-12 border-white" />
+            </div>
+          </div>
+        )}
+        {/* Icon badge */}
+        <div className="absolute bottom-0 left-4 translate-y-1/2 flex size-11 items-center justify-center overflow-hidden rounded-xl border-2 border-background bg-blue-500 text-white shadow-sm">
+          {course.icon ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={course.icon} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <GraduationCap className="size-5" />
+          )}
         </div>
       </div>
+
       <div className="flex flex-1 flex-col px-5 pb-5 pt-8">
         <p className="line-clamp-1 font-semibold text-foreground">{course.name}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
@@ -65,7 +76,7 @@ function CourseCard({ course }: { course: Course }) {
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -83,11 +94,16 @@ function CourseTable({ courses }: { courses: Course[] }) {
         </thead>
         <tbody className="divide-y divide-border/60">
           {courses.map((course) => (
-            <tr key={course._id} className="transition-colors hover:bg-muted/30">
+            <tr key={course._id} className="cursor-pointer transition-colors hover:bg-muted/30" onClick={() => window.location.assign(`/courses/${course._id}`)}>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-white">
-                    <GraduationCap className="size-4" />
+                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-blue-500 text-white">
+                    {course.icon ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={course.icon} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <GraduationCap className="size-4" />
+                    )}
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{course.name}</p>
@@ -117,29 +133,15 @@ function CourseTable({ courses }: { courses: Course[] }) {
 }
 
 export default function CoursesPage() {
-  const [courses, setCourses] = React.useState<Course[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const { courses, loading, refetch } = useCourses()
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [semester, setSemester] = React.useState("all")
   const [view, setView] = React.useState<"card" | "table">("card")
 
-  async function fetchCourses() {
-    try {
-      const res = await apiClient.get<Course[]>("/courses")
-      setCourses(res.data)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  React.useEffect(() => {
-    fetchCourses()
-  }, [])
-
   function handleDialogChange(open: boolean) {
     setDialogOpen(open)
-    if (!open) fetchCourses()
+    if (!open) refetch()
   }
 
   const filtered = courses.filter((c) => {
@@ -161,10 +163,10 @@ export default function CoursesPage() {
               : `${filtered.length} of ${courses.length} course${courses.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        {/* <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)}>
           <Plus className="size-4" />
           New Course
-        </Button> */}
+        </Button>
       </div>
 
       <div className="mb-5 flex items-center justify-between gap-3">

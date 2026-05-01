@@ -21,7 +21,7 @@ import { Button } from "@workspace/ui/components/button"
 
 import { toast } from "sonner"
 
-const CALLBACK_URL = "/dashboard"
+const CALLBACK_URL = "/"
 
 export function LoginForm({
   className,
