@@ -13,6 +13,7 @@ const courseSchema = new mongoose.Schema(
     semester: { type: String, required: true },
     cover: { type: String },
     icon: { type: String },
+    syllabus: { type: String },
   },
   { timestamps: true }
 )

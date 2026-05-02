@@ -7,12 +7,14 @@ import {
   BookOpen,
   CalendarDays,
   ClipboardList,
+  Copy,
   GraduationCap,
   Layers,
   MapPin,
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   Users,
 } from "lucide-react"
@@ -287,8 +289,6 @@ function AssessmentDialog({
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
-
-type Tab = "sections" | "assessments"
 
 export default function CoursePage() {
   const { id } = useParams<{ id: string }>()
@@ -566,9 +566,9 @@ export default function CoursePage() {
             {sections.map((section, idx) => (
               <li
                 key={section._id}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:bg-muted/30"
+                className="flex items-start gap-4 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:bg-muted/30"
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium tabular-nums text-muted-foreground">
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium tabular-nums text-muted-foreground">
                   {idx + 1}
                 </span>
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
@@ -593,6 +593,48 @@ export default function CoursePage() {
                       <Users className="size-3" />
                       Max {section.maxStudents} students
                     </span>
+                  </div>
+
+                  {/* Join code */}
+                  <div className="mt-2.5 flex items-center gap-2">
+                    {section.joinCode ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-indigo-300 bg-indigo-50 px-2.5 py-1 font-mono text-sm font-bold tracking-widest text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                          {section.joinCode}
+                        </span>
+                        <button
+                          type="button"
+                          title="Copy code"
+                          onClick={() => navigator.clipboard.writeText(section.joinCode!)}
+                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <Copy className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Regenerate code"
+                          onClick={async () => {
+                            await apiClient.post(`/sections/${section._id}/generate-code`)
+                            refetch()
+                          }}
+                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <RefreshCw className="size-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await apiClient.post(`/sections/${section._id}/generate-code`)
+                          refetch()
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <Plus className="size-3" />
+                        Generate join code
+                      </button>
+                    )}
                   </div>
                 </div>
                 <DropdownMenu>

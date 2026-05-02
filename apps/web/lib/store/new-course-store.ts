@@ -17,6 +17,8 @@ interface Step1State {
   iconFile: File | null
   coverPreview: string | null
   iconPreview: string | null
+  syllabusFile: File | null
+  syllabusName: string | null
 }
 
 interface NewCourseStore {
@@ -39,6 +41,8 @@ const defaultStep1: Step1State = {
   iconFile: null,
   coverPreview: null,
   iconPreview: null,
+  syllabusFile: null,
+  syllabusName: null,
 }
 
 const defaultSection = (): SectionDraft => ({

@@ -9,6 +9,7 @@ export interface Section {
   schedule?: string
   room?: string
   maxStudents: number
+  joinCode?: string
   createdAt: string
 }
 

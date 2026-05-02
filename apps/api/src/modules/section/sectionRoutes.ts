@@ -9,5 +9,7 @@ router.get("/:id", requireAuth, sectionController.getById)
 router.post("/", requireAuth, requireRole("instructor", "admin"), sectionController.create)
 router.put("/:id", requireAuth, requireRole("instructor", "admin"), sectionController.update)
 router.delete("/:id", requireAuth, requireRole("instructor", "admin"), sectionController.remove)
+// Generate / regenerate a join code for a section
+router.post("/:id/generate-code", requireAuth, requireRole("instructor", "admin"), sectionController.generateCode)
 
 export default router

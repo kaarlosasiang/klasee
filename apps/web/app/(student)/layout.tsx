@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { GraduationCap, Bell } from "lucide-react"
+import { GraduationCap, Bell, Search, MessageSquare, ChevronDown } from "lucide-react"
 import { useSession, signOut } from "@/lib/config/auth-client"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
@@ -36,26 +36,43 @@ function StudentNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
       {/* Top bar */}
-      <div className="flex h-14 items-center gap-4 px-6">
+      <div className="flex mx-auto h-14 w-full max-w-7xl items-center gap-4 px-6">
         {/* Logo */}
-        <Link href="/my-dashboard" className="flex shrink-0 items-center gap-2 font-bold text-primary">
+        <Link href="/my-dashboard" className="flex shrink-0 items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <GraduationCap className="size-4" />
           </div>
           <span className="text-sm font-bold tracking-tight text-foreground">Klasee</span>
         </Link>
 
+        {/* Search */}
+        <div className="mx-4 hidden max-w-xs flex-1 sm:flex">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              placeholder="Search courses, assessments…"
+              className="h-9 w-full rounded-full border border-border bg-muted pl-8 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+
         <div className="flex-1" />
 
         {/* Right actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <button className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <MessageSquare className="size-4" />
+          </button>
           <button className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <Bell className="size-4" />
           </button>
 
+          <div className="mx-1 h-6 w-px bg-border" />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 rounded-full pr-1 transition-opacity hover:opacity-80 focus-visible:outline-none">
+              <button className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted focus-visible:outline-none">
                 <Avatar className="size-8">
                   <AvatarImage src={user?.image ?? ""} alt={user?.name ?? ""} />
                   <AvatarFallback className="text-xs font-bold">{initials}</AvatarFallback>
@@ -66,6 +83,7 @@ function StudentNav() {
                     {(user as { role?: string })?.role ?? "Student"}
                   </p>
                 </div>
+                <ChevronDown className="hidden size-3.5 text-muted-foreground sm:block" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
@@ -86,7 +104,7 @@ function StudentNav() {
       </div>
 
       {/* Tab nav */}
-      <div className="flex items-center gap-1 px-6">
+      <div className="flex mx-auto w-full max-w-7xl items-center gap-1 px-6">
         {NAV_LINKS.map(({ href, label }) => {
           const active = pathname === href || (href !== "/my-dashboard" && pathname.startsWith(href))
           return (

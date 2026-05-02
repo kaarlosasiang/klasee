@@ -16,11 +16,12 @@ export const courseService = {
     code: string
     description?: string
     semester: string
+    syllabus?: string
   }) {
     return Course.create(data)
   },
 
-  async update(id: string, data: Partial<{ name: string; code: string; description: string; semester: string; cover: string; icon: string }>) {
+  async update(id: string, data: Partial<{ name: string; code: string; description: string; semester: string; cover: string; icon: string; syllabus: string }>) {
     return Course.findByIdAndUpdate(id, data, { new: true }).lean()
   },
 

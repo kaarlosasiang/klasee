@@ -52,4 +52,15 @@ export const sectionController = {
       next(err)
     }
   },
+
+  async generateCode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const instructorId = String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
+      const section = await sectionService.generateJoinCode(req.params['id'] as string, instructorId)
+      res.json(section)
+    } catch (err: any) {
+      if (err.status) return res.status(err.status).json({ message: err.message })
+      next(err)
+    }
+  },
 }

@@ -4,5 +4,6 @@ export interface ICourse {
   description: string
   code: string
   semester: string
+  syllabus?: string
   timestamp: Date
 }

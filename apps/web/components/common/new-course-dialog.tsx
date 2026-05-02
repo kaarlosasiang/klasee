@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DoorOpen,
+  FileText,
   GraduationCap,
   Hash,
   ImageIcon,
@@ -35,7 +36,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 import { useNewCourseStore } from "@/lib/store/new-course-store"
 import { apiClient } from "@/lib/config/api-client"
-import { uploadToCloudinary } from "@/lib/utils/upload"
+import { uploadToCloudinary, uploadDocumentToCloudinary } from "@/lib/utils/upload"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ function Step1Content() {
   const { step1, setStep1 } = useNewCourseStore()
   const coverInputRef = React.useRef<HTMLInputElement>(null)
   const iconInputRef = React.useRef<HTMLInputElement>(null)
+  const syllabusInputRef = React.useRef<HTMLInputElement>(null)
 
   function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -62,6 +64,11 @@ function Step1Content() {
   function handleIconChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) setStep1({ iconFile: file, iconPreview: URL.createObjectURL(file) })
+  }
+
+  function handleSyllabusChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) setStep1({ syllabusFile: file, syllabusName: file.name })
   }
 
   return (
@@ -158,6 +165,48 @@ function Step1Content() {
           <span className="shrink-0 text-xs text-muted-foreground">{step1.description.length}/{MAX_DESCRIPTION}</span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">Let your learners know a little about this course.</p>
+      </div>
+
+      {/* Syllabus Upload */}
+      <div className="mt-4">
+        <input
+          ref={syllabusInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={handleSyllabusChange}
+        />
+        <div className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <FileText className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            {step1.syllabusName ? (
+              <p className="truncate text-sm font-medium text-foreground">{step1.syllabusName}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No syllabus uploaded</p>
+            )}
+            <p className="text-xs text-muted-foreground">PDF or Word document</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {step1.syllabusName && (
+              <button
+                type="button"
+                onClick={() => setStep1({ syllabusFile: null, syllabusName: null })}
+                className="text-xs text-destructive hover:underline"
+              >
+                Remove
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => syllabusInputRef.current?.click()}
+              className="rounded-md border border-border bg-background px-3 py-1 text-xs font-medium hover:bg-muted"
+            >
+              {step1.syllabusName ? "Replace" : "Upload"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -268,6 +317,13 @@ function Step3Content({ error }: { error: string | null }) {
           {step1.description && (
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{step1.description}</p>
           )}
+          {step1.syllabusName && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              <FileText className="size-3.5 shrink-0 text-primary" />
+              <span className="truncate">{step1.syllabusName}</span>
+              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Syllabus</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -359,6 +415,7 @@ interface CourseData {
   semester: string
   cover?: string
   icon?: string
+  syllabus?: string
 }
 
 interface NewCourseDialogProps {
@@ -388,6 +445,8 @@ export function NewCourseDialog({ open, onOpenChange, course }: NewCourseDialogP
         iconFile: null,
         coverPreview: course.cover ?? null,
         iconPreview: course.icon ?? null,
+        syllabusFile: null,
+        syllabusName: course.syllabus ? course.syllabus.split("/").pop() ?? "Syllabus" : null,
       })
       setStep(1)
       setError(null)
@@ -441,9 +500,11 @@ export function NewCourseDialog({ open, onOpenChange, course }: NewCourseDialogP
     try {
       let coverUrl: string | undefined
       let iconUrl: string | undefined
+      let syllabusUrl: string | undefined
 
       if (step1.coverFile) coverUrl = await uploadToCloudinary(step1.coverFile)
       if (step1.iconFile) iconUrl = await uploadToCloudinary(step1.iconFile)
+      if (step1.syllabusFile) syllabusUrl = await uploadDocumentToCloudinary(step1.syllabusFile)
 
       if (isEditMode && course) {
         // Edit mode — PUT the course, skip section creation
@@ -454,6 +515,7 @@ export function NewCourseDialog({ open, onOpenChange, course }: NewCourseDialogP
           semester: step1.semester,
           ...(coverUrl ? { cover: coverUrl } : {}),
           ...(iconUrl ? { icon: iconUrl } : {}),
+          ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),
         })
       } else {
         // Create mode — POST course + sections
@@ -464,6 +526,7 @@ export function NewCourseDialog({ open, onOpenChange, course }: NewCourseDialogP
           semester: step1.semester,
           ...(coverUrl ? { cover: coverUrl } : {}),
           ...(iconUrl ? { icon: iconUrl } : {}),
+          ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),
         })
 
         const courseId = courseRes.data._id
