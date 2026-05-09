@@ -1,11 +1,13 @@
-import { LoginForm } from "@/components/forms/login-form"
-
 export default function LoginPage() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <LoginForm />
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <div className="text-center">
+        <h1 className="mb-4 text-4xl font-bold">Login to Klasee</h1>
+        <p className="text-lg text-gray-600">
+          Please enter your credentials to access your account.
+        </p>
+        {/* Add your login form here */}
       </div>
-    </div>
+    </main>
   )
 }

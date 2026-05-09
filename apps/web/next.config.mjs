@@ -1,6 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@workspace/ui"],
-}
+  reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+  productionBrowserSourceMaps: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+  },
+};
 
-export default nextConfig
+export default nextConfig;

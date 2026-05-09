@@ -1,30 +1,10 @@
-"use client"
-
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { useSession } from "@/lib/config/auth-client"
-
-export default function RootPage() {
-  const router = useRouter()
-  const { data: session, isPending } = useSession()
-
-  React.useEffect(() => {
-    if (isPending) return
-    if (!session) {
-      router.replace("/login")
-      return
-    }
-    const role = (session.user as { role?: string })?.role
-    if (role === "student") {
-      router.replace("/my-dashboard")
-    } else {
-      router.replace("/dashboard")
-    }
-  }, [session, isPending, router])
-
+export default function Home() {
   return (
-    <div className="flex min-h-svh items-center justify-center">
-      <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-    </div>
-  )
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">Welcome to Klasee</h1>
+        <p className="text-lg text-gray-600">School Management System</p>
+      </div>
+    </main>
+  );
 }
