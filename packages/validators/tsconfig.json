@@ -2,6 +2,7 @@
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
+    "emitDeclarationOnly": true,
     "outDir": "dist",
     "rootDir": "./src"
   },

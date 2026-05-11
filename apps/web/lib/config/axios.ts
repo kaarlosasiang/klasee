@@ -1,9 +1,15 @@
-import { AxiosError, InternalAxiosRequestConfig } from "axios"
-import axiosInstance from "./axiosInstance"
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios"
 import { normalizeError, logError } from "../middlewares/errorHandler"
 import { getAccessToken, refreshAccessToken } from "../middlewares/tokenManager"
 
-const client = axiosInstance
+const client = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  timeout: 10000,
+  withCredentials: true,
+})
 
 // Add auth token to every request
 client.interceptors.request.use(
