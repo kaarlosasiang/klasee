@@ -11,7 +11,7 @@ import sectionRoutes from "../modules/section/sectionRoutes.js"
 export default (app: Application): void => {
   const API_PREFIX = "/api/v1"
 
-  app.all(`${API_PREFIX}/auth/*splat`, toNodeHandler(auth))
+  app.all(`/api/auth/*splat`, toNodeHandler(auth))
 
   // API routes
   app.use(`${API_PREFIX}/courses`, courseRoutes)

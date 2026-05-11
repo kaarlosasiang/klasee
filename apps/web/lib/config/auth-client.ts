@@ -19,7 +19,8 @@ type EmailOtpType =
 type SignUpEmailInput = {
   email: string
   password: string
-  name: string
+  firstName: string
+  lastName: string
   role?: "student" | "instructor" | "admin"
 }
 
@@ -28,11 +29,9 @@ type SignInEmailInput = {
   password: string
 }
 
-const betterAuthBaseURL = new URL(constants.BETTER_AUTH_URL).origin
-
 const authClient = createAuthClient({
-  baseURL: betterAuthBaseURL, // API origin (no path)
-  basePath: "/api/v1/auth", // Auth route prefix
+  baseURL: "http://localhost:3000", // API origin (no path)
+  basePath: "/api/auth", // Auth route prefix
   plugins: [
     inferAdditionalFields({
       user: {
@@ -48,13 +47,22 @@ const authClient = createAuthClient({
 
 export const signUp = {
   email: (input: SignUpEmailInput, options?: AuthCallbackOptions) =>
-    authClient.signUp.email(input, options),
+    authClient.signUp.email(
+      {
+        ...input,
+        name: `${input.firstName} ${input.lastName}`.trim(),
+      },
+      options
+    ),
 }
 
 export const signIn = {
   email: (input: SignInEmailInput, options?: AuthCallbackOptions) =>
     authClient.signIn.email(input, options),
 }
+
+export const signInWithSocial = (provider: "google" | "github") =>
+  authClient.signIn.social({ provider })
 
 export const signOut = (options?: { fetchOptions?: AuthCallbackOptions }) =>
   authClient.signOut(options)

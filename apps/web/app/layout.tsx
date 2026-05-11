@@ -19,7 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
-        <Toaster position="top-right"/>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   )

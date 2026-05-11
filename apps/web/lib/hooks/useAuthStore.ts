@@ -3,7 +3,8 @@ import { create } from "zustand"
 export interface AuthUser{
   id: string
   email: string
-  name?: string
+  firstName?: string
+  lastName?: string
   role: "student" | "instructor" | "admin"
   emailVerified: boolean
   createdAt: Date

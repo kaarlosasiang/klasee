@@ -1,5 +1,7 @@
 "use client"
 import { cn } from "@workspace/ui/lib/utils"
+import { signInWithSocial } from "@/lib/config/auth-client"
+
 import { Button } from "@workspace/ui/components/button"
 import {
   Field,
@@ -37,11 +39,8 @@ export function LoginForm({
   const onSubmit = async (data: any) => {
     try {
       await login(data.email, data.password)
-      if (error) {
-        toast.error(error)
-      }
-    } catch (error: any) {
-      toast.error(error || "Login failed. Please try again.")
+    } catch (err: any) {
+      toast.error(error || err.message || "An error occurred during login")
     }
   }
 
@@ -116,16 +115,34 @@ export function LoginForm({
           </Field>
           <FieldSeparator>Or</FieldSeparator>
           <Field className="grid gap-4 sm:grid-cols-2">
-            <Button variant="outline" type="button">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => signInWithSocial("github")}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
                 <path
-                  d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
                   fill="currentColor"
+                  d="M12 .5C5.648.5.5 5.648.5 12c0 5.088 3.293 9.395 7.868 10.919.575.107.787-.244.787-.542
+       0-.268-.01-1.154-.016-2.096-3.2.696-3.878-1.37-3.878-1.37-.523-1.328-1.278-1.68-1.278-1.68-1.044-.714.08-.699.08-.699
+       1.155.081 1.763 1.186 1.763 1.186 1.027 1.76 2.694 1.252 3.35.958.103-.744.402-1.252.73-1.54-2.554-.291-5.236-1.277-5.236-5.683
+       0-1.256.45-2.283 1.186-3.089-.118-.29-.514-1.463.112-3.05 0 0 .966-.309 3.166 1.18a10.9 10.9 0 0 1 2.883-.388
+       10.9 10.9 0 0 1 2.883.388c2.2-1.489 3.164-1.18 3.164-1.18.628 1.587.232 2.76.114 3.05.74.806 1.184 1.833 1.184 3.089
+       0 4.418-2.687 5.389-5.25 5.673.413.356.781 1.065.781 2.148 0 1.55-.014 2.796-.014 3.177 0 .3.208.655.794.544
+       C20.21 21.39 23.5 17.084 23.5 12 23.5 5.648 18.352.5 12 .5Z"
                 />
               </svg>
-              Continue with Apple
+              Continue with GitHub
             </Button>
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => signInWithSocial("google")}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path
                   d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"

@@ -25,6 +25,9 @@ const dbProxy = new Proxy(db, {
         let collectionName = name
         if (name === "user") collectionName = "users"
         if (name === "organization") collectionName = "company"
+        if (name === "emailVerification") collectionName = "emailVerifications"
+        if (name === "forgetPasswordToken")
+          collectionName = "passwordResetTokens"
         return target.collection(collectionName, options)
       }
     }
@@ -35,22 +38,13 @@ const dbProxy = new Proxy(db, {
 export const auth = betterAuth({
   database: mongodbAdapter(dbProxy as any),
   appUrl: constants.frontEndUrl, // Frontend URL for redirects
-  baseURL: constants.betterAuthOrigin, // API origin (no path)
-  basePath: "/api/v1/auth", // Auth route prefix
+  baseURL: constants.frontEndUrl, // API origin (no path)
+  basePath: "/api/auth", // Auth route prefix
   secret: constants.betterAuthSecret,
   trustedOrigins: [constants.frontEndUrl, constants.betterAuthOrigin],
 
   emailAndPassword: {
     enabled: true,
-    // password: {
-    //   minLength: 8,
-    //   pattern: {
-    //     uppercase: true,
-    //     lowercase: true,
-    //     number: true,
-    //     special: true,
-    //   },
-    // },
   },
 
   socialProviders: {
@@ -71,11 +65,6 @@ export const auth = betterAuth({
         }
       },
     }),
-    // forgetPassword({
-    //   sendResetEmail: async (user, token) => {
-    //     await sendPasswordResetEmail(user.email, token)
-    //   },
-    // }),
   ],
   user: {
     additionalFields: {
@@ -86,7 +75,6 @@ export const auth = betterAuth({
       lastName: { type: "string", required: false },
       phoneNumber: { type: "string", required: false },
       username: { type: "string", required: false },
-      dateOfBirth: { type: "string", required: false },
       isActive: { type: "boolean", required: false },
       onboardingCompleted: { type: "boolean", required: false },
       profileSetupCompletedAt: { type: "number", required: false },

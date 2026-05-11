@@ -1,11 +1,18 @@
+"use client"
+
+import { useAuth } from "@/lib/hooks/useAuth"
+import { Button } from "@workspace/ui/components/button"
+
 export default function StudentLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { logout } = useAuth()
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
-    </html>
+    <div>
+      {children}
+      <Button onClick={logout}>Logout</Button>
+    </div>
   )
 }
