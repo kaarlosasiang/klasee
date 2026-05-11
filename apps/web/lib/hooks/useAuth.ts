@@ -1,9 +1,13 @@
 import { useRouter } from "next/navigation"
-import { signUp, signIn, signOut, emailOtp } from "@/lib/config/auth-client"
+import {
+  signUp,
+  signIn,
+  signOut,
+  emailOtp,
+  verifyEmailOtp,
+} from "@/lib/config/auth-client"
 import { useAuthStore } from "./useAuthStore"
 import { constants } from "../config/contants"
-import { use } from "react"
-import { emailOTP } from "better-auth/plugins/email-otp"
 
 export function useAuth() {
   const router = useRouter()
@@ -90,6 +94,73 @@ export function useAuth() {
     }
   }
 
+  const resendVerificationOtp = async (email: string) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const result = (await emailOtp.sendVerificationOtp({
+        email,
+        type: "email-verification",
+      })) as { error?: { message?: string } }
+
+      if (result?.error) {
+        throw new Error(result.error.message || "Failed to resend code")
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to resend code")
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verifyEmail = async (email: string, otp: string) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const result = (await verifyEmailOtp({ email, otp })) as {
+        data?: {
+          user?: {
+            id: string
+            email: string
+            name?: string
+            role?: "student" | "instructor" | "admin"
+            emailVerified: boolean
+            createdAt: Date | string
+          }
+        }
+        error?: { message?: string }
+      }
+
+      if (result?.error) {
+        throw new Error(result.error.message || "Invalid verification code")
+      }
+
+      const user = result?.data?.user
+      if (user) {
+        setUser({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role || "student",
+          emailVerified: user.emailVerified,
+          createdAt: new Date(user.createdAt),
+        })
+      }
+
+      router.push("/login?verified=true")
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Invalid verification code"
+      )
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const logout_user = async () => {
     try {
       await signOut({
@@ -160,6 +231,8 @@ export function useAuth() {
   return {
     login,
     signup,
+    verifyEmail,
+    resendVerificationOtp,
     logout: logout_user,
     forgotPassword,
     resetPassword,

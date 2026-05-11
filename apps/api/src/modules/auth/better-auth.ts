@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { Auth, betterAuth } from "better-auth"
+import { betterAuth, type Auth } from "better-auth"
 import { mongodbAdapter } from "better-auth/adapters/mongodb"
 import { MongoClient } from "mongodb"
 import { constants } from "../../config/index.js"
@@ -31,7 +31,7 @@ const dbProxy = new Proxy(db, {
     return Reflect.get(target, prop, receiver)
   },
 })
-  
+
 export const auth = betterAuth({
   database: mongodbAdapter(dbProxy as any),
   appUrl: constants.frontEndUrl, // Frontend URL for redirects
@@ -113,4 +113,4 @@ export const auth = betterAuth({
   //     domain: ".amfintrass.com",
   //   },
   // },
-})
+}) as unknown as Auth

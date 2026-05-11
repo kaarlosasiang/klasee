@@ -10,6 +10,12 @@ type AuthCallbackOptions = {
   onError?: (ctx: any) => void
 }
 
+type EmailOtpType =
+  | "sign-in"
+  | "change-email"
+  | "email-verification"
+  | "forget-password"
+
 type SignUpEmailInput = {
   email: string
   password: string
@@ -56,14 +62,19 @@ export const signOut = (options?: { fetchOptions?: AuthCallbackOptions }) =>
 export const emailOtp = {
   sendVerificationOtp: (input: {
     email: string
-    type: "sign-in" | "change-email" | "email-verification" | "forget-password"
-  }) => authClient.emailOtp.sendVerificationOtp(input),
+    type: EmailOtpType
+  }): Promise<unknown> => authClient.emailOtp.sendVerificationOtp(input),
 }
 
 export const verifyEmailOtp = (input: {
   email: string
-  type: "sign-in" | "change-email" | "email-verification" | "forget-password"
   otp: string
-}) => authClient.emailOtp.checkVerificationOtp(input)
+}): Promise<unknown> => authClient.emailOtp.verifyEmail(input)
+
+export const checkVerificationOtp = (input: {
+  email: string
+  type: EmailOtpType
+  otp: string
+}): Promise<unknown> => authClient.emailOtp.checkVerificationOtp(input)
 
 export const useSession = authClient.useSession
