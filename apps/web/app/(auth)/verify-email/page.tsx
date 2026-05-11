@@ -1,10 +1,22 @@
+"use client"
+
+import VerifyEmailForm from "@/components/forms/verify-email"
+import { useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+
 export default function VerifyEmailPage() {
+  const [email, setEmail] = useState("")
+
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const email = searchParams.get("email") || ""
+    setEmail(email)
+  }, [searchParams])
+
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-      <h1 className="text-2xl font-bold">Verify Your Email</h1>
-      <p className="text-center text-muted-foreground">
-        Please check your email for a verification link to complete your registration.
-      </p>
+      <VerifyEmailForm email={email} />
     </div>
   )
 }

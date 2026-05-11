@@ -1,5 +1,8 @@
 import { createAuthClient } from "better-auth/react"
-import { inferAdditionalFields } from "better-auth/client/plugins"
+import {
+  emailOTPClient,
+  inferAdditionalFields,
+} from "better-auth/client/plugins"
 import { constants } from "./contants"
 
 type AuthCallbackOptions = {
@@ -33,6 +36,7 @@ const authClient = createAuthClient({
         },
       },
     }),
+    emailOTPClient(),
   ],
 })
 
@@ -48,5 +52,18 @@ export const signIn = {
 
 export const signOut = (options?: { fetchOptions?: AuthCallbackOptions }) =>
   authClient.signOut(options)
+
+export const emailOtp = {
+  sendVerificationOtp: (input: {
+    email: string
+    type: "sign-in" | "change-email" | "email-verification" | "forget-password"
+  }) => authClient.emailOtp.sendVerificationOtp(input),
+}
+
+export const verifyEmailOtp = (input: {
+  email: string
+  type: "sign-in" | "change-email" | "email-verification" | "forget-password"
+  otp: string
+}) => authClient.emailOtp.checkVerificationOtp(input)
 
 export const useSession = authClient.useSession

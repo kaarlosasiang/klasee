@@ -1,5 +1,6 @@
 import { Resend } from "resend"
 import { constants } from "../../config/index.js"
+import LoggerInstance from "../../config/logger.js"
 
 const resend = new Resend(constants.resendApiKey!)
 
@@ -7,9 +8,11 @@ const SENDER_EMAIL = "noreply@klasee.com"
 
 export async function sendVerificationEmail(
   email: string,
-  token: string
+  otp: string
 ): Promise<void> {
-  const verificationLink = `${constants.frontEndUrl}/auth/verify-email?token=${token}`
+  const verificationLink = `${constants.frontEndUrl}/auth/verify-email?token=${otp}`
+
+  LoggerInstance.info(`Sending verification email to ${email} with otp: ${otp}`)
 
   try {
     await resend.emails.send({

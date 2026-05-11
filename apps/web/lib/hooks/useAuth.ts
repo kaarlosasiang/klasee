@@ -1,8 +1,9 @@
 import { useRouter } from "next/navigation"
-import { signUp, signIn, signOut } from "@/lib/config/auth-client"
+import { signUp, signIn, signOut, emailOtp } from "@/lib/config/auth-client"
 import { useAuthStore } from "./useAuthStore"
 import { constants } from "../config/contants"
 import { use } from "react"
+import { emailOTP } from "better-auth/plugins/email-otp"
 
 export function useAuth() {
   const router = useRouter()
@@ -30,7 +31,9 @@ export function useAuth() {
             console.log("Logged in user:", user)
 
             if (!user.emailVerified) {
-              router.push("/verify-email")
+              router.push(
+                `/verify-email?email=${encodeURIComponent(user.email)}`
+              )
               return
             }
 
@@ -67,9 +70,15 @@ export function useAuth() {
       await signUp.email(
         { email, password, name, role },
         {
-          onSuccess: (ctx: any) => {
+          onSuccess: async (ctx: any) => {
             setError(null)
-            router.push("/verify-email")
+
+            await emailOtp.sendVerificationOtp({
+              email,
+              type: "email-verification",
+            })
+
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`)
           },
           onError: (ctx: any) => {
             setError(ctx.error?.message || "Signup failed")

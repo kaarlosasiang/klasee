@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { betterAuth } from "better-auth"
+import { Auth, betterAuth } from "better-auth"
 import { mongodbAdapter } from "better-auth/adapters/mongodb"
 import { MongoClient } from "mongodb"
 import { constants } from "../../config/index.js"
@@ -31,7 +31,7 @@ const dbProxy = new Proxy(db, {
     return Reflect.get(target, prop, receiver)
   },
 })
-
+  
 export const auth = betterAuth({
   database: mongodbAdapter(dbProxy as any),
   appUrl: constants.frontEndUrl, // Frontend URL for redirects
@@ -64,11 +64,13 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    // emailOTP({
-    //   sendVerificationOTP: async (user, token) => {
-    //     await sendVerificationEmail(user.email, token)
-    //   },
-    // }),
+    emailOTP({
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type === "email-verification") {
+          await sendVerificationEmail(email, otp)
+        }
+      },
+    }),
     // forgetPassword({
     //   sendResetEmail: async (user, token) => {
     //     await sendPasswordResetEmail(user.email, token)
