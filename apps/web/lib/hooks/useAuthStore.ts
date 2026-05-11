@@ -1,15 +1,23 @@
 import { create } from "zustand"
 
+export interface AuthUser{
+  id: string
+  email: string
+  name?: string
+  role: "student" | "instructor" | "admin"
+  emailVerified: boolean
+  createdAt: Date
+}
+
 export interface AuthState {
-  user: any | null
-  accessToken: string | null 
-  isAuthenticated: boolean
+  user: AuthUser | null
+  accessToken: string | null
   isLoading: boolean
+  isAuthenticated: boolean
   error: string | null
-  setUser: (user: any) => void
-  setAccessToken: (token: string) => void
-  setIsAuthenticated: (value: boolean) => void
-  setLoading: (value: boolean) => void
+  setUser: (user: AuthUser | null) => void
+  setAccessToken: (accessToken: string | null) => void
+  setLoading: (isLoading: boolean) => void
   setError: (error: string | null) => void
   logout: () => void
 }
@@ -17,21 +25,15 @@ export interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
-  isAuthenticated: false,
   isLoading: false,
+  isAuthenticated: false,
   error: null,
-
-  setUser: (user) => set({ user }),
-  setAccessToken: (token) => set({ accessToken: token }),
-  setIsAuthenticated: (value) => set({ isAuthenticated: value }),
-  setLoading: (value) => set({ isLoading: value }),
+  setUser: (user) => set({ user, isAuthenticated: !!user, error: null }),
+  setAccessToken: (accessToken) => set({ accessToken }),
+  setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
 
-  logout: () =>
-    set({
-      user: null,
-      accessToken: null,
-      isAuthenticated: false,
-      error: null,
-    }),
+  logout: () => {
+    set({ user: null, accessToken: null, isAuthenticated: false, error: null })
+  }
 }))

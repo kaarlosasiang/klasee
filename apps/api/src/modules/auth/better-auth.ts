@@ -3,6 +3,12 @@ import { betterAuth } from "better-auth"
 import { mongodbAdapter } from "better-auth/adapters/mongodb"
 import { MongoClient } from "mongodb"
 import { constants } from "../../config/index.js"
+import { emailOTP } from "better-auth/plugins"
+// import { forgetPassword } from "better-auth/plugins"
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} from "../../shared/services/email.js"
 
 const client = new MongoClient(constants.mongodbUri!, {
   maxPoolSize: 5,
@@ -33,9 +39,20 @@ export const auth = betterAuth({
   basePath: "/api/v1/auth", // Auth route prefix
   secret: constants.betterAuthSecret,
   trustedOrigins: [constants.frontEndUrl, constants.betterAuthOrigin],
+
   emailAndPassword: {
     enabled: true,
+    // password: {
+    //   minLength: 8,
+    //   pattern: {
+    //     uppercase: true,
+    //     lowercase: true,
+    //     number: true,
+    //     special: true,
+    //   },
+    // },
   },
+
   socialProviders: {
     google: {
       clientId: constants.googleClientId as string,
@@ -46,6 +63,18 @@ export const auth = betterAuth({
       clientSecret: constants.githubClientSecret as string,
     },
   },
+  plugins: [
+    // emailOTP({
+    //   sendVerificationOTP: async (user, token) => {
+    //     await sendVerificationEmail(user.email, token)
+    //   },
+    // }),
+    // forgetPassword({
+    //   sendResetEmail: async (user, token) => {
+    //     await sendPasswordResetEmail(user.email, token)
+    //   },
+    // }),
+  ],
   user: {
     additionalFields: {
       schoolId: { type: "string", required: false },

@@ -77,5 +77,6 @@ const constants = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
   githubClientId: process.env.GITHUB_CLIENT_ID || "",
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+  resendApiKey: process.env.RESEND_API_KEY || "",
 }
 export { constants, dbConnection }
