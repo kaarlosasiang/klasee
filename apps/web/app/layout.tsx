@@ -4,6 +4,7 @@ import React from "react"
 import { Providers } from "./providers"
 
 import "./globals.css"
+import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 export const metadata: Metadata = {
   title: "Klasee",
@@ -18,7 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <TooltipProvider>{children}</TooltipProvider>
+        </Providers>
         <Toaster position="top-right" richColors />
       </body>
     </html>

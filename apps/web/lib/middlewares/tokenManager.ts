@@ -1,5 +1,5 @@
 import { useAuthStore } from "../hooks/useAuthStore"
-import axiosInstance from "../config/axiosInstance"
+import client from "../config/axios"
 
 let refreshPromise: Promise<string | null> | null = null
 
@@ -13,7 +13,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
   refreshPromise = (async () => {
     try {
-      const response = await axiosInstance.post("/auth/refresh")
+      const response = await client.post("/auth/refresh")
       const { token } = response.data
 
       if (token) {

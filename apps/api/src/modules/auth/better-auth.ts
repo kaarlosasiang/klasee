@@ -57,6 +57,23 @@ export const auth = betterAuth({
       clientSecret: constants.githubClientSecret as string,
     },
   },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          return {
+            data: {
+              ...user,
+              role: user.role || "student",
+              firstName: user.firstName || user.name?.split(" ")[0] || "",
+              lastName:
+                user.lastName || user.name?.split(" ").slice(1).join(" ") || "",
+            },
+          }
+        },
+      },
+    },
+  },
   plugins: [
     emailOTP({
       sendVerificationOTP: async ({ email, otp, type }) => {
@@ -73,7 +90,7 @@ export const auth = betterAuth({
       firstName: { type: "string", required: false },
       middleName: { type: "string", required: false },
       lastName: { type: "string", required: false },
-      phoneNumber: { type: "string", required: false },
+      phoneNumber: { type: "string", required: false }, 
       username: { type: "string", required: false },
       isActive: { type: "boolean", required: false },
       onboardingCompleted: { type: "boolean", required: false },
