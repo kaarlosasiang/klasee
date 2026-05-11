@@ -40,7 +40,7 @@ export function NavFavoritesProjects({
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <div className="flex items-center justify-between px-2 py-1">
           <SidebarGroupLabel className="p-0 text-xs font-semibold text-foreground/70">
-            Favorites
+            Sections
           </SidebarGroupLabel>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">
@@ -80,7 +80,7 @@ export function NavFavoritesProjects({
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <div className="flex items-center justify-between px-2 py-1">
           <SidebarGroupLabel className="p-0 text-xs font-semibold text-foreground/70">
-            Projects
+            To Do List
           </SidebarGroupLabel>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">

@@ -5,7 +5,9 @@ import {
   Archive,
   BarChart2,
   BookOpen,
+  Calendar,
   CalendarCheck,
+  CalendarDays,
   ChartNoAxesCombined,
   ClipboardList,
   Clock,
@@ -42,6 +44,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@workspace/ui/components/sidebar"
 import {
   Tooltip,
@@ -51,14 +54,14 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/lib/hooks/useAuth"
+import { Badge } from "@workspace/ui/components/badge"
 
 const instructorNav = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Courses", url: "/courses", icon: BookOpen },
-  { title: "Sections", url: "/sections", icon: Layers },
   { title: "Students", url: "/students", icon: Users },
-  { title: "Assessments", url: "/assessments", icon: ClipboardList },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
+  { title: "Grades", url: "/grades", icon: ClipboardList },
 ]
 
 const studentNav = [
@@ -97,10 +100,10 @@ function IconRailBtn({
       <TooltipTrigger asChild>
         <button
           className={cn(
-            "flex size-10 items-center justify-center rounded-lg transition-colors",
+            "flex size-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
             active
-              ? "bg-accent text-accent-foreground"
-              : "text-foreground hover:bg-accent hover:text-foreground"
+              ? "bg-primary/50 text-white dark:text-accent-foreground"
+              : "text-white/70 hover:bg-primary/50 hover:text-white dark:hover:text-foreground"
           )}
         >
           <Icon className="size-5" />
@@ -114,6 +117,7 @@ function IconRailBtn({
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { logout } = useAuth()
+  const { state } = useSidebar()
 
   const { data: session } = useSession()
   const user = session?.user
@@ -130,11 +134,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         .slice(0, 2)
     : "??"
 
+  const variant = state === "collapsed" ? "sidebar" : "inset"
+
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar className="p-0" collapsible="icon" variant={variant} {...props}>
       <div className="flex h-full">
         {/* ── LEFT ICON RAIL ── */}
-        <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border py-3">
+        <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border bg-[#132541] py-3">
           {/* Logo */}
           <Link
             href="#"
@@ -151,7 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <IconRailBtn icon={Home} label="Dashboard" active />
           <IconRailBtn icon={Search} label="Search" />
           <IconRailBtn icon={ChartNoAxesCombined} label="Analytics" />
-          <IconRailBtn icon={Users} label="Students" />
+          <IconRailBtn icon={CalendarDays} label="Calender" />
 
           <div className="my-1.5 w-6 border-t border-border" />
 
@@ -187,7 +193,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 className="w-56"
               >
                 <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5">
+                  <div className="flex items-start gap-2 px-1 py-1.5">
                     <Avatar className="size-8 rounded-lg">
                       <AvatarImage
                         src={user?.image ?? ""}
@@ -202,6 +208,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span className="truncate text-xs text-muted-foreground">
                         {user?.email}
                       </span>
+                      <Badge className="mt-2 rounded-sm text-xs capitalize">
+                        {user?.role}
+                      </Badge>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -224,11 +233,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarHeader>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton size="lg" asChild>
+                <SidebarMenuButton asChild>
                   <a href="#">
                     <div className="grid flex-1 text-left text-lg leading-tight">
-                      <span className="truncate font-bold">
-                        Learning Content
+                      <span className="truncate font-bold text-accent-foreground">
+                        Klasee LMS
                       </span>
                     </div>
                   </a>

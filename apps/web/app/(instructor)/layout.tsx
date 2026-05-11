@@ -12,7 +12,7 @@ import {
   SidebarTrigger,
 } from "@workspace/ui/components/sidebar"
 
-import { Plus, Upload } from "lucide-react"
+import { Bell, Mail, Plus, Upload } from "lucide-react"
 import { NewContentDialog } from "@/components/common/new-content-dialog"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
 import { UploadDialog } from "@/components/common/upload-dialog"
@@ -37,15 +37,20 @@ export default function InstructorLayout({
         <AppSidebar />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <SidebarTrigger className="-ml-1" />
-              <Separator
-                orientation="vertical"
-                className="mr-2 data-[orientation=vertical]:h-4"
-              />
+              <Separator orientation="vertical" className="h-6" />
               <DynamicBreadcrumb />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex gap-0">
+                <Button variant={"ghost"}>
+                  <Bell />
+                </Button>
+                <Button variant={"ghost"}>
+                  <Mail />
+                </Button>
+              </div>
               <UploadDialog>
                 <Button className="border-0 border-b-4 border-l-3 border-gray-300 bg-gray-100 font-semibold text-black dark:border-gray-800 dark:bg-gray-700 dark:text-white">
                   <Upload />
