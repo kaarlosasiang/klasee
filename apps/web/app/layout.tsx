@@ -7,7 +7,7 @@ import "./globals.css"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 export const metadata: Metadata = {
-  title: "Klasee",
+  title: "Klasee LMS 👀",
   description: "School Management System",
 }
 

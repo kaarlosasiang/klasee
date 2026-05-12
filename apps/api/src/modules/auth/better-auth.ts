@@ -1,5 +1,6 @@
 import "dotenv/config"
 import { betterAuth, type Auth } from "better-auth"
+import { dash } from "@better-auth/infra"
 import { mongodbAdapter } from "better-auth/adapters/mongodb"
 import { MongoClient } from "mongodb"
 import { constants } from "../../config/index.js"
@@ -82,6 +83,13 @@ export const auth = betterAuth({
         }
       },
     }),
+    dash({
+      apiKey: process.env.BETTER_AUTH_API_KEY,
+      activityTracking: {
+        enabled: true,
+        updateInterval: 300000, // Update interval in ms (default: 5 minutes)
+      },
+    }),
   ],
   user: {
     additionalFields: {
@@ -90,7 +98,7 @@ export const auth = betterAuth({
       firstName: { type: "string", required: false },
       middleName: { type: "string", required: false },
       lastName: { type: "string", required: false },
-      phoneNumber: { type: "string", required: false }, 
+      phoneNumber: { type: "string", required: false },
       username: { type: "string", required: false },
       isActive: { type: "boolean", required: false },
       onboardingCompleted: { type: "boolean", required: false },

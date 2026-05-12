@@ -71,8 +71,9 @@ export function SignupForm({
                 <Image
                   src={"/klasee-icon.png"}
                   alt="Klasee Icon"
-                  width={200}
-                  height={200}
+                  width={50}
+                  height={50}
+                  unoptimized
                 />
               </div>
               <span className="sr-only">Klasee</span>

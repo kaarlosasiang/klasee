@@ -3,6 +3,7 @@ import {
   emailOTPClient,
   inferAdditionalFields,
 } from "better-auth/client/plugins"
+import { dashClient } from "@better-auth/infra/client"
 import { constants } from "./contants"
 
 type AuthCallbackOptions = {
@@ -42,6 +43,12 @@ const authClient = createAuthClient({
       },
     }),
     emailOTPClient(),
+    dashClient({
+      resolveUserId: ({ userId, user, session }) => {
+        const id = userId ?? user?.id ?? session?.user?.id
+        return id ?? undefined
+      },
+    }),
   ],
 })
 

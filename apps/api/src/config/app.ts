@@ -32,12 +32,7 @@ export default (app: Application): Application => {
   app.use(
     cors({
       origin: (origin, callback) => {
-        const allowedOrigins = [
-          "http://localhost:3000",
-          "https://amfintrass.com",
-          "https://www.amfintrass.com",
-          "https://app.amfintrass.com",
-        ]
+        const allowedOrigins = ["http://localhost:3000"]
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true)
@@ -53,7 +48,8 @@ export default (app: Application): Application => {
         "X-Requested-With",
         "Accept",
         "Origin",
-        "User-Agent", // Safari includes User-Agent in cross-origin preflight requests
+        "User-Agent",
+        "x-request-id",
       ],
       exposedHeaders: ["Set-Cookie"],
       optionsSuccessStatus: 200,

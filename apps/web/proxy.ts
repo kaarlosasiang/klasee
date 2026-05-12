@@ -26,7 +26,7 @@ const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL
   
 const AUTH_API_URL = `${API_ORIGIN}/api/auth`
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   let isAuthenticated = false

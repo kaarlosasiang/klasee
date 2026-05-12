@@ -59,6 +59,7 @@ export function LoginForm({
                   alt="Klasee Icon"
                   width={200}
                   height={200}
+                  unoptimized
                 />
               </div>
               <span className="sr-only">Klasee</span>

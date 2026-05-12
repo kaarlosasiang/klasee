@@ -102,8 +102,8 @@ function IconRailBtn({
           className={cn(
             "flex size-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
             active
-              ? "bg-primary/50 text-white dark:text-accent-foreground"
-              : "text-white/70 hover:bg-primary/50 hover:text-white dark:hover:text-foreground"
+              ? "bg-primary dark:bg-primary/50 text-white dark:text-accent-foreground"
+              : "hover:bg-primary/90 hover:text-white dark:hover:text-foreground"
           )}
         >
           <Icon className="size-5" />
@@ -140,7 +140,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar className="p-0" collapsible="icon" variant={variant} {...props}>
       <div className="flex h-full">
         {/* ── LEFT ICON RAIL ── */}
-        <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border bg-[#132541] py-3">
+        <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border py-3">
           {/* Logo */}
           <Link
             href="#"
@@ -151,6 +151,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               alt="Klasee Icon"
               width={200}
               height={200}
+              unoptimized
             />
           </Link>
 
