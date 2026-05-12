@@ -4,10 +4,11 @@ import { enrollmentService } from "./enrollmentService.js"
 export const enrollmentController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { sectionId, studentId } = req.query
+      const { sectionId, studentId, courseId } = req.query
       const filter: Record<string, unknown> = {}
       if (sectionId) filter.sectionId = sectionId
       if (studentId) filter.studentId = studentId
+      if (courseId) filter.courseId = courseId
       const enrollments = await enrollmentService.findAll(filter)
       res.json(enrollments)
     } catch (err) {
