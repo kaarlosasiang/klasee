@@ -4,11 +4,19 @@ import * as React from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
-import { getCourses, getArchivedCourses, archiveCourse, type Course } from "@/lib/services/courses"
+import {
+  getCourses,
+  getArchivedCourses,
+  archiveCourse,
+  type Course,
+} from "@/lib/services/courses"
 import { CourseCard } from "@/components/common/course-card"
 import { CoursesDataTable } from "@/components/data-table/courses-data-table"
 import { ViewToggle } from "@/components/common/view-toggle"
-import { CourseSearch, type SortOption } from "@/components/common/course-search"
+import {
+  CourseSearch,
+  type SortOption,
+} from "@/components/common/course-search"
 import { ArchiveCourseDialog } from "@/components/common/archive-course-dialog"
 import { CourseEmpty } from "@/components/common/course-empty"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
@@ -27,7 +35,9 @@ export default function CoursesPage() {
   async function fetchCourses() {
     setLoading(true)
     try {
-      const data = showArchived ? await getArchivedCourses() : await getCourses()
+      const data = showArchived
+        ? await getArchivedCourses()
+        : await getCourses()
       setCourses(data)
     } catch {
       toast.error("Failed to load courses")
@@ -46,7 +56,8 @@ export default function CoursesPage() {
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
-        (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+        (c) =>
+          c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
       )
     }
 
@@ -57,9 +68,13 @@ export default function CoursesPage() {
         case "name-desc":
           return b.name.localeCompare(a.name)
         case "newest":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
         case "oldest":
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          )
         case "semester":
           return (a.semester || "").localeCompare(b.semester || "")
         default:
@@ -111,10 +126,10 @@ export default function CoursesPage() {
         {courses.length > 0 && (
           <div className="flex items-center gap-3">
             <ViewToggle value={view} onChange={setView} />
-            <Button onClick={() => setCourseDialogOpen(true)} className="gap-2">
+            {/* <Button onClick={() => setCourseDialogOpen(true)} className="gap-2">
               <Plus className="size-4" />
               New Course
-            </Button>
+            </Button> */}
           </div>
         )}
       </div>
@@ -133,7 +148,7 @@ export default function CoursesPage() {
       {filtered.length === 0 && !loading ? (
         <CourseEmpty onCreateCourse={() => setCourseDialogOpen(true)} />
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="3xl:grid-cols-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((course) => (
             <CourseCard
               key={course._id}

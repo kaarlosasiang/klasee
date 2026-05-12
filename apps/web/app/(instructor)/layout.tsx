@@ -35,9 +35,9 @@ export default function InstructorLayout({
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-start gap-2.5">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-8" />
             <SearchDialog />
           </div>
           <div className="flex items-center gap-3">

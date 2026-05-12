@@ -23,6 +23,7 @@ import { NavMain } from "@/components/common/instructor-sidebar/nav-main"
 import { NavFavoritesProjects } from "@/components/common/instructor-sidebar/nav-projects"
 import { useSession } from "@/lib/config/auth-client"
 import { cn } from "@workspace/ui/lib/utils"
+import { getSections, type Section } from "@/lib/services/sections"
 import {
   Avatar,
   AvatarFallback,
@@ -71,20 +72,16 @@ const studentNav = [
   { title: "Attendance", url: "/my-attendance", icon: CalendarCheck },
 ]
 
-const data = {
-  favorites: [] as {
-    name: string
-    url: string
-    bgClass: string
-    label: string
-  }[],
-  projects: [] as {
-    name: string
-    url: string
-    dotClass: string
-    isActive: boolean
-  }[],
-}
+const BG_CLASSES = [
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-rose-500",
+  "bg-violet-500",
+  "bg-cyan-500",
+  "bg-orange-500",
+  "bg-teal-500",
+]
 
 function IconRailBtn({
   icon: Icon,
@@ -121,6 +118,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { data: session } = useSession()
   const user = session?.user
+
+  const [sections, setSections] = React.useState<Section[]>([])
+
+  React.useEffect(() => {
+    getSections()
+      .then(setSections)
+      .catch(() => {})
+  }, [])
+
+  const favorites = React.useMemo(
+    () =>
+      sections.map((section, i) => ({
+        name: section.courseId
+          ? `${section.courseId.code} - ${section.name}`
+          : section.name,
+        url: `/sections/${section._id}`,
+        bgClass: BG_CLASSES[i % BG_CLASSES.length] ?? "bg-gray-500",
+        label: section.name.charAt(0).toUpperCase(),
+      })),
+    [sections]
+  )
 
   const role = (user as { role?: "student" | "instructor" | "admin" })?.role
   const navMain =
@@ -249,8 +267,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarContent>
             <NavMain items={navMain} />
             <NavFavoritesProjects
-              favorites={data.favorites}
-              projects={data.projects}
+              favorites={favorites}
+              projects={[]}
             />
           </SidebarContent>
         </div>

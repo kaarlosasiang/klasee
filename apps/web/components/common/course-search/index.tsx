@@ -12,7 +12,12 @@ import {
 import { Switch } from "@workspace/ui/components/switch"
 import { Label } from "@workspace/ui/components/label"
 
-export type SortOption = "name-asc" | "name-desc" | "newest" | "oldest" | "semester"
+export type SortOption =
+  | "name-asc"
+  | "name-desc"
+  | "newest"
+  | "oldest"
+  | "semester"
 
 interface CourseSearchProps {
   search: string
@@ -34,7 +39,7 @@ export function CourseSearch({
   return (
     <div className="flex items-center gap-3">
       <div className="relative w-72">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search courses..."
           value={search}
@@ -44,7 +49,7 @@ export function CourseSearch({
       </div>
 
       <Select value={sort} onValueChange={(v) => onSortChange(v as SortOption)}>
-        <SelectTrigger className="w-40">
+        <SelectTrigger>
           <ArrowUpDown className="mr-2 size-4" />
           <SelectValue />
         </SelectTrigger>
@@ -57,12 +62,12 @@ export function CourseSearch({
         </SelectContent>
       </Select>
 
-      <div className="flex items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         <Switch id="show-archived" checked={showArchived} onCheckedChange={onToggleArchived} />
         <Label htmlFor="show-archived" className="cursor-pointer text-sm text-muted-foreground">
           Show archived
         </Label>
-      </div>
+      </div> */}
     </div>
   )
 }
