@@ -6,8 +6,7 @@ export const courseController = {
     try {
       const role = (req.authUser as any)?.role
       const userId = (req.authUser as any)?.id
-      const filter =
-        role === "instructor" ? { instructorId: userId } : {}
+      const filter = role === "instructor" ? { instructorId: userId } : {}
       const courses = await courseService.findAll(filter)
       res.json(courses)
     } catch (err) {
@@ -19,9 +18,13 @@ export const courseController = {
     try {
       const role = (req.authUser as any)?.role
       const userId = (req.authUser as any)?.id
-      const course = await courseService.findById(req.params['id'] as string)
+      const course = await courseService.findById(req.params["id"] as string)
       if (!course) return res.status(404).json({ message: "Course not found" })
-      if (role === "instructor" && String((course as any).instructorId?._id ?? course.instructorId) !== userId) {
+      if (
+        role === "instructor" &&
+        String((course as any).instructorId?._id ?? course.instructorId) !==
+          userId
+      ) {
         return res.status(403).json({ message: "Forbidden" })
       }
       res.json(course)
@@ -42,7 +45,10 @@ export const courseController = {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const course = await courseService.update(req.params['id'] as string, req.body)
+      const course = await courseService.update(
+        req.params["id"] as string,
+        req.body
+      )
       if (!course) return res.status(404).json({ message: "Course not found" })
       res.json(course)
     } catch (err) {
@@ -52,8 +58,42 @@ export const courseController = {
 
   async remove(req: Request, res: Response, next: NextFunction) {
     try {
-      await courseService.delete(req.params['id'] as string)
+      await courseService.delete(req.params["id"] as string)
       res.status(204).send()
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async listArchived(req: Request, res: Response, next: NextFunction) {
+    try {
+      const role = (req.authUser as any)?.role
+      const userId = (req.authUser as any)?.id
+      if (role !== "instructor") {
+        return res.status(403).json({ message: "Forbidden" })
+      }
+      const courses = await courseService.findArchived(userId)
+      res.json(courses)
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async archive(req: Request, res: Response, next: NextFunction) {
+    try {
+      const course = await courseService.archive(req.params["id"] as string)
+      if (!course) return res.status(404).json({ message: "Course not found" })
+      res.json(course)
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async unarchive(req: Request, res: Response, next: NextFunction) {
+    try {
+      const course = await courseService.unarchive(req.params["id"] as string)
+      if (!course) return res.status(404).json({ message: "Course not found" })
+      res.json(course)
     } catch (err) {
       next(err)
     }

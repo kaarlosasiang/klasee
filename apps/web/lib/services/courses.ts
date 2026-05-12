@@ -2,13 +2,22 @@ import client from "../config/axios"
 import { ApiError } from "../middlewares/errorHandler"
 
 export interface Course {
-  id: string
+  _id: string
   name: string
   code: string
   description?: string
+  semester: string
   instructorId: string
-  createdAt: Date
-  updatedAt: Date
+  cover?: string
+  icon?: string
+  syllabus?: string
+  sectionCount: number
+  enrolledCount: number
+  assessmentCount: number
+  lastActivity?: string
+  isArchived: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CreateCourseInput {
@@ -51,4 +60,19 @@ export const updateCourse = async (
 
 export const deleteCourse = async (id: string): Promise<void> => {
   await client.delete(`/courses/${id}`)
+}
+
+export const getArchivedCourses = async (): Promise<Course[]> => {
+  const response = await client.get("/courses/archived")
+  return response.data
+}
+
+export const archiveCourse = async (id: string): Promise<Course> => {
+  const response = await client.patch(`/courses/${id}/archive`)
+  return response.data
+}
+
+export const unarchiveCourse = async (id: string): Promise<Course> => {
+  const response = await client.patch(`/courses/${id}/unarchive`)
+  return response.data
 }

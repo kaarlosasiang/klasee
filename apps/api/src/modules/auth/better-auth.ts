@@ -1,6 +1,6 @@
 import "dotenv/config"
 import { betterAuth, type Auth } from "better-auth"
-import { dash } from "@better-auth/infra"
+import { dash, sentinel } from "@better-auth/infra"
 import { mongodbAdapter } from "better-auth/adapters/mongodb"
 import { MongoClient } from "mongodb"
 import { constants } from "../../config/index.js"
@@ -88,6 +88,23 @@ export const auth = betterAuth({
       activityTracking: {
         enabled: true,
         updateInterval: 300000, // Update interval in ms (default: 5 minutes)
+      },
+    }),
+    sentinel({
+      apiKey: process.env.BETTER_AUTH_API_KEY,
+      security: {
+        credentialStuffing: {
+          enabled: true,
+          thresholds: {
+            challenge: 3, // Issue PoW challenge after 3 failures
+            block: 5, // Block after 5 failures
+          },
+          windowSeconds: 3600, // 1 hour window
+          cooldownSeconds: 900, // 15 minute cooldown after block
+        },
+        botBlocking: {
+          action: "challenge", // "log", "challenge", or "block"
+        },
       },
     }),
   ],

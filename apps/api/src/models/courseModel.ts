@@ -14,6 +14,7 @@ const courseSchema = new mongoose.Schema(
     cover: { type: String },
     icon: { type: String },
     syllabus: { type: String },
+    isArchived: { type: Boolean, default: false },
   },
   { timestamps: true }
 )

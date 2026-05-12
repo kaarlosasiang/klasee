@@ -555,12 +555,14 @@ interface NewCourseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   course?: CourseData
+  onCreated?: () => void
 }
 
 export function NewCourseDialog({
   open,
   onOpenChange,
   course,
+  onCreated,
 }: NewCourseDialogProps) {
   const isEditMode = !!course
   // In edit mode: logical steps are 1 (overview) and 3 (review) — we skip step 2
@@ -687,6 +689,7 @@ export function NewCourseDialog({
       if (!isEditMode) reset()
       setStep(1)
       onOpenChange(false)
+      if (!isEditMode) onCreated?.()
     } catch (err: unknown) {
       setError(
         err instanceof Error
