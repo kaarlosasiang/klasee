@@ -757,8 +757,10 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
       const ids = await setupCourseFolders(courseId, courseName)
       setFolderIds(ids)
       return ids
-    } catch {
-      toast.error("Failed to create course folders")
+    } catch (err: any) {
+      const msg = err?.message ?? "Failed to set up course folders"
+      console.error("[FileManager] ensureCourseFolders failed:", err)
+      toast.error(msg)
       return {}
     }
   }
@@ -772,13 +774,13 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
     setFolderNameError("")
 
     let parentFolderId = folderIds[activeFolder]
-    if (!parentFolderId && driveStatus?.folderId) {
+    if (!parentFolderId) {
       const ids = await handleEnsureCourseFolders()
       parentFolderId = ids[activeFolder]
     }
 
     if (!parentFolderId) {
-      toast.error("Course folders not set up. Try again.")
+      toast.error("Could not resolve upload folder. Check Google Drive connection.")
       return
     }
 
@@ -807,13 +809,13 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
     if (!file) return
 
     let parentFolderId = folderIds[activeFolder]
-    if (!parentFolderId && driveStatus?.folderId) {
+    if (!parentFolderId) {
       const ids = await handleEnsureCourseFolders()
       parentFolderId = ids[activeFolder]
     }
 
     if (!parentFolderId) {
-      toast.error("Course folders not set up. Try again.")
+      toast.error("Could not resolve upload folder. Check Google Drive connection.")
       return
     }
 
@@ -828,8 +830,9 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
       )
       toast.success(`"${file.name}" uploaded`)
       fetchFiles()
-    } catch {
-      toast.error(`Failed to upload "${file.name}"`)
+    } catch (err: any) {
+      console.error("[FileManager] upload failed:", err)
+      toast.error(err?.message ?? `Failed to upload "${file.name}"`)
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
