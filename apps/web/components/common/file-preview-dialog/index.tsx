@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
-import { Download, File as FileIcon, HardDrive, Cloud } from "lucide-react"
+import { Download, File as FileIcon, HardDrive, Cloud, Loader2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   getDownloadLink,
@@ -136,8 +136,11 @@ export function FilePreviewDialog({
   open,
   onOpenChange,
 }: FilePreviewDialogProps) {
+  const [downloading, setDownloading] = React.useState(false)
+
   const handleDownload = async () => {
     if (!file) return
+    setDownloading(true)
     try {
       if (file.source === "drive" && file.driveFileId) {
         const link = await getDownloadLink(file.driveFileId)
@@ -151,6 +154,8 @@ export function FilePreviewDialog({
       }
     } catch {
       toast.error("Failed to get download link")
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -178,7 +183,14 @@ export function FilePreviewDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {showPreview ? <PreviewContent file={file} /> : null}
+        {showPreview ? (
+          <PreviewContent file={file} />
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+            <FileIcon className="size-16" />
+            <p className="text-sm">No preview available for this file type</p>
+          </div>
+        )}
 
         <div
           className={
@@ -194,9 +206,13 @@ export function FilePreviewDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button onClick={handleDownload}>
-            <Download className="mr-2 size-4" />
-            Download
+          <Button onClick={handleDownload} disabled={downloading}>
+            {downloading ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 size-4" />
+            )}
+            {downloading ? "Downloading..." : "Download"}
           </Button>
         </div>
       </DialogContent>

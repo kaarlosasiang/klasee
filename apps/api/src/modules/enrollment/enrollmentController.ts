@@ -51,6 +51,10 @@ export const enrollmentController = {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
+      const role = (req.authUser as any)?.role
+      if (role === "student") {
+        return res.status(403).json({ message: "Only instructors can update enrollment status" })
+      }
       const enrollment = await enrollmentService.update(req.params['id'] as string, req.body)
       if (!enrollment) return res.status(404).json({ message: "Enrollment not found" })
       res.json(enrollment)

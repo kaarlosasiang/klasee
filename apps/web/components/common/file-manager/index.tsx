@@ -20,7 +20,6 @@ import {
   LayoutGrid,
   List,
   ChevronRight,
-  ArrowLeft,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
@@ -31,6 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
 import { Input } from "@workspace/ui/components/input"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
@@ -114,21 +123,25 @@ const DRAGGED_FILE_KEY = "courseFileId"
 
 function FileCard({
   file,
-  onDeleted,
+  onDeleteRequest,
   onRenamed,
   onPreview,
   onNavigate,
   onMoveFile,
+  movingFile,
 }: {
   file: CourseFile
-  onDeleted: () => void
+  onDeleteRequest: (file: CourseFile) => void
   onRenamed: () => void
   onPreview: (file: CourseFile) => void
   onNavigate?: (file: CourseFile) => void
   onMoveFile?: (fileId: string, targetFolderDbId: string) => void
+  movingFile: boolean
 }) {
   const [renaming, setRenaming] = React.useState(false)
   const [newName, setNewName] = React.useState(file.name)
+  const [nameError, setNameError] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
   const [imgError, setImgError] = React.useState(false)
   const [dragOver, setDragOver] = React.useState(false)
 
@@ -140,21 +153,17 @@ function FileCard({
         ? file.cloudinaryUrl
         : null
 
-  const handleDelete = async () => {
-    try {
-      await deleteCourseFile(file._id)
-      toast.success("File deleted")
-      onDeleted()
-    } catch {
-      toast.error("Failed to delete file")
-    }
-  }
-
   const handleRename = async () => {
-    if (!newName.trim() || newName === file.name) {
+    if (!newName.trim()) {
+      setNameError("Name cannot be empty")
+      return
+    }
+    if (newName === file.name) {
       setRenaming(false)
       return
     }
+    setNameError("")
+    setSaving(true)
     try {
       await renameCourseFile(file._id, newName.trim())
       toast.success("File renamed")
@@ -162,6 +171,8 @@ function FileCard({
       setRenaming(false)
     } catch {
       toast.error("Failed to rename file")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -191,7 +202,7 @@ function FileCard({
   }
 
   const handleDragStart = (e: React.DragEvent) => {
-    if (file.isFolder) return
+    if (file.isFolder || movingFile) return
     e.dataTransfer.setData(DRAGGED_FILE_KEY, file._id)
     e.dataTransfer.effectAllowed = "move"
   }
@@ -211,7 +222,7 @@ function FileCard({
     e.preventDefault()
     setDragOver(false)
     const draggedId = e.dataTransfer.getData(DRAGGED_FILE_KEY)
-    if (draggedId && draggedId !== file._id && onMoveFile) {
+    if (draggedId && draggedId !== file._id && onMoveFile && !movingFile) {
       onMoveFile(draggedId, file._id)
     }
   }
@@ -226,7 +237,7 @@ function FileCard({
             : "border-border hover:border-primary/50"
           : "border-border hover:border-primary/50"
       )}
-      draggable={!file.isFolder}
+      draggable={!file.isFolder && !movingFile}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -264,28 +275,37 @@ function FileCard({
             <div onClick={(e) => e.stopPropagation()}>
               <Input
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="h-7 text-sm"
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (e.target.value.trim()) setNameError("")
+                }}
+                className={cn("h-7 text-sm", nameError && "border-destructive")}
                 autoFocus
+                disabled={saving}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleRename()
-                  if (e.key === "Escape") setRenaming(false)
+                  if (e.key === "Escape") { setRenaming(false); setNameError("") }
                 }}
               />
+              {nameError && (
+                <p className="mt-0.5 text-xs text-destructive">{nameError}</p>
+              )}
               <div className="mt-1 flex gap-1">
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-xs"
                   onClick={handleRename}
+                  disabled={saving}
                 >
-                  Save
+                  {saving ? "Saving..." : "Save"}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-xs"
-                  onClick={() => setRenaming(false)}
+                  onClick={() => { setRenaming(false); setNameError("") }}
+                  disabled={saving}
                 >
                   Cancel
                 </Button>
@@ -339,6 +359,7 @@ function FileCard({
           onClick={(e) => {
             e.stopPropagation()
             setNewName(file.name)
+            setNameError("")
             setRenaming(true)
           }}
         >
@@ -350,7 +371,7 @@ function FileCard({
           className="size-7 bg-background/80 text-destructive backdrop-blur-sm hover:text-destructive"
           onClick={(e) => {
             e.stopPropagation()
-            handleDelete()
+            onDeleteRequest(file)
           }}
         >
           <Trash2 className="size-3.5" />
@@ -378,21 +399,25 @@ function smallFileIcon(mime: string) {
 
 function FileRow({
   file,
-  onDeleted,
+  onDeleteRequest,
   onRenamed,
   onPreview,
   onNavigate,
   onMoveFile,
+  movingFile,
 }: {
   file: CourseFile
-  onDeleted: () => void
+  onDeleteRequest: (file: CourseFile) => void
   onRenamed: () => void
   onPreview: (file: CourseFile) => void
   onNavigate?: (file: CourseFile) => void
   onMoveFile?: (fileId: string, targetFolderDbId: string) => void
+  movingFile: boolean
 }) {
   const [renaming, setRenaming] = React.useState(false)
   const [newName, setNewName] = React.useState(file.name)
+  const [nameError, setNameError] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
   const [imgError, setImgError] = React.useState(false)
   const [dragOver, setDragOver] = React.useState(false)
 
@@ -404,21 +429,17 @@ function FileRow({
         ? file.cloudinaryUrl
         : null
 
-  const handleDelete = async () => {
-    try {
-      await deleteCourseFile(file._id)
-      toast.success("File deleted")
-      onDeleted()
-    } catch {
-      toast.error("Failed to delete file")
-    }
-  }
-
   const handleRename = async () => {
-    if (!newName.trim() || newName === file.name) {
+    if (!newName.trim()) {
+      setNameError("Name cannot be empty")
+      return
+    }
+    if (newName === file.name) {
       setRenaming(false)
       return
     }
+    setNameError("")
+    setSaving(true)
     try {
       await renameCourseFile(file._id, newName.trim())
       toast.success("File renamed")
@@ -426,6 +447,8 @@ function FileRow({
       setRenaming(false)
     } catch {
       toast.error("Failed to rename file")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -455,7 +478,7 @@ function FileRow({
   }
 
   const handleDragStart = (e: React.DragEvent) => {
-    if (file.isFolder) return
+    if (file.isFolder || movingFile) return
     e.dataTransfer.setData(DRAGGED_FILE_KEY, file._id)
     e.dataTransfer.effectAllowed = "move"
   }
@@ -475,7 +498,7 @@ function FileRow({
     e.preventDefault()
     setDragOver(false)
     const draggedId = e.dataTransfer.getData(DRAGGED_FILE_KEY)
-    if (draggedId && draggedId !== file._id && onMoveFile) {
+    if (draggedId && draggedId !== file._id && onMoveFile && !movingFile) {
       onMoveFile(draggedId, file._id)
     }
   }
@@ -490,7 +513,7 @@ function FileRow({
             : "border-border hover:bg-muted/50"
           : "border-border hover:bg-muted/50"
       )}
-      draggable={!file.isFolder}
+      draggable={!file.isFolder && !movingFile}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -519,22 +542,31 @@ function FileRow({
         <div className="min-w-0 flex-1">
           {renaming ? (
             <div
-              className="flex items-center gap-2"
+              className="flex flex-col gap-0.5"
               onClick={(e) => e.stopPropagation()}
             >
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="h-7 text-sm"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleRename()
-                  if (e.key === "Escape") setRenaming(false)
-                }}
-              />
-              <Button size="sm" variant="ghost" onClick={handleRename}>
-                Save
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newName}
+                  onChange={(e) => {
+                    setNewName(e.target.value)
+                    if (e.target.value.trim()) setNameError("")
+                  }}
+                  className={cn("h-7 text-sm", nameError && "border-destructive")}
+                  autoFocus
+                  disabled={saving}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRename()
+                    if (e.key === "Escape") { setRenaming(false); setNameError("") }
+                  }}
+                />
+                <Button size="sm" variant="ghost" onClick={handleRename} disabled={saving}>
+                  {saving ? "Saving..." : "Save"}
+                </Button>
+              </div>
+              {nameError && (
+                <p className="text-xs text-destructive">{nameError}</p>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -577,6 +609,7 @@ function FileRow({
           size="icon-sm"
           onClick={() => {
             setNewName(file.name)
+            setNameError("")
             setRenaming(true)
           }}
         >
@@ -585,7 +618,7 @@ function FileRow({
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={handleDelete}
+          onClick={() => onDeleteRequest(file)}
           className="text-destructive hover:text-destructive"
         >
           <Trash2 className="size-4" />
@@ -613,9 +646,13 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
   const [viewMode, setViewMode] = React.useState<"gallery" | "list">("gallery")
   const [folderDialogOpen, setFolderDialogOpen] = React.useState(false)
   const [newFolderName, setNewFolderName] = React.useState("")
+  const [folderNameError, setFolderNameError] = React.useState("")
   const [creatingFolder, setCreatingFolder] = React.useState(false)
   const [folderPath, setFolderPath] = React.useState<CourseFile[]>([])
   const [tabDragOver, setTabDragOver] = React.useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = React.useState<CourseFile | null>(null)
+  const [deleting, setDeleting] = React.useState(false)
+  const [movingFile, setMovingFile] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const fetchStatus = React.useCallback(async () => {
@@ -679,20 +716,23 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
     setFolderPath((prev) => [...prev, folder])
   }
 
-  const handleNavigateBack = () => {
-    setFolderPath((prev) => prev.slice(0, -1))
+  const handleNavigateToIndex = (index: number) => {
+    setFolderPath((prev) => prev.slice(0, index + 1))
   }
 
   const handleFolderDrop = async (
     draggedFileId: string,
     targetFolderDbId: string
   ) => {
+    setMovingFile(true)
     try {
       await moveCourseFile(draggedFileId, targetFolderDbId)
       toast.success("File moved")
       fetchFiles()
     } catch {
       toast.error("Failed to move file")
+    } finally {
+      setMovingFile(false)
     }
   }
 
@@ -700,12 +740,15 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
     draggedFileId: string,
     targetFolder: (typeof FOLDER_TABS)[number]["id"]
   ) => {
+    setMovingFile(true)
     try {
       await moveCourseFileToRoot(draggedFileId, courseId, targetFolder)
       toast.success("File moved to root")
       fetchFiles()
     } catch {
       toast.error("Failed to move file")
+    } finally {
+      setMovingFile(false)
     }
   }
 
@@ -722,7 +765,11 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
 
   const handleCreateFolder = async () => {
     const name = newFolderName.trim()
-    if (!name) return
+    if (!name) {
+      setFolderNameError("Folder name is required")
+      return
+    }
+    setFolderNameError("")
 
     let parentFolderId = folderIds[activeFolder]
     if (!parentFolderId && driveStatus?.folderId) {
@@ -779,13 +826,28 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
         activeFolder,
         currentFolder?._id
       )
-      toast.success("File uploaded")
+      toast.success(`"${file.name}" uploaded`)
       fetchFiles()
     } catch {
-      toast.error("Failed to upload file")
+      toast.error(`Failed to upload "${file.name}"`)
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handleDeleteConfirmed = async () => {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    try {
+      await deleteCourseFile(deleteConfirm._id)
+      toast.success(`"${deleteConfirm.name}" deleted`)
+      setDeleteConfirm(null)
+      fetchFiles()
+    } catch {
+      toast.error("Failed to delete")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -824,7 +886,7 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                     e.preventDefault()
                     setTabDragOver(null)
                     const draggedId = e.dataTransfer.getData("courseFileId")
-                    if (draggedId) handleTabDrop(draggedId, tab.id)
+                    if (draggedId && !movingFile) handleTabDrop(draggedId, tab.id)
                   }}
                   className={`flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                     activeFolder === tab.id && !tabDragOver
@@ -897,20 +959,33 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
           </div>
 
           {folderPath.length > 0 && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <nav className="flex items-center gap-1 flex-wrap text-sm text-muted-foreground">
               <button
                 type="button"
-                onClick={handleNavigateBack}
-                className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 transition-colors hover:bg-muted hover:text-foreground"
+                onClick={() => setFolderPath([])}
+                className="capitalize rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted hover:text-foreground"
               >
-                <ArrowLeft className="size-4" />
-                Back
+                {activeFolder}
               </button>
-              <ChevronRight className="size-4" />
-              <span className="truncate font-medium text-foreground">
-                {currentFolder?.name}
-              </span>
-            </div>
+              {folderPath.map((folder, i) => (
+                <React.Fragment key={folder._id}>
+                  <ChevronRight className="size-4 shrink-0" />
+                  {i === folderPath.length - 1 ? (
+                    <span className="font-medium text-foreground truncate px-1.5 py-0.5">
+                      {folder.name}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleNavigateToIndex(i)}
+                      className="truncate rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      {folder.name}
+                    </button>
+                  )}
+                </React.Fragment>
+              ))}
+            </nav>
           )}
 
           {filesLoading ? (
@@ -956,11 +1031,12 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                 <FileCard
                   key={file._id}
                   file={file}
-                  onDeleted={fetchFiles}
+                  onDeleteRequest={setDeleteConfirm}
                   onRenamed={fetchFiles}
                   onPreview={setPreviewFile}
                   onNavigate={handleNavigateFolder}
                   onMoveFile={handleFolderDrop}
+                  movingFile={movingFile}
                 />
               ))}
             </div>
@@ -970,11 +1046,12 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                 <FileRow
                   key={file._id}
                   file={file}
-                  onDeleted={fetchFiles}
+                  onDeleteRequest={setDeleteConfirm}
                   onRenamed={fetchFiles}
                   onPreview={setPreviewFile}
                   onNavigate={handleNavigateFolder}
                   onMoveFile={handleFolderDrop}
+                  movingFile={movingFile}
                 />
               ))}
             </div>
@@ -982,35 +1059,54 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
         </>
       )}
 
-      <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+      <Dialog
+        open={folderDialogOpen}
+        onOpenChange={(open) => {
+          setFolderDialogOpen(open)
+          if (!open) {
+            setNewFolderName("")
+            setFolderNameError("")
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>New Folder</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Input
-              placeholder="Folder name"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreateFolder()
-                if (e.key === "Escape") setFolderDialogOpen(false)
-              }}
-            />
+            <div className="space-y-1.5">
+              <Input
+                placeholder="Folder name"
+                value={newFolderName}
+                onChange={(e) => {
+                  setNewFolderName(e.target.value)
+                  if (e.target.value.trim()) setFolderNameError("")
+                }}
+                className={folderNameError ? "border-destructive" : ""}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateFolder()
+                  if (e.key === "Escape") setFolderDialogOpen(false)
+                }}
+              />
+              {folderNameError && (
+                <p className="text-xs text-destructive">{folderNameError}</p>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setFolderDialogOpen(false)
                   setNewFolderName("")
+                  setFolderNameError("")
                 }}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateFolder}
-                disabled={creatingFolder || !newFolderName.trim()}
+                disabled={creatingFolder}
               >
                 {creatingFolder && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
@@ -1021,6 +1117,30 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => { if (!open) setDeleteConfirm(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{deleteConfirm?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove it from Google Drive. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={handleDeleteConfirmed}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <FilePreviewDialog
         file={previewFile}
