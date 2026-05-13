@@ -46,6 +46,8 @@ export function SectionsManager({ courseId, onInvite }: SectionsManagerProps) {
   const [editing, setEditing] = React.useState<Section | null>(null)
   const [deleteConfirm, setDeleteConfirm] = React.useState<Section | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
+  const [deleting, setDeleting] = React.useState<string | null>(null)
+  const [generatingCode, setGeneratingCode] = React.useState<string | null>(null)
 
   const fetchSections = React.useCallback(async () => {
     setLoading(true)
@@ -71,13 +73,34 @@ export function SectionsManager({ courseId, onInvite }: SectionsManagerProps) {
   }
 
   const handleDelete = async (section: Section) => {
+    setDeleting(section._id)
     try {
       await deleteSection(section._id)
       toast.success("Section deleted")
       setDeleteConfirm(null)
       fetchSections()
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.statusCode ?? err?.status
+      if (status === 409) {
+        toast.error("Drop all students from this section first")
+      } else {
+        toast.error("Failed to delete section")
+      }
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleGenerateCode = async (section: Section) => {
+    setGeneratingCode(section._id)
+    try {
+      await generateJoinCode(section._id)
+      toast.success(section.joinCode ? "New join code generated" : "Join code generated")
+      fetchSections()
     } catch {
-      toast.error("Failed to delete section")
+      toast.error("Failed to generate code")
+    } finally {
+      setGeneratingCode(null)
     }
   }
 
@@ -192,39 +215,18 @@ export function SectionsManager({ courseId, onInvite }: SectionsManagerProps) {
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                {section.joinCode ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={async () => {
-                      try {
-                        await generateJoinCode(section._id)
-                        toast.success("New join code generated")
-                        fetchSections()
-                      } catch {
-                        toast.error("Failed to generate code")
-                      }
-                    }}
-                  >
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={generatingCode === section._id}
+                  onClick={() => handleGenerateCode(section)}
+                >
+                  {section.joinCode ? (
                     <RefreshCw className="size-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={async () => {
-                      try {
-                        await generateJoinCode(section._id)
-                        toast.success("Join code generated")
-                        fetchSections()
-                      } catch {
-                        toast.error("Failed to generate code")
-                      }
-                    }}
-                  >
+                  ) : (
                     <Copy className="size-4" />
-                  </Button>
-                )}
+                  )}
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -285,10 +287,11 @@ export function SectionsManager({ courseId, onInvite }: SectionsManagerProps) {
               variant="destructive"
               onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
               disabled={
-                !!deleteConfirm && deleteConfirm.enrolledCount > 0
+                (!!deleteConfirm && deleteConfirm.enrolledCount > 0) ||
+                deleting === deleteConfirm?._id
               }
             >
-              Delete
+              {deleting === deleteConfirm?._id ? "Deleting..." : "Delete"}
             </Button>
           </div>
         </DialogContent>
@@ -315,6 +318,8 @@ function SectionDialog({
   const [room, setRoom] = React.useState("")
   const [maxStudents, setMaxStudents] = React.useState("40")
   const [saving, setSaving] = React.useState(false)
+  const [nameError, setNameError] = React.useState("")
+  const [maxStudentsError, setMaxStudentsError] = React.useState("")
 
   React.useEffect(() => {
     if (editing) {
@@ -328,10 +333,27 @@ function SectionDialog({
       setRoom("")
       setMaxStudents("40")
     }
+    setNameError("")
+    setMaxStudentsError("")
   }, [editing, open])
 
   const handleSave = async () => {
-    if (!name.trim()) return
+    let valid = true
+    if (!name.trim()) {
+      setNameError("Section name is required")
+      valid = false
+    } else {
+      setNameError("")
+    }
+    const parsed = parseInt(maxStudents)
+    if (isNaN(parsed) || parsed < 1) {
+      setMaxStudentsError("Must be at least 1")
+      valid = false
+    } else {
+      setMaxStudentsError("")
+    }
+    if (!valid) return
+
     setSaving(true)
     try {
       if (editing) {
@@ -339,7 +361,7 @@ function SectionDialog({
           name: name.trim(),
           schedule: schedule.trim() || undefined,
           room: room.trim() || undefined,
-          maxStudents: parseInt(maxStudents) || 40,
+          maxStudents: parsed,
         })
         toast.success("Section updated")
       } else {
@@ -348,7 +370,7 @@ function SectionDialog({
           name: name.trim(),
           schedule: schedule.trim() || undefined,
           room: room.trim() || undefined,
-          maxStudents: parseInt(maxStudents) || 40,
+          maxStudents: parsed,
         })
         toast.success("Section created")
       }
@@ -374,12 +396,19 @@ function SectionDialog({
               id="name"
               placeholder='e.g. "Section A"'
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                if (e.target.value.trim()) setNameError("")
+              }}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSave()
               }}
+              className={nameError ? "border-destructive" : ""}
             />
+            {nameError && (
+              <p className="text-xs text-destructive">{nameError}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="schedule">Schedule</Label>
@@ -406,14 +435,22 @@ function SectionDialog({
               type="number"
               min="1"
               value={maxStudents}
-              onChange={(e) => setMaxStudents(e.target.value)}
+              onChange={(e) => {
+                setMaxStudents(e.target.value)
+                const v = parseInt(e.target.value)
+                if (!isNaN(v) && v >= 1) setMaxStudentsError("")
+              }}
+              className={maxStudentsError ? "border-destructive" : ""}
             />
+            {maxStudentsError && (
+              <p className="text-xs text-destructive">{maxStudentsError}</p>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || !name.trim()}>
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
           </div>

@@ -1,5 +1,13 @@
 import { NextFunction, Request, Response } from "express"
 import { driveService } from "./driveService.js"
+import {
+  createFolderSchema,
+  uploadFileSchema,
+  renameFileSchema,
+  moveFileSchema,
+  moveToRootSchema,
+  ensureCourseFoldersSchema,
+} from "@workspace/validators"
 
 function getUserId(req: Request): string {
   return String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
@@ -28,16 +36,16 @@ export const driveController = {
 
   async ensureCourseFolders(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = getUserId(req)
-      const { courseId, courseName } = req.body as {
-        courseId: string
-        courseName: string
+      const parsed = ensureCourseFoldersSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
       }
-      const result = await driveService.ensureCourseFolders(
-        userId,
-        courseId,
-        courseName
-      )
+      const userId = getUserId(req)
+      const { courseId, courseName } = parsed.data
+      const result = await driveService.ensureCourseFolders(userId, courseId, courseName)
       res.json(result)
     } catch (err) {
       next(err)
@@ -46,16 +54,15 @@ export const driveController = {
 
   async createFolder(req: Request, res: Response, next: NextFunction) {
     try {
+      const parsed = createFolderSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
       const userId = getUserId(req)
-      const { courseId, name, parentFolderId, folder, parentFileId } =
-        req.body as {
-          courseId: string
-          name: string
-          parentFolderId: string
-          folder: "materials" | "activities" | "submissions"
-          parentFileId?: string
-        }
-
+      const { courseId, name, parentFolderId, folder, parentFileId } = parsed.data
       const result = await driveService.createFolder(
         userId,
         courseId,
@@ -64,7 +71,6 @@ export const driveController = {
         folder,
         parentFileId
       )
-
       res.status(201).json(result)
     } catch (err) {
       next(err)
@@ -76,17 +82,18 @@ export const driveController = {
       const userId = getUserId(req)
       const file = req.file
       if (!file) {
-        res.status(400).json({ message: "No file provided" })
-        return
+        return res.status(400).json({ message: "No file provided" })
       }
 
-      const { courseId, parentFolderId, folder, parentFileId } = req.body as {
-        courseId: string
-        parentFolderId: string
-        folder: "materials" | "activities" | "submissions"
-        parentFileId?: string
+      const parsed = uploadFileSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
       }
 
+      const { courseId, parentFolderId, folder, parentFileId } = parsed.data
       const result = await driveService.uploadFile(
         userId,
         courseId,
@@ -98,7 +105,6 @@ export const driveController = {
         userId,
         parentFileId
       )
-
       res.status(201).json(result)
     } catch (err) {
       next(err)
@@ -113,8 +119,7 @@ export const driveController = {
         parentId?: string
       }
       if (!courseId) {
-        res.status(400).json({ message: "courseId is required" })
-        return
+        return res.status(400).json({ message: "courseId is required" })
       }
       const files = await driveService.listFiles(
         getUserId(req),
@@ -171,10 +176,16 @@ export const driveController = {
 
   async moveFile(req: Request, res: Response, next: NextFunction) {
     try {
+      const parsed = moveFileSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
       const userId = getUserId(req)
       const { id } = req.params as { id: string }
-      const { targetFolderDbId } = req.body as { targetFolderDbId: string }
-      const result = await driveService.moveFile(userId, id, targetFolderDbId)
+      const result = await driveService.moveFile(userId, id, parsed.data.targetFolderDbId)
       res.json(result)
     } catch (err) {
       next(err)
@@ -183,18 +194,17 @@ export const driveController = {
 
   async moveFileToRoot(req: Request, res: Response, next: NextFunction) {
     try {
+      const parsed = moveToRootSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
       const userId = getUserId(req)
       const { id } = req.params as { id: string }
-      const { courseId, folder } = req.body as {
-        courseId: string
-        folder: "materials" | "activities" | "submissions"
-      }
-      const result = await driveService.moveFileToRoot(
-        userId,
-        id,
-        courseId,
-        folder
-      )
+      const { courseId, folder } = parsed.data
+      const result = await driveService.moveFileToRoot(userId, id, courseId, folder)
       res.json(result)
     } catch (err) {
       next(err)
@@ -213,10 +223,16 @@ export const driveController = {
 
   async rename(req: Request, res: Response, next: NextFunction) {
     try {
+      const parsed = renameFileSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
       const userId = getUserId(req)
       const { id } = req.params as { id: string }
-      const { name } = req.body as { name: string }
-      const result = await driveService.renameFile(userId, id, name)
+      const result = await driveService.renameFile(userId, id, parsed.data.name)
       res.json(result)
     } catch (err) {
       next(err)

@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
 import {
@@ -44,6 +45,7 @@ export default function CourseDetailPage() {
   const [activeTab, setActiveTab] = React.useState("announcements")
   const [enrollments, setEnrollments] = React.useState<Enrollment[]>([])
   const [enrollmentsLoading, setEnrollmentsLoading] = React.useState(false)
+  const [enrollmentsError, setEnrollmentsError] = React.useState(false)
   const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false)
 
   React.useEffect(() => {
@@ -86,14 +88,24 @@ export default function CourseDetailPage() {
     return () => setOpen(true)
   }, [setOpen])
 
+  const fetchEnrollments = React.useCallback(async (courseId: string) => {
+    setEnrollmentsLoading(true)
+    setEnrollmentsError(false)
+    try {
+      const data = await getEnrollmentsByCourse(courseId)
+      setEnrollments(data)
+    } catch {
+      toast.error("Failed to load students")
+      setEnrollmentsError(true)
+    } finally {
+      setEnrollmentsLoading(false)
+    }
+  }, [])
+
   React.useEffect(() => {
     if (activeTab !== "students" || !course) return
-    setEnrollmentsLoading(true)
-    getEnrollmentsByCourse(course._id)
-      .then(setEnrollments)
-      .catch(() => toast.error("Failed to load students"))
-      .finally(() => setEnrollmentsLoading(false))
-  }, [activeTab, course])
+    fetchEnrollments(course._id)
+  }, [activeTab, course, fetchEnrollments])
 
   if (loading) {
     return (
@@ -242,19 +254,23 @@ export default function CourseDetailPage() {
               onInvite={() => setInviteDialogOpen(true)}
             />
           )}
-          {activeTab === "students" &&
-            (enrollmentsLoading ? (
+          {activeTab === "students" && (
+            enrollmentsLoading ? (
               <Skeleton className="h-64 w-full rounded-xl" />
+            ) : enrollmentsError ? (
+              <div className="flex flex-col items-center gap-3 py-12">
+                <p className="text-sm text-muted-foreground">Failed to load students</p>
+                <Button variant="outline" size="sm" onClick={() => fetchEnrollments(course._id)}>
+                  Retry
+                </Button>
+              </div>
             ) : (
               <StudentsDataTable
                 data={enrollments}
-                onDrop={() => {
-                  getEnrollmentsByCourse(course._id)
-                    .then(setEnrollments)
-                    .catch(() => {})
-                }}
+                onDrop={() => fetchEnrollments(course._id)}
               />
-            ))}
+            )
+          )}
           {activeTab === "files" && (
             <FileManager courseId={course._id} courseName={course.name} />
           )}
