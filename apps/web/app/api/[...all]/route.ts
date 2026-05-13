@@ -4,8 +4,27 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL
   ? new URL(process.env.NEXT_PUBLIC_API_URL).origin
   : "http://localhost:4000"
 
+const ALLOWED_PATH_PREFIXES = ["/api/"]
+
+const isAllowedPath = (pathname: string) => {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`
+  const lower = normalized.toLowerCase()
+
+  if (lower.includes("..") || lower.includes("%2e")) return false
+
+  return ALLOWED_PATH_PREFIXES.some(
+    (prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix),
+  )
+}
+
 const handler = async (req: NextRequest) => {
-  const url = new URL(req.nextUrl.pathname, BACKEND)
+  const pathname = req.nextUrl.pathname
+
+  if (!isAllowedPath(pathname)) {
+    return NextResponse.json({ error: "Invalid target path" }, { status: 400 })
+  }
+
+  const url = new URL(pathname, BACKEND)
   url.search = req.nextUrl.search
 
   const backendRes = await fetch(url.toString(), {
