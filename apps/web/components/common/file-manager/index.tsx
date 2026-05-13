@@ -233,7 +233,7 @@ function FileCard({
         "group relative rounded-lg border transition-colors",
         file.isFolder
           ? dragOver
-            ? "border-primary border-2 bg-primary/5"
+            ? "border-2 border-primary bg-primary/5"
             : "border-border hover:border-primary/50"
           : "border-border hover:border-primary/50"
       )}
@@ -243,11 +243,7 @@ function FileCard({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <button
-        type="button"
-        onClick={handleClick}
-        className="w-full text-left"
-      >
+      <button type="button" onClick={handleClick} className="w-full text-left">
         <div className="flex aspect-3/2 items-center justify-center overflow-hidden rounded-t-lg bg-muted/30">
           <div className="flex flex-col items-center gap-1 text-muted-foreground/60">
             {file.isFolder ? (
@@ -262,10 +258,10 @@ function FileCard({
             ) : (
               fileTypeIcon(file.mimeType)
             )}
-            <span className="text-[10px] font-medium uppercase tracking-wider">
+            <span className="text-[10px] font-medium tracking-wider uppercase">
               {file.isFolder
                 ? "folder"
-                : file.mimeType.split("/")[1]?.split(".")[0] ?? "file"}
+                : (file.mimeType.split("/")[1]?.split(".")[0] ?? "file")}
             </span>
           </div>
         </div>
@@ -284,7 +280,10 @@ function FileCard({
                 disabled={saving}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleRename()
-                  if (e.key === "Escape") { setRenaming(false); setNameError("") }
+                  if (e.key === "Escape") {
+                    setRenaming(false)
+                    setNameError("")
+                  }
                 }}
               />
               {nameError && (
@@ -304,7 +303,10 @@ function FileCard({
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-xs"
-                  onClick={() => { setRenaming(false); setNameError("") }}
+                  onClick={() => {
+                    setRenaming(false)
+                    setNameError("")
+                  }}
                   disabled={saving}
                 >
                   Cancel
@@ -509,7 +511,7 @@ function FileRow({
         "flex items-center gap-3 rounded-lg border px-4 py-2.5 transition-colors",
         file.isFolder
           ? dragOver
-            ? "border-primary border-2 bg-primary/5"
+            ? "border-2 border-primary bg-primary/5"
             : "border-border hover:bg-muted/50"
           : "border-border hover:bg-muted/50"
       )}
@@ -522,7 +524,7 @@ function FileRow({
       <button
         type="button"
         onClick={handleClick}
-        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
         {file.isFolder ? (
           <Folder className="size-8 shrink-0 text-amber-500" />
@@ -552,15 +554,26 @@ function FileRow({
                     setNewName(e.target.value)
                     if (e.target.value.trim()) setNameError("")
                   }}
-                  className={cn("h-7 text-sm", nameError && "border-destructive")}
+                  className={cn(
+                    "h-7 text-sm",
+                    nameError && "border-destructive"
+                  )}
                   autoFocus
                   disabled={saving}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleRename()
-                    if (e.key === "Escape") { setRenaming(false); setNameError("") }
+                    if (e.key === "Escape") {
+                      setRenaming(false)
+                      setNameError("")
+                    }
                   }}
                 />
-                <Button size="sm" variant="ghost" onClick={handleRename} disabled={saving}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleRename}
+                  disabled={saving}
+                >
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </div>
@@ -570,9 +583,7 @@ function FileRow({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium">
-                {file.name}
-              </span>
+              <span className="truncate text-sm font-medium">{file.name}</span>
               <Badge
                 variant="secondary"
                 className="shrink-0 rounded-full text-[10px] font-normal"
@@ -650,7 +661,9 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
   const [creatingFolder, setCreatingFolder] = React.useState(false)
   const [folderPath, setFolderPath] = React.useState<CourseFile[]>([])
   const [tabDragOver, setTabDragOver] = React.useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = React.useState<CourseFile | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = React.useState<CourseFile | null>(
+    null
+  )
   const [deleting, setDeleting] = React.useState(false)
   const [movingFile, setMovingFile] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -886,7 +899,8 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                     e.preventDefault()
                     setTabDragOver(null)
                     const draggedId = e.dataTransfer.getData("courseFileId")
-                    if (draggedId && !movingFile) handleTabDrop(draggedId, tab.id)
+                    if (draggedId && !movingFile)
+                      handleTabDrop(draggedId, tab.id)
                   }}
                   className={`flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                     activeFolder === tab.id && !tabDragOver
@@ -959,11 +973,11 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
           </div>
 
           {folderPath.length > 0 && (
-            <nav className="flex items-center gap-1 flex-wrap text-sm text-muted-foreground">
+            <nav className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
               <button
                 type="button"
                 onClick={() => setFolderPath([])}
-                className="capitalize rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-md px-1.5 py-0.5 capitalize transition-colors hover:bg-muted hover:text-foreground"
               >
                 {activeFolder}
               </button>
@@ -971,7 +985,7 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                 <React.Fragment key={folder._id}>
                   <ChevronRight className="size-4 shrink-0" />
                   {i === folderPath.length - 1 ? (
-                    <span className="font-medium text-foreground truncate px-1.5 py-0.5">
+                    <span className="truncate px-1.5 py-0.5 font-medium text-foreground">
                       {folder.name}
                     </span>
                   ) : (
@@ -1104,10 +1118,7 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleCreateFolder}
-                disabled={creatingFolder}
-              >
+              <Button onClick={handleCreateFolder} disabled={creatingFolder}>
                 {creatingFolder && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 )}
@@ -1120,19 +1131,24 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
 
       <AlertDialog
         open={!!deleteConfirm}
-        onOpenChange={(open) => { if (!open) setDeleteConfirm(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm(null)
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete &ldquo;{deleteConfirm?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete &ldquo;{deleteConfirm?.name}&rdquo;?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove it from Google Drive. This cannot be undone.
+              This will permanently remove it from Google Drive. This cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
               disabled={deleting}
               onClick={handleDeleteConfirmed}
             >
