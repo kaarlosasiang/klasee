@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams, useRouter } from "next/navigation"
 import {
   GraduationCap,
   BookOpen,
@@ -16,7 +16,6 @@ import {
   Cog,
 } from "lucide-react"
 import Link from "next/link"
-import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
@@ -27,16 +26,35 @@ import {
 } from "@/lib/services/courses"
 import { timeAgo } from "@/lib/utils/time"
 import { useSidebar } from "@workspace/ui/components/sidebar"
-import { getEnrollmentsByCourse, type Enrollment } from "@/lib/services/enrollments"
+import {
+  getEnrollmentsByCourse,
+  type Enrollment,
+} from "@/lib/services/enrollments"
 import { StudentsDataTable } from "@/components/data-table/students-data-table"
+import { FileManager } from "@/components/common/file-manager"
+import { SectionsManager } from "@/components/sections-manager"
+import { InviteStudentDialog } from "@/components/invite-student-dialog"
 
 export default function CourseDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [course, setCourse] = React.useState<Course | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("announcements")
   const [enrollments, setEnrollments] = React.useState<Enrollment[]>([])
   const [enrollmentsLoading, setEnrollmentsLoading] = React.useState(false)
+  const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    const tab = searchParams?.get("tab")
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    router.replace(`/courses/${params.id}?tab=${tab}`, { scroll: false })
+  }
 
   React.useEffect(() => {
     async function load() {
@@ -111,7 +129,7 @@ export default function CourseDetailPage() {
           <button
             key={item.id}
             type="button"
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => handleTabChange(item.id)}
             className={`flex cursor-pointer items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors ${
               activeTab === item.id
                 ? "bg-muted font-medium text-foreground"
@@ -125,7 +143,7 @@ export default function CourseDetailPage() {
       </nav>
 
       {/* Right: Back button + Hero + Content */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <Link
             href="/courses"
@@ -134,21 +152,18 @@ export default function CourseDetailPage() {
             <ArrowLeft className="size-4" />
             Back to courses
           </Link>
-          <Button variant="outline" size="sm" onClick={handleArchive}>
-            Archive
-          </Button>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border">
-          <div className="relative h-36 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30">
-            {course.cover && (
-              <img
-                src={course.cover}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            )}
-            <div className="absolute -bottom-6 left-6 flex size-14 items-center justify-center overflow-hidden rounded-xl border-4 border-background bg-blue-500 text-white shadow-md">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 p-5 dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30">
+          {course.cover && (
+            <img
+              src={course.cover}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
+          <div className="relative z-10 flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-500 text-white shadow-md">
               {course.icon ? (
                 <img
                   src={course.icon}
@@ -159,11 +174,9 @@ export default function CourseDetailPage() {
                 <GraduationCap className="size-6" />
               )}
             </div>
-          </div>
-          <div className="space-y-5 px-6 pt-9 pb-5">
-            <div>
-              <h1 className="text-2xl font-bold">{course.name}</h1>
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-xl font-bold">{course.name}</h1>
                 <span className="text-sm text-muted-foreground">
                   {course.code}
                 </span>
@@ -177,6 +190,8 @@ export default function CourseDetailPage() {
                       ? "2nd Sem"
                       : "Summer"}
                 </Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <BookOpen className="size-3.5" />
                   {course.sectionCount}{" "}
@@ -194,31 +209,22 @@ export default function CourseDetailPage() {
                 </span>
               </div>
               {course.description && (
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {course.description}
                 </p>
               )}
-            </div>
-
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="size-3.5" />
-                Created {timeAgo(course.createdAt)}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <GraduationCap className="size-3.5" />
-                {course.semester === "1st"
-                  ? "First Semester"
-                  : course.semester === "2nd"
-                    ? "Second Semester"
-                    : "Summer"}
-              </span>
-              {course.lastActivity && (
+              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="size-3.5" />
-                  Last activity {timeAgo(course.lastActivity)}
+                  Created {timeAgo(course.createdAt)}
                 </span>
-              )}
+                {course.lastActivity && (
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="size-3.5" />
+                    Last activity {timeAgo(course.lastActivity)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -231,19 +237,26 @@ export default function CourseDetailPage() {
             </p>
           )}
           {activeTab === "sections" && (
-            <p className="text-sm text-muted-foreground">
-              Sections list coming soon.
-            </p>
+            <SectionsManager
+              courseId={course._id}
+              onInvite={() => setInviteDialogOpen(true)}
+            />
           )}
-          {activeTab === "students" && (
-            enrollmentsLoading ? (
+          {activeTab === "students" &&
+            (enrollmentsLoading ? (
               <Skeleton className="h-64 w-full rounded-xl" />
             ) : (
-              <StudentsDataTable data={enrollments} />
-            )
-          )}
+              <StudentsDataTable
+                data={enrollments}
+                onDrop={() => {
+                  getEnrollmentsByCourse(course._id)
+                    .then(setEnrollments)
+                    .catch(() => {})
+                }}
+              />
+            ))}
           {activeTab === "files" && (
-            <p className="text-sm text-muted-foreground">Files coming soon.</p>
+            <FileManager courseId={course._id} courseName={course.name} />
           )}
           {activeTab === "modules" && (
             <p className="text-sm text-muted-foreground">
@@ -255,6 +268,13 @@ export default function CourseDetailPage() {
           )}
         </div>
       </div>
+
+      <InviteStudentDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        courseId={course._id}
+        onCreated={() => {}}
+      />
     </div>
   )
 }

@@ -11,9 +11,10 @@ import {
   type SortingState,
   type GlobalFilterTableState,
 } from "@tanstack/react-table"
-import { Search } from "lucide-react"
+import { Search, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { DataTable } from "@workspace/ui/components/data-table/data-table"
 import { DataTableColumnHeader } from "@workspace/ui/components/data-table/data-table-column-header"
@@ -21,9 +22,12 @@ import { DataTableFacetedFilter } from "@workspace/ui/components/data-table/data
 import { DataTableViewOptions } from "@workspace/ui/components/data-table/data-table-view-options"
 import type { Enrollment } from "@/lib/services/enrollments"
 import { timeAgo } from "@/lib/utils/time"
+import { dropEnrollment } from "@/lib/services/enrollments"
+import { toast } from "sonner"
 
 interface StudentsDataTableProps {
   data: Enrollment[]
+  onDrop?: (enrollmentId: string) => void
 }
 
 const statusStyles: Record<string, string> = {
@@ -38,9 +42,23 @@ const statusOptions = [
   { label: "Completed", value: "completed" },
 ]
 
-export function StudentsDataTable({ data }: StudentsDataTableProps) {
+export function StudentsDataTable({ data, onDrop }: StudentsDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "createdAt", desc: true }])
   const [globalFilter, setGlobalFilter] = React.useState<GlobalFilterTableState["globalFilter"]>("")
+  const [dropping, setDropping] = React.useState<string | null>(null)
+
+  const handleDrop = async (enrollment: Enrollment) => {
+    setDropping(enrollment._id)
+    try {
+      await dropEnrollment(enrollment._id)
+      toast.success(`${enrollment.studentId.name} has been dropped`)
+      onDrop?.(enrollment._id)
+    } catch {
+      toast.error("Failed to drop student")
+    } finally {
+      setDropping(null)
+    }
+  }
 
   const columns = React.useMemo<ColumnDef<Enrollment>[]>(
     () => [
@@ -113,8 +131,29 @@ export function StudentsDataTable({ data }: StudentsDataTableProps) {
           return <span className="text-xs text-muted-foreground">{val ? timeAgo(val) : "\u2014"}</span>
         },
       },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => {
+          const enrollment = row.original
+          if (enrollment.status !== "active") return null
+          return (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive"
+              disabled={dropping === enrollment._id}
+              onClick={() => handleDrop(enrollment)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )
+        },
+      },
     ],
-    []
+    [dropping]
   )
 
   const table = useReactTable({

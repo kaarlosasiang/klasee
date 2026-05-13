@@ -1,4 +1,5 @@
 import { Section } from "../../models/sectionModel.js"
+import { Enrollment } from "../../models/enrollmentModel.js"
 
 /** Generates a unique 6-character uppercase alphanumeric join code. */
 function makeCode(): string {
@@ -10,17 +11,58 @@ function makeCode(): string {
 
 export const sectionService = {
   async findAll(filter: Record<string, unknown> = {}) {
-    return Section.find(filter)
+    const sections = await Section.find(filter)
       .populate("courseId", "name code")
       .populate("instructorId", "name email")
+      .sort({ createdAt: -1 })
       .lean()
+
+    const sectionIds = sections.map((s) => s._id)
+    const counts = await Enrollment.aggregate([
+      { $match: { sectionId: { $in: sectionIds }, status: "active" } },
+      { $group: { _id: "$sectionId", count: { $sum: 1 } } },
+    ])
+
+    const countMap: Record<string, number> = {}
+    for (const c of counts) {
+      countMap[String(c._id)] = c.count
+    }
+
+    return sections.map((s) => ({
+      ...s,
+      enrolledCount: countMap[String(s._id)] ?? 0,
+    }))
   },
 
   async findById(id: string) {
-    return Section.findById(id)
+    const section = await Section.findById(id)
       .populate("courseId", "name code")
       .populate("instructorId", "name email")
       .lean()
+    if (!section) return null
+
+    const enrolledCount = await Enrollment.countDocuments({
+      sectionId: id,
+      status: "active",
+    })
+
+    return { ...section, enrolledCount }
+  },
+
+  async delete(id: string) {
+    const enrolled = await Enrollment.countDocuments({
+      sectionId: id,
+      status: "active",
+    })
+    if (enrolled > 0) {
+      throw Object.assign(
+        new Error(
+          "Cannot delete section with active enrollments. Drop all students first."
+        ),
+        { status: 409 }
+      )
+    }
+    return Section.findByIdAndDelete(id)
   },
 
   async findByJoinCode(code: string) {
@@ -42,10 +84,6 @@ export const sectionService = {
 
   async update(id: string, data: Partial<{ name: string; schedule: string; room: string; maxStudents: number }>) {
     return Section.findByIdAndUpdate(id, data, { new: true }).lean()
-  },
-
-  async delete(id: string) {
-    return Section.findByIdAndDelete(id)
   },
 
   /** Generate (or regenerate) a unique join code for a section. */

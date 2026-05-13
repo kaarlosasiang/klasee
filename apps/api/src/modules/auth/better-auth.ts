@@ -52,6 +52,8 @@ export const auth = betterAuth({
     google: {
       clientId: constants.googleClientId as string,
       clientSecret: constants.googleClientSecret as string,
+      accessType: "offline",
+      prompt: "select_account consent",
     },
     github: {
       clientId: constants.githubClientId as string,

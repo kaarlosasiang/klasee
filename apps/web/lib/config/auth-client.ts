@@ -96,3 +96,12 @@ export const checkVerificationOtp = (input: {
 }): Promise<unknown> => authClient.emailOtp.checkVerificationOtp(input)
 
 export const useSession = authClient.useSession
+
+export const linkGoogleDrive = (
+  callbackURL?: string
+) =>
+  authClient.linkSocial({
+    provider: "google",
+    callbackURL,
+    scopes: ["https://www.googleapis.com/auth/drive.file"],
+  })

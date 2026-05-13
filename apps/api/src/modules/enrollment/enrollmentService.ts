@@ -64,10 +64,10 @@ export const enrollmentService = {
     return Enrollment.findByIdAndUpdate(id, data, { new: true }).lean()
   },
 
-  async drop(id: string, studentId: string) {
+  async drop(id: string, requesterId: string, role?: string) {
     const enrollment = await Enrollment.findById(id).lean()
     if (!enrollment) throw Object.assign(new Error("Enrollment not found"), { status: 404 })
-    if (String(enrollment.studentId) !== studentId) {
+    if (role !== "instructor" && role !== "admin" && String(enrollment.studentId) !== requesterId) {
       throw Object.assign(new Error("Forbidden"), { status: 403 })
     }
     return Enrollment.findByIdAndUpdate(id, { status: "dropped" }, { new: true }).lean()

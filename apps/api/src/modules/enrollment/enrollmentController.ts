@@ -61,8 +61,9 @@ export const enrollmentController = {
 
   async drop(req: Request, res: Response, next: NextFunction) {
     try {
-      const studentId = String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
-      const enrollment = await enrollmentService.drop(req.params['id'] as string, studentId)
+      const requesterId = String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
+      const role = (req.authUser as any)?.role
+      const enrollment = await enrollmentService.drop(req.params['id'] as string, requesterId, role)
       res.json(enrollment)
     } catch (err: any) {
       if (err.status) return res.status(err.status).json({ message: err.message })

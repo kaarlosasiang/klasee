@@ -87,15 +87,20 @@ function IconRailBtn({
   icon: Icon,
   label,
   active,
+  href,
 }: {
   icon: React.ElementType
   label: string
   active?: boolean
+  href?: string
 }) {
+  const Comp = href ? Link : "button"
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
+        <Comp
+          href={href as string}
           className={cn(
             "flex size-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
             active
@@ -105,7 +110,7 @@ function IconRailBtn({
         >
           <Icon className="size-5" />
           <span className="sr-only">{label}</span>
-        </button>
+        </Comp>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
@@ -188,7 +193,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {/* Bottom action buttons */}
           <div className="flex flex-col items-center gap-2 pb-1">
             <IconRailBtn icon={BarChart2} label="Reports" />
-            <IconRailBtn icon={Settings} label="Settings" />
+            <IconRailBtn icon={Settings} label="Settings" href="/settings" />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -236,7 +241,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem>Account</DropdownMenuItem>
-                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings">Settings</Link>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout()}>

@@ -23,7 +23,16 @@ export interface Enrollment {
   updatedAt: string
 }
 
-export const getEnrollmentsByCourse = async (courseId: string): Promise<Enrollment[]> => {
-  const response = await client.get("/enrollments", { params: { courseId } })
+export const getEnrollmentsByCourse = async (
+  courseId: string
+): Promise<Enrollment[]> => {
+  const response = await client.get("/enrollments", {
+    params: { courseId },
+  })
+  return response.data
+}
+
+export const dropEnrollment = async (id: string): Promise<Enrollment> => {
+  const response = await client.delete(`/enrollments/${id}`)
   return response.data
 }
