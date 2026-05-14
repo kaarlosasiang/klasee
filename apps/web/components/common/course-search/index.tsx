@@ -62,12 +62,12 @@ export function CourseSearch({
         </SelectContent>
       </Select>
 
-      {/* <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <Switch id="show-archived" checked={showArchived} onCheckedChange={onToggleArchived} />
         <Label htmlFor="show-archived" className="cursor-pointer text-sm text-muted-foreground">
           Show archived
         </Label>
-      </div> */}
+      </div>
     </div>
   )
 }

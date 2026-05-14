@@ -1,13 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Plus } from "lucide-react"
+import { AlertCircle, RefreshCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
 import {
   getCourses,
   getArchivedCourses,
   archiveCourse,
+  unarchiveCourse,
+  deleteCourse,
+  duplicateCourse,
   type Course,
 } from "@/lib/services/courses"
 import { CourseCard } from "@/components/common/course-card"
@@ -17,30 +20,30 @@ import {
   CourseSearch,
   type SortOption,
 } from "@/components/common/course-search"
-import { ArchiveCourseDialog } from "@/components/common/archive-course-dialog"
 import { CourseEmpty } from "@/components/common/course-empty"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
 
 export default function CoursesPage() {
   const [courses, setCourses] = React.useState<Course[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState(false)
   const [view, setView] = React.useState<"grid" | "table">("grid")
   const [search, setSearch] = React.useState("")
   const [sort, setSort] = React.useState<SortOption>("newest")
   const [showArchived, setShowArchived] = React.useState(false)
-  const [archiveTarget, setArchiveTarget] = React.useState<Course | null>(null)
   const [courseDialogOpen, setCourseDialogOpen] = React.useState(false)
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null)
 
   async function fetchCourses() {
     setLoading(true)
+    setError(false)
     try {
       const data = showArchived
         ? await getArchivedCourses()
         : await getCourses()
       setCourses(data)
     } catch {
-      toast.error("Failed to load courses")
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -85,14 +88,63 @@ export default function CoursesPage() {
     return result
   }, [courses, search, sort])
 
-  async function handleArchive(course: Course) {
+  async function handleDelete(course: Course) {
     try {
-      await archiveCourse(course._id)
-      toast.success(`${course.name} archived`)
-      setArchiveTarget(null)
+      await deleteCourse(course._id)
+      toast.success(`${course.name} deleted`)
       fetchCourses()
     } catch {
-      toast.error("Failed to archive course")
+      toast.error("Failed to delete course")
+    }
+  }
+
+  async function handleBulkArchive(courseIds: string[]) {
+    try {
+      await Promise.all(courseIds.map((id) => archiveCourse(id)))
+      toast.success(`${courseIds.length} courses archived`)
+      fetchCourses()
+    } catch {
+      toast.error("Failed to archive some courses")
+    }
+  }
+
+  async function handleBulkUnarchive(courseIds: string[]) {
+    try {
+      await Promise.all(courseIds.map((id) => unarchiveCourse(id)))
+      toast.success(`${courseIds.length} courses unarchived`)
+      fetchCourses()
+    } catch {
+      toast.error("Failed to unarchive some courses")
+    }
+  }
+
+  async function handleBulkDelete(courseIds: string[]) {
+    try {
+      await Promise.all(courseIds.map((id) => deleteCourse(id)))
+      toast.success(`${courseIds.length} courses deleted`)
+      fetchCourses()
+    } catch {
+      toast.error("Failed to delete some courses")
+    }
+  }
+
+  async function handleDuplicate(course: Course) {
+    try {
+      await duplicateCourse(course._id)
+      toast.success(`${course.name} duplicated`)
+      fetchCourses()
+    } catch {
+      toast.error("Failed to duplicate course")
+    }
+  }
+
+  async function handleUnarchive(course: Course) {
+    try {
+      await unarchiveCourse(course._id)
+      toast.success(`${course.name} unarchived`)
+      fetchCourses()
+    } catch {
+      toast.error("Failed to unarchive course")
     }
   }
 
@@ -119,6 +171,24 @@ export default function CoursesPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-20">
+        <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+          <AlertCircle className="size-6 text-destructive" />
+        </div>
+        <div className="text-center">
+          <p className="font-medium text-foreground">Failed to load courses</p>
+          <p className="mt-1 text-sm text-muted-foreground">Something went wrong. Please try again.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchCourses}>
+          <RefreshCw className="mr-2 size-4" />
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -126,10 +196,6 @@ export default function CoursesPage() {
         {courses.length > 0 && (
           <div className="flex items-center gap-3">
             <ViewToggle value={view} onChange={setView} />
-            {/* <Button onClick={() => setCourseDialogOpen(true)} className="gap-2">
-              <Plus className="size-4" />
-              New Course
-            </Button> */}
           </div>
         )}
       </div>
@@ -153,27 +219,27 @@ export default function CoursesPage() {
             <CourseCard
               key={course._id}
               course={course}
-              onArchive={setArchiveTarget}
               onEdit={handleEdit}
+              showArchived={showArchived}
+              onUnarchive={handleUnarchive}
+              onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
             />
           ))}
         </div>
       ) : (
         <CoursesDataTable
           data={filtered}
-          onArchive={setArchiveTarget}
           onEdit={handleEdit}
+          showArchived={showArchived}
+          onUnarchive={handleUnarchive}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
+          onBulkArchive={handleBulkArchive}
+          onBulkUnarchive={handleBulkUnarchive}
+          onBulkDelete={handleBulkDelete}
         />
       )}
-
-      <ArchiveCourseDialog
-        course={archiveTarget}
-        open={!!archiveTarget}
-        onOpenChange={(open) => {
-          if (!open) setArchiveTarget(null)
-        }}
-        onConfirm={handleArchive}
-      />
 
       <NewCourseDialog
         open={courseDialogOpen}

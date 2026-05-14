@@ -22,7 +22,6 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
 import {
   getCourseById,
-  archiveCourse,
   type Course,
 } from "@/lib/services/courses"
 import { timeAgo } from "@/lib/utils/time"
@@ -35,6 +34,9 @@ import { StudentsDataTable } from "@/components/data-table/students-data-table"
 import { FileManager } from "@/components/common/file-manager"
 import { SectionsManager } from "@/components/sections-manager"
 import { InviteStudentDialog } from "@/components/invite-student-dialog"
+import { Announcements } from "@/components/common/announcements"
+import { ModulesManager } from "@/components/modules-manager"
+import { CourseSettings } from "@/components/common/course-settings"
 
 export default function CourseDetailPage() {
   const params = useParams()
@@ -58,29 +60,23 @@ export default function CourseDetailPage() {
     router.replace(`/courses/${params.id}?tab=${tab}`, { scroll: false })
   }
 
-  React.useEffect(() => {
-    async function load() {
-      try {
-        const data = await getCourseById(params.id as string)
-        setCourse(data)
-      } catch {
-        toast.error("Course not found")
-      } finally {
-        setLoading(false)
-      }
+  const refreshCourse = React.useCallback(async () => {
+    try {
+      const data = await getCourseById(params.id as string)
+      setCourse(data)
+    } catch {
+      toast.error("Course not found")
     }
-    load()
   }, [params.id])
 
-  async function handleArchive() {
-    if (!course) return
-    try {
-      await archiveCourse(course._id)
-      toast.success("Course archived")
-    } catch {
-      toast.error("Failed to archive")
+  React.useEffect(() => {
+    async function load() {
+      setLoading(true)
+      await refreshCourse()
+      setLoading(false)
     }
-  }
+    load()
+  }, [refreshCourse])
 
   const { setOpen } = useSidebar()
   React.useEffect(() => {
@@ -244,9 +240,7 @@ export default function CourseDetailPage() {
         {/* Tab content */}
         <div>
           {activeTab === "announcements" && (
-            <p className="text-sm text-muted-foreground">
-              Announcements coming soon.
-            </p>
+            <Announcements courseId={course._id} />
           )}
           {activeTab === "sections" && (
             <SectionsManager
@@ -275,12 +269,13 @@ export default function CourseDetailPage() {
             <FileManager courseId={course._id} courseName={course.name} />
           )}
           {activeTab === "modules" && (
-            <p className="text-sm text-muted-foreground">
-              Modules coming soon.
-            </p>
+            <ModulesManager courseId={course._id} />
           )}
           {activeTab === "wiki" && (
             <p className="text-sm text-muted-foreground">Wiki coming soon.</p>
+          )}
+          {activeTab === "settings" && (
+            <CourseSettings course={course} onUpdated={refreshCourse} />
           )}
         </div>
       </div>

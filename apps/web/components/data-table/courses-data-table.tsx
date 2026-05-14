@@ -10,11 +10,13 @@ import {
   getFilteredRowModel,
   type ColumnDef,
   type SortingState,
+  type RowSelectionState,
 } from "@tanstack/react-table"
-import { EllipsisVertical, Archive, GraduationCap } from "lucide-react"
+import { EllipsisVertical, GraduationCap, RotateCcw, Copy, Trash2, Archive, Check } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { Checkbox } from "@workspace/ui/components/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,15 +30,46 @@ import { timeAgo } from "@/lib/utils/time"
 
 interface CoursesDataTableProps {
   data: Course[]
-  onArchive: (course: Course) => void
   onEdit: (course: Course) => void
+  showArchived?: boolean
+  onUnarchive?: (course: Course) => void
+  onDelete?: (course: Course) => void
+  onDuplicate?: (course: Course) => void
+  onBulkArchive?: (courseIds: string[]) => void
+  onBulkUnarchive?: (courseIds: string[]) => void
+  onBulkDelete?: (courseIds: string[]) => void
 }
 
-export function CoursesDataTable({ data, onArchive, onEdit }: CoursesDataTableProps) {
+export function CoursesDataTable({ data, onEdit, showArchived, onUnarchive, onDelete, onDuplicate, onBulkArchive, onBulkUnarchive, onBulkDelete }: CoursesDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "createdAt", desc: true }])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+
+  const selectedIds = React.useMemo(
+    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
+    [rowSelection]
+  )
 
   const columns = React.useMemo<ColumnDef<Course>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
       {
         id: "name",
         accessorKey: "name",
@@ -127,32 +160,90 @@ export function CoursesDataTable({ data, onArchive, onEdit }: CoursesDataTablePr
                   <EllipsisVertical className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
-                <DropdownMenuItem onClick={() => onEdit(course)}>Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onArchive(course)}>
-                  <Archive className="mr-2 size-4" />
-                  Archive
+              <DropdownMenuContent align="end" className="w-40">
+                {showArchived ? (
+                  <DropdownMenuItem onClick={() => onUnarchive?.(course)}>
+                    <RotateCcw className="mr-2 size-4" />
+                    Unarchive
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onEdit(course)}>Edit</DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => onDuplicate?.(course)}>
+                  <Copy className="mr-2 size-4" />
+                  Duplicate
                 </DropdownMenuItem>
+                {showArchived && (
+                  <DropdownMenuItem
+                    onClick={() => onDelete?.(course)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )
         },
       },
     ],
-    [onArchive, onEdit]
+    [onEdit, showArchived, onUnarchive, onDelete, onDuplicate]
   )
 
   const table = useReactTable({
     data,
     columns,
-    state: { sorting },
+    state: { sorting, rowSelection },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row._id,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
     initialState: { pagination: { pageSize: 10 } },
   })
 
-  return <DataTable table={table} />
+  const actionBar = selectedIds.length > 0 && (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/80 px-3 py-2 backdrop-blur-sm">
+      <span className="text-xs font-medium text-muted-foreground">
+        {selectedIds.length} selected
+      </span>
+      <div className="ml-auto flex items-center gap-1.5">
+        {showArchived ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkUnarchive?.(selectedIds)}
+            >
+              <RotateCcw className="mr-1.5 size-3.5" />
+              Unarchive
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => onBulkDelete?.(selectedIds)}
+            >
+              <Trash2 className="mr-1.5 size-3.5" />
+              Delete
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkArchive?.(selectedIds)}
+          >
+            <Archive className="mr-1.5 size-3.5" />
+            Archive
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+
+  return <DataTable table={table} actionBar={actionBar} />
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BookOpen, EllipsisVertical, GraduationCap, Users, FileText, Archive } from "lucide-react"
+import { BookOpen, EllipsisVertical, GraduationCap, Users, FileText, Archive, RotateCcw, Copy, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,11 +16,14 @@ import { timeAgo } from "@/lib/utils/time"
 
 interface CourseCardProps {
   course: Course
-  onArchive: (course: Course) => void
   onEdit: (course: Course) => void
+  showArchived?: boolean
+  onUnarchive?: (course: Course) => void
+  onDelete?: (course: Course) => void
+  onDuplicate?: (course: Course) => void
 }
 
-export function CourseCard({ course, onArchive, onEdit }: CourseCardProps) {
+export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete, onDuplicate }: CourseCardProps) {
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:shadow-md">
       <Link href={`/courses/${course._id}`} className="block">
@@ -57,14 +60,30 @@ export function CourseCard({ course, onArchive, onEdit }: CourseCardProps) {
                 <EllipsisVertical className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36">
-              <DropdownMenuItem onClick={() => onEdit(course)}>
-                Edit
+              <DropdownMenuContent align="end" className="w-40">
+              {showArchived ? (
+                <DropdownMenuItem onClick={() => onUnarchive?.(course)}>
+                  <RotateCcw className="mr-2 size-4" />
+                  Unarchive
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => onEdit(course)}>
+                  Edit
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => onDuplicate?.(course)}>
+                <Copy className="mr-2 size-4" />
+                Duplicate
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onArchive(course)}>
-                <Archive className="mr-2 size-4" />
-                Archive
-              </DropdownMenuItem>
+              {showArchived && (
+                <DropdownMenuItem
+                  onClick={() => onDelete?.(course)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

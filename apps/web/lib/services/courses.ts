@@ -76,3 +76,8 @@ export const unarchiveCourse = async (id: string): Promise<Course> => {
   const response = await client.patch(`/courses/${id}/unarchive`)
   return response.data
 }
+
+export const duplicateCourse = async (id: string): Promise<Course> => {
+  const response = await client.post(`/courses/${id}/duplicate`)
+  return response.data
+}

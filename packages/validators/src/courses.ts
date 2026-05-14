@@ -1,5 +1,17 @@
 import { z } from "zod"
 
+export const createCourseSchema = z.object({
+  name: z.string().min(1, "Course name is required").max(200),
+  code: z.string().min(1, "Course code is required").max(20),
+  description: z.string().max(400).optional(),
+  semester: z.enum(["1st", "2nd", "summer"], { required_error: "Semester is required" }),
+  cover: z.string().optional(),
+  icon: z.string().optional(),
+  syllabus: z.string().optional(),
+})
+
+export const updateCourseSchema = createCourseSchema.partial()
+
 export const createSectionSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   name: z.string().min(1, "Section name is required").max(100),
@@ -36,6 +48,19 @@ export const moveFileSchema = z.object({
 export const moveToRootSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   folder: z.enum(["materials", "activities", "submissions"]),
+})
+
+export const createAnnouncementSchema = z.object({
+  courseId: z.string().min(1, "courseId is required"),
+  title: z.string().min(1, "Title is required").max(200),
+  content: z.string().min(1, "Content is required"),
+  isPinned: z.boolean().optional(),
+})
+
+export const updateAnnouncementSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200).optional(),
+  content: z.string().min(1, "Content is required").optional(),
+  isPinned: z.boolean().optional(),
 })
 
 export const ensureCourseFoldersSchema = z.object({

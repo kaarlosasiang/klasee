@@ -35,6 +35,7 @@ import {
 } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
 import { useNewCourseStore } from "@/lib/store/new-course.store"
+import { createCourseSchema } from "@workspace/validators"
 import client from "@/lib/config/axios"
 import {
   uploadToCloudinary,
@@ -593,7 +594,7 @@ export function NewCourseDialog({
       setError(null)
     }
     if (!open) {
-      // Reset step position on close
+      reset()
       setStep(1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -630,10 +631,15 @@ export function NewCourseDialog({
   }
 
   async function handlePublish() {
-    if (!step1.title || !step1.code || !step1.semester) {
-      setError(
-        "Course title, code, and semester are required. Please go back to Step 1."
-      )
+    const parsed = createCourseSchema.safeParse({
+      name: step1.title,
+      code: step1.code,
+      semester: step1.semester,
+      description: step1.description || undefined,
+    })
+
+    if (!parsed.success) {
+      setError(parsed.error.errors[0]?.message ?? "Please fill in required fields.")
       return
     }
 
@@ -650,46 +656,39 @@ export function NewCourseDialog({
       if (step1.syllabusFile)
         syllabusUrl = await uploadDocumentToCloudinary(step1.syllabusFile)
 
-      if (isEditMode && course) {
-        // Edit mode — PUT the course, skip section creation
-        await client.put(`/courses/${course._id}`, {
-          name: step1.title,
-          code: step1.code,
-          description: step1.description || undefined,
-          semester: step1.semester,
-          ...(coverUrl ? { cover: coverUrl } : {}),
-          ...(iconUrl ? { icon: iconUrl } : {}),
-          ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),
-        })
-      } else {
-        // Create mode — POST course + sections
-        const courseRes = await client.post<{ _id: string }>("/courses", {
-          name: step1.title,
-          code: step1.code,
-          description: step1.description || undefined,
-          semester: step1.semester,
-          ...(coverUrl ? { cover: coverUrl } : {}),
-          ...(iconUrl ? { icon: iconUrl } : {}),
-          ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),
-        })
-
-        const courseId = courseRes.data._id
-
-        for (const section of sections) {
-          await client.post("/sections", {
-            courseId,
-            name: section.name,
-            schedule: section.schedule || undefined,
-            room: section.room || undefined,
-            maxStudents: section.maxStudents,
-          })
-        }
+      const body = {
+        name: parsed.data.name,
+        code: parsed.data.code,
+        semester: parsed.data.semester,
+        description: parsed.data.description,
+        ...(coverUrl ? { cover: coverUrl } : {}),
+        ...(iconUrl ? { icon: iconUrl } : {}),
+        ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),
       }
 
-      if (!isEditMode) reset()
+      if (isEditMode && course) {
+        await client.put(`/courses/${course._id}`, body)
+      } else {
+        const courseRes = await client.post<{ _id: string }>("/courses", body)
+        const courseId = courseRes.data._id
+
+        await Promise.all(
+          sections.map((section) =>
+            client.post("/sections", {
+              courseId,
+              name: section.name,
+              schedule: section.schedule || undefined,
+              room: section.room || undefined,
+              maxStudents: section.maxStudents,
+            })
+          )
+        )
+      }
+
+      reset()
       setStep(1)
       onOpenChange(false)
-      if (!isEditMode) onCreated?.()
+      onCreated?.()
     } catch (err: unknown) {
       setError(
         err instanceof Error
