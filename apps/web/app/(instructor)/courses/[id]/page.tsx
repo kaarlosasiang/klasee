@@ -32,6 +32,7 @@ import {
   type Enrollment,
 } from "@/lib/services/enrollments"
 import { StudentsDataTable } from "@/components/data-table/students-data-table"
+import { StudentDetailSheet } from "@/components/student-detail-sheet"
 import { FileManager } from "@/components/common/file-manager"
 import { SectionsManager } from "@/components/sections-manager"
 import { InviteStudentDialog } from "@/components/invite-student-dialog"
@@ -47,6 +48,7 @@ export default function CourseDetailPage() {
   const [enrollmentsLoading, setEnrollmentsLoading] = React.useState(false)
   const [enrollmentsError, setEnrollmentsError] = React.useState(false)
   const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false)
+  const [selectedEnrollment, setSelectedEnrollment] = React.useState<Enrollment | null>(null)
 
   React.useEffect(() => {
     const tab = searchParams?.get("tab")
@@ -268,6 +270,7 @@ export default function CourseDetailPage() {
               <StudentsDataTable
                 data={enrollments}
                 onDrop={() => fetchEnrollments(course._id)}
+                onRowClick={setSelectedEnrollment}
               />
             )
           )}
@@ -290,6 +293,14 @@ export default function CourseDetailPage() {
         onOpenChange={setInviteDialogOpen}
         courseId={course._id}
         onCreated={() => {}}
+      />
+
+      <StudentDetailSheet
+        open={!!selectedEnrollment}
+        onOpenChange={(open) => { if (!open) setSelectedEnrollment(null) }}
+        enrollment={selectedEnrollment}
+        enrollments={enrollments}
+        onNavigate={setSelectedEnrollment}
       />
     </div>
   )

@@ -38,6 +38,7 @@ import { toast } from "sonner"
 interface StudentsDataTableProps {
   data: Enrollment[]
   onDrop?: (enrollmentId: string) => void
+  onRowClick?: (enrollment: Enrollment) => void
 }
 
 const statusStyles: Record<string, string> = {
@@ -52,7 +53,7 @@ const statusOptions = [
   { label: "Completed", value: "completed" },
 ]
 
-export function StudentsDataTable({ data, onDrop }: StudentsDataTableProps) {
+export function StudentsDataTable({ data, onDrop, onRowClick }: StudentsDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "createdAt", desc: true }])
   const [globalFilter, setGlobalFilter] = React.useState<GlobalFilterTableState["globalFilter"]>("")
   const [dropping, setDropping] = React.useState<string | null>(null)
@@ -157,7 +158,7 @@ export function StudentsDataTable({ data, onDrop }: StudentsDataTableProps) {
               size="icon-sm"
               className="text-destructive hover:text-destructive"
               disabled={dropping === enrollment._id}
-              onClick={() => setDropConfirm(enrollment)}
+              onClick={(e) => { e.stopPropagation(); setDropConfirm(enrollment) }}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -198,7 +199,7 @@ export function StudentsDataTable({ data, onDrop }: StudentsDataTableProps) {
 
   return (
     <>
-      <DataTable table={table}>
+      <DataTable table={table} onRowClick={onRowClick}>
         <div className="flex items-center justify-between gap-4">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
