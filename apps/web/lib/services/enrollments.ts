@@ -36,3 +36,8 @@ export const dropEnrollment = async (id: string): Promise<Enrollment> => {
   const response = await client.delete(`/enrollments/${id}`)
   return response.data
 }
+
+export const getAllEnrollments = async (): Promise<Enrollment[]> => {
+  const response = await client.get("/enrollments")
+  return response.data
+}
