@@ -18,6 +18,11 @@ export interface Section {
   updatedAt: string
 }
 
+export const getSectionById = async (id: string): Promise<Section> => {
+  const response = await client.get(`/sections/${id}`)
+  return response.data
+}
+
 export const getSections = async (): Promise<Section[]> => {
   const response = await client.get("/sections")
   return response.data

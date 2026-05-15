@@ -41,3 +41,12 @@ export const getAllEnrollments = async (): Promise<Enrollment[]> => {
   const response = await client.get("/enrollments")
   return response.data
 }
+
+export const getEnrollmentsByStudent = async (
+  studentId: string
+): Promise<Enrollment[]> => {
+  const response = await client.get("/enrollments", {
+    params: { studentId },
+  })
+  return response.data
+}
