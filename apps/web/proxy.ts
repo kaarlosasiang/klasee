@@ -10,7 +10,7 @@ const PUBLIC_PATHS = [
 const AUTH_PATHS = ["/login", "/signup"]
 
 const INSTRUCTOR_PATHS = ["/dashboard", "/courses"]
-const STUDENT_PATHS = ["/my-dashboard", "/my-courses"]
+const STUDENT_PATHS = ["/my-dashboard", "/my-courses", "/my-assessments", "/my-attendance"]
 
 const ROLE_REDIRECTS: Record<string, string> = {
   instructor: "/dashboard",

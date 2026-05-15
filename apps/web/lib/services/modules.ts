@@ -25,9 +25,9 @@ export interface UpdateModuleInput {
   isPublished?: boolean
 }
 
-export const getModules = async (courseId: string): Promise<Module[]> => {
+export const getModules = async (courseId: string, published?: boolean): Promise<Module[]> => {
   const response = await client.get("/modules", {
-    params: { courseId },
+    params: { courseId, ...(published !== undefined ? { published: String(published) } : {}) },
   })
   return response.data
 }

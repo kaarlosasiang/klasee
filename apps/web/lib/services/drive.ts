@@ -18,6 +18,7 @@ export interface CourseFile {
   driveFileId?: string | null
   driveParentFolderId?: string | null
   cloudinaryUrl?: string | null
+  isPublished?: boolean
   uploadedBy: { _id: string; name: string; email: string }
   folder: "materials" | "activities" | "submissions"
   createdAt: string
@@ -48,10 +49,11 @@ export const setupCourseFolders = async (
 export const getCourseFiles = async (
   courseId: string,
   folder?: string,
-  parentId?: string
+  parentId?: string,
+  published?: boolean
 ): Promise<CourseFile[]> => {
   const response = await client.get("/drive/files", {
-    params: { courseId, folder, parentId },
+    params: { courseId, folder, parentId, ...(published !== undefined ? { published: String(published) } : {}) },
   })
   return response.data
 }
@@ -144,4 +146,11 @@ export const moveCourseFileToRoot = async (
 
 export const disconnectDrive = async (): Promise<void> => {
   await client.post("/drive/disconnect")
+}
+
+export const togglePublishFile = async (
+  fileId: string
+): Promise<CourseFile> => {
+  const response = await client.patch(`/drive/files/${fileId}/publish`)
+  return response.data
 }

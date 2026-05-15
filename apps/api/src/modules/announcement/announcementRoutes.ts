@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express"
-import { requireAuth } from "../../shared/middleware/auth.middleware.js"
+import { requireAuth, requireRole } from "../../shared/middleware/auth.middleware.js"
 import { announcementController } from "./announcementController.js"
 
 const router: IRouter = Router()
 
 router.get("/", requireAuth, announcementController.list)
-router.post("/", requireAuth, announcementController.create)
-router.put("/:id", requireAuth, announcementController.update)
-router.delete("/:id", requireAuth, announcementController.remove)
+router.post("/", requireAuth, requireRole("instructor", "admin"), announcementController.create)
+router.put("/:id", requireAuth, requireRole("instructor", "admin"), announcementController.update)
+router.delete("/:id", requireAuth, requireRole("instructor", "admin"), announcementController.remove)
 
 export default router

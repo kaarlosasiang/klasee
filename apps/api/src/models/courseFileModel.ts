@@ -16,6 +16,7 @@ const courseFileSchema = new mongoose.Schema(
       default: "drive",
     },
     isFolder: { type: Boolean, default: false },
+    isPublished: { type: Boolean, default: false },
     parentFileId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CourseFile",

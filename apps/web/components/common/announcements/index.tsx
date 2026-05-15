@@ -38,12 +38,17 @@ import {
   type Announcement,
 } from "@/lib/services/announcements"
 import { timeAgo } from "@/lib/utils/time"
+import { useSession } from "@/lib/config/auth-client"
 
 interface AnnouncementsProps {
   courseId: string
 }
 
 export function Announcements({ courseId }: AnnouncementsProps) {
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string })?.role
+  const canManage = role === "instructor" || role === "admin"
+
   const [announcements, setAnnouncements] = React.useState<Announcement[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(false)
@@ -196,7 +201,7 @@ export function Announcements({ courseId }: AnnouncementsProps) {
   return (
     <div className="space-y-4">
       {/* Create button */}
-      {!creating && (
+      {canManage && !creating && (
         <Button variant="outline" size="sm" onClick={startCreate}>
           <Plus className="mr-2 size-4" />
           New Announcement
@@ -204,7 +209,7 @@ export function Announcements({ courseId }: AnnouncementsProps) {
       )}
 
       {/* Create form */}
-      {creating && (
+      {canManage && creating && (
         <div className="rounded-xl border border-border bg-muted/30 p-4">
           <Input
             value={title}
@@ -244,16 +249,18 @@ export function Announcements({ courseId }: AnnouncementsProps) {
 
       {/* List */}
       {sorted.length === 0 && !creating ? (
-        <div className="flex flex-col items-center gap-3 py-12">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-            <Megaphone className="size-6 text-muted-foreground" />
+          <div className="flex flex-col items-center gap-3 py-12">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+              <Megaphone className="size-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">No announcements yet</p>
+            {canManage && (
+              <Button variant="outline" size="sm" onClick={startCreate}>
+                <Plus className="mr-2 size-4" />
+                Create your first announcement
+              </Button>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">No announcements yet</p>
-          <Button variant="outline" size="sm" onClick={startCreate}>
-            <Plus className="mr-2 size-4" />
-            Create your first announcement
-          </Button>
-        </div>
       ) : (
         <div className="space-y-3">
           {sorted.map((announcement) => (
@@ -332,37 +339,38 @@ export function Announcements({ courseId }: AnnouncementsProps) {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleTogglePin(announcement)}
-                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title={announcement.isPinned ? "Unpin" : "Pin"}
-                      >
-                        {announcement.isPinned ? (
-                          <PinOff className="size-3.5" />
-                        ) : (
-                          <Pin className="size-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => startEdit(announcement)}
-                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="Edit"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-                            title="Delete"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </AlertDialogTrigger>
+                    {canManage && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePin(announcement)}
+                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          title={announcement.isPinned ? "Unpin" : "Pin"}
+                        >
+                          {announcement.isPinned ? (
+                            <PinOff className="size-3.5" />
+                          ) : (
+                            <Pin className="size-3.5" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(announcement)}
+                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          title="Edit"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogMedia>
@@ -389,6 +397,7 @@ export function Announcements({ courseId }: AnnouncementsProps) {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+                  )}
                   </div>
                 </div>
               )}

@@ -272,10 +272,12 @@ export const driveService = {
     userId: string | undefined,
     courseId: string,
     folder?: string,
-    parentId?: string
+    parentId?: string,
+    publishedOnly?: boolean
   ) {
     const filter: Record<string, unknown> = { courseId }
     if (folder) filter.folder = folder
+    if (publishedOnly) filter.isPublished = true
 
     if (parentId === "root") {
       filter.parentFileId = null
@@ -487,6 +489,16 @@ export const driveService = {
     }
 
     courseFile.name = newName
+    await courseFile.save()
+    return courseFile.toObject()
+  },
+
+  async togglePublish(userId: string, dbFileId: string) {
+    const courseFile = await CourseFile.findById(dbFileId)
+    if (!courseFile) {
+      throw Object.assign(new Error("File not found"), { status: 404 })
+    }
+    courseFile.isPublished = !courseFile.isPublished
     await courseFile.save()
     return courseFile.toObject()
   },

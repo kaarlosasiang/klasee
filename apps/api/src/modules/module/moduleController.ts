@@ -5,11 +5,13 @@ import { Module } from "../../models/moduleModel.js"
 export const moduleController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { courseId } = req.query as { courseId?: string }
+      const { courseId, published } = req.query as { courseId?: string; published?: string }
       if (!courseId) {
         return res.status(400).json({ message: "courseId query param is required" })
       }
-      const modules = await moduleService.findByCourse(courseId)
+      const filter: Record<string, unknown> = { courseId }
+      if (published === "true") filter.isPublished = true
+      const modules = await moduleService.findByCourse(courseId, filter)
       res.json(modules)
     } catch (err) {
       next(err)

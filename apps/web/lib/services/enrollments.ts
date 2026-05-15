@@ -50,3 +50,8 @@ export const getEnrollmentsByStudent = async (
   })
   return response.data
 }
+
+export const joinByCode = async (code: string): Promise<Enrollment> => {
+  const response = await client.post("/enrollments/join", { code })
+  return response.data
+}

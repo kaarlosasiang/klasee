@@ -6,10 +6,7 @@ import { MongoClient } from "mongodb"
 import { constants } from "../../config/index.js"
 import { emailOTP } from "better-auth/plugins"
 // import { forgetPassword } from "better-auth/plugins"
-import {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-} from "../../shared/services/email.js"
+import { sendVerificationEmail } from "../../shared/services/email.js"
 
 const client = new MongoClient(constants.mongodbUri!, {
   maxPoolSize: 5,

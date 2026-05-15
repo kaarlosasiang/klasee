@@ -113,10 +113,11 @@ export const driveController = {
 
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { courseId, folder, parentId } = req.query as {
+      const { courseId, folder, parentId, published } = req.query as {
         courseId: string
         folder?: string
         parentId?: string
+        published?: string
       }
       if (!courseId) {
         return res.status(400).json({ message: "courseId is required" })
@@ -125,7 +126,8 @@ export const driveController = {
         getUserId(req),
         courseId,
         folder,
-        parentId
+        parentId,
+        published === "true"
       )
       res.json(files)
     } catch (err) {
@@ -233,6 +235,17 @@ export const driveController = {
       const userId = getUserId(req)
       const { id } = req.params as { id: string }
       const result = await driveService.renameFile(userId, id, parsed.data.name)
+      res.json(result)
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async togglePublish(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = getUserId(req)
+      const { id } = req.params as { id: string }
+      const result = await driveService.togglePublish(userId, id)
       res.json(result)
     } catch (err) {
       next(err)

@@ -1,8 +1,8 @@
 import { Module } from "../../models/moduleModel.js"
 
 export const moduleService = {
-  async findByCourse(courseId: string) {
-    return Module.find({ courseId }).sort({ order: 1, createdAt: 1 }).lean()
+  async findByCourse(courseId: string, filter: Record<string, unknown> = {}) {
+    return Module.find({ courseId, ...filter }).sort({ order: 1, createdAt: 1 }).lean()
   },
 
   async findById(id: string) {

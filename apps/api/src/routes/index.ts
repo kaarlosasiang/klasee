@@ -15,7 +15,7 @@ import sectionRoutes from "../modules/section/sectionRoutes.js"
 export default (app: Application): void => {
   const API_PREFIX = "/api/v1"
 
-  app.all(`/api/auth/*splat`, toNodeHandler(auth))
+  app.all(/^\/api\/auth(?:\/.*)?$/, toNodeHandler(auth))
 
   // API routes
   app.use(`${API_PREFIX}/announcements`, announcementRoutes)

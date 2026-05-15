@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import {
+  Eye,
+  EyeOff,
   File,
   FileText,
   Folder,
@@ -61,6 +63,8 @@ import {
   type CourseFile,
 } from "@/lib/services/drive"
 import { FilePreviewDialog } from "../file-preview-dialog"
+import { useSession } from "@/lib/config/auth-client"
+import { togglePublishFile } from "@/lib/services/drive"
 import { timeAgo } from "@/lib/utils/time"
 
 const FOLDER_TABS = [
@@ -123,6 +127,7 @@ const DRAGGED_FILE_KEY = "courseFileId"
 
 function FileCard({
   file,
+  canManage,
   onDeleteRequest,
   onRenamed,
   onPreview,
@@ -131,6 +136,7 @@ function FileCard({
   movingFile,
 }: {
   file: CourseFile
+  canManage: boolean
   onDeleteRequest: (file: CourseFile) => void
   onRenamed: () => void
   onPreview: (file: CourseFile) => void
@@ -315,7 +321,14 @@ function FileCard({
             </div>
           ) : (
             <>
-              <p className="truncate text-sm font-medium">{file.name}</p>
+              <p className="truncate text-sm font-medium">
+                {file.name}
+                {file.isPublished === false && (
+                  <Badge variant="outline" className="ml-2 rounded-sm text-[10px] font-normal text-muted-foreground align-middle">
+                    Draft
+                  </Badge>
+                )}
+              </p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {!file.isFolder && (
                   <>
@@ -354,30 +367,57 @@ function FileCard({
             <Download className="size-3.5" />
           </Button>
         )}
-        <Button
-          variant="secondary"
-          size="icon-sm"
-          className="size-7 bg-background/80 backdrop-blur-sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            setNewName(file.name)
-            setNameError("")
-            setRenaming(true)
-          }}
-        >
-          <Pencil className="size-3.5" />
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon-sm"
-          className="size-7 bg-background/80 text-destructive backdrop-blur-sm hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDeleteRequest(file)
-          }}
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
+        {canManage && (
+          <Button
+            variant="secondary"
+            size="icon-sm"
+            className="size-7 bg-background/80 backdrop-blur-sm"
+            onClick={async (e) => {
+              e.stopPropagation()
+              try {
+                await togglePublishFile(file._id)
+                toast.success(file.isPublished ? "File unpublished" : "File published")
+                onRenamed()
+              } catch {
+                toast.error("Failed to update file")
+              }
+            }}
+          >
+            {file.isPublished ? (
+              <EyeOff className="size-3.5" />
+            ) : (
+              <Eye className="size-3.5" />
+            )}
+          </Button>
+        )}
+        {canManage && (
+          <Button
+            variant="secondary"
+            size="icon-sm"
+            className="size-7 bg-background/80 backdrop-blur-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              setNewName(file.name)
+              setNameError("")
+              setRenaming(true)
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        )}
+        {canManage && (
+          <Button
+            variant="secondary"
+            size="icon-sm"
+            className="size-7 bg-background/80 text-destructive backdrop-blur-sm hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteRequest(file)
+            }}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -401,6 +441,7 @@ function smallFileIcon(mime: string) {
 
 function FileRow({
   file,
+  canManage,
   onDeleteRequest,
   onRenamed,
   onPreview,
@@ -409,6 +450,7 @@ function FileRow({
   movingFile,
 }: {
   file: CourseFile
+  canManage: boolean
   onDeleteRequest: (file: CourseFile) => void
   onRenamed: () => void
   onPreview: (file: CourseFile) => void
@@ -583,7 +625,14 @@ function FileRow({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium">{file.name}</span>
+              <span className="truncate text-sm font-medium">
+                {file.name}
+                {file.isPublished === false && (
+                  <Badge variant="outline" className="ml-2 rounded-sm text-[10px] font-normal text-muted-foreground align-middle">
+                    Draft
+                  </Badge>
+                )}
+              </span>
               <Badge
                 variant="secondary"
                 className="shrink-0 rounded-full text-[10px] font-normal"
@@ -615,25 +664,50 @@ function FileRow({
             <Download className="size-4" />
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => {
-            setNewName(file.name)
-            setNameError("")
-            setRenaming(true)
-          }}
-        >
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => onDeleteRequest(file)}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="size-4" />
-        </Button>
+        {canManage && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={async () => {
+              try {
+                await togglePublishFile(file._id)
+                toast.success(file.isPublished ? "File unpublished" : "File published")
+                onRenamed()
+              } catch {
+                toast.error("Failed to update file")
+              }
+            }}
+          >
+            {file.isPublished ? (
+              <EyeOff className="size-4" />
+            ) : (
+              <Eye className="size-4" />
+            )}
+          </Button>
+        )}
+        {canManage && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              setNewName(file.name)
+              setNameError("")
+              setRenaming(true)
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+        )}
+        {canManage && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onDeleteRequest(file)}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -645,6 +719,10 @@ interface FileManagerProps {
 }
 
 export function FileManager({ courseId, courseName }: FileManagerProps) {
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string })?.role
+  const canManage = role === "instructor" || role === "admin"
+
   const [driveStatus, setDriveStatus] = React.useState<DriveStatus | null>(null)
   const [statusLoading, setStatusLoading] = React.useState(true)
   const [activeFolder, setActiveFolder] =
@@ -1048,6 +1126,7 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                 <FileCard
                   key={file._id}
                   file={file}
+                  canManage={canManage}
                   onDeleteRequest={setDeleteConfirm}
                   onRenamed={fetchFiles}
                   onPreview={setPreviewFile}
@@ -1063,6 +1142,7 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
                 <FileRow
                   key={file._id}
                   file={file}
+                  canManage={canManage}
                   onDeleteRequest={setDeleteConfirm}
                   onRenamed={fetchFiles}
                   onPreview={setPreviewFile}
