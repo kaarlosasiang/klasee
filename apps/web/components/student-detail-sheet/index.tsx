@@ -3,10 +3,7 @@
 import * as React from "react"
 import { Badge } from "@workspace/ui/components/badge"
 import { ScrollArea } from "@workspace/ui/components/scroll-area"
-import {
-  Sheet,
-  SheetContent,
-} from "@workspace/ui/components/sheet"
+import { Sheet, SheetContent } from "@workspace/ui/components/sheet"
 import {
   Tabs,
   TabsContent,
@@ -50,15 +47,20 @@ export function StudentDetailSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="w-[480px] sm:max-w-[480px] gap-0 p-0 flex flex-col"
+        className="flex min-w-[500px] flex-col gap-0 p-0 sm:max-w-[600px]"
       >
         {enrollment && (
           <StudentDetailHeader
             enrollment={enrollment}
             hasPrev={currentIndex > 0}
             hasNext={currentIndex < enrollments.length - 1}
-            onPrev={() => onNavigate(enrollments[currentIndex - 1])}
-            onNext={() => onNavigate(enrollments[currentIndex + 1])}
+            onPrev={() =>
+              currentIndex > 0 && onNavigate(enrollments[currentIndex - 1]!)
+            }
+            onNext={() =>
+              currentIndex < enrollments.length - 1 &&
+              onNavigate(enrollments[currentIndex + 1]!)
+            }
           />
         )}
 
@@ -69,28 +71,34 @@ export function StudentDetailSheet({
         >
           <TabsList
             variant="line"
-            className="h-auto border-b px-4 w-full justify-start rounded-none py-0 gap-0"
+            className="h-auto w-full justify-start gap-0 rounded-none border-b px-4 py-0"
           >
-            <TabsTrigger value="activity" className="py-2.5 px-3">
+            <TabsTrigger value="activity" className="px-3 py-2.5">
               Activity
             </TabsTrigger>
-            <TabsTrigger value="assigned" className="py-2.5 px-3 gap-1.5">
+            <TabsTrigger value="assigned" className="gap-1.5 px-3 py-2.5">
               Assigned
               {assignedCount > 0 && (
-                <Badge variant="secondary" className="size-4 p-0 text-[10px] justify-center">
+                <Badge
+                  variant="secondary"
+                  className="size-4 justify-center p-0 text-[10px]"
+                >
                   {assignedCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="needs-review" className="py-2.5 px-3 gap-1.5">
+            <TabsTrigger value="needs-review" className="gap-1.5 px-3 py-2.5">
               Need to review
               {needsReviewCount > 0 && (
-                <Badge variant="secondary" className="size-4 p-0 text-[10px] justify-center">
+                <Badge
+                  variant="secondary"
+                  className="size-4 justify-center p-0 text-[10px]"
+                >
                   {needsReviewCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="progress" className="py-2.5 px-3">
+            <TabsTrigger value="progress" className="px-3 py-2.5">
               Progress
             </TabsTrigger>
           </TabsList>
