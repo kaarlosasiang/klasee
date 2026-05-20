@@ -12,6 +12,7 @@ import {
   Megaphone,
   Folder,
   Layers,
+  ClipboardList,
   Book,
   Cog,
 } from "lucide-react"
@@ -20,10 +21,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
-import {
-  getCourseById,
-  type Course,
-} from "@/lib/services/courses"
+import { getCourseById, type Course } from "@/lib/services/courses"
 import { timeAgo } from "@/lib/utils/time"
 import { useSidebar } from "@workspace/ui/components/sidebar"
 import {
@@ -37,6 +35,7 @@ import { SectionsManager } from "@/components/sections-manager"
 import { InviteStudentDialog } from "@/components/invite-student-dialog"
 import { Announcements } from "@/components/common/announcements"
 import { ModulesManager } from "@/components/modules-manager"
+import { AssessmentsManager } from "@/components/assessments-manager"
 import { CourseSettings } from "@/components/common/course-settings"
 
 export default function CourseDetailPage() {
@@ -50,7 +49,8 @@ export default function CourseDetailPage() {
   const [enrollmentsLoading, setEnrollmentsLoading] = React.useState(false)
   const [enrollmentsError, setEnrollmentsError] = React.useState(false)
   const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false)
-  const [selectedEnrollment, setSelectedEnrollment] = React.useState<Enrollment | null>(null)
+  const [selectedEnrollment, setSelectedEnrollment] =
+    React.useState<Enrollment | null>(null)
 
   React.useEffect(() => {
     const tab = searchParams?.get("tab")
@@ -124,15 +124,16 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="relative flex h-full gap-4">
       {/* Sidebar */}
-      <nav className="-ml-3 flex w-48 shrink-0 flex-col self-stretch border-r border-border py-2">
+      <nav className="-ml-4 flex w-48 shrink-0 flex-col space-y-1 self-stretch border-r border-border">
         {[
           { id: "announcements", label: "Announcements", icon: Megaphone },
           { id: "sections", label: "Sections", icon: BookOpen },
           { id: "students", label: "Students", icon: Users },
           { id: "files", label: "Files", icon: Folder },
           { id: "modules", label: "Modules", icon: Layers },
+          { id: "assessments", label: "Quizzes & Assignments", icon: ClipboardList },
           { id: "wiki", label: "Wiki", icon: Book },
           { id: "settings", label: "Settings", icon: Cog },
         ].map((item) => (
@@ -142,8 +143,8 @@ export default function CourseDetailPage() {
             onClick={() => handleTabChange(item.id)}
             className={`flex cursor-pointer items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors ${
               activeTab === item.id
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                ? "border-l-3 border-primary/90 bg-primary/10 font-medium text-primary"
+                : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
             }`}
           >
             <item.icon className="size-4 shrink-0" />
@@ -165,13 +166,13 @@ export default function CourseDetailPage() {
         </div>
 
         <div className="relative overflow-hidden rounded-2xl border border-border bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 p-5 dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30">
-          {course.cover && (
+          {/* {course.cover && (
             <img
               src={course.cover}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover blur-out-xs brightness-90"
             />
-          )}
+          )} */}
           <div className="relative z-10 flex items-start gap-4">
             <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-500 text-white shadow-md">
               {course.icon ? (
@@ -215,7 +216,7 @@ export default function CourseDetailPage() {
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <FileText className="size-3.5" />
                   {course.assessmentCount}{" "}
-                  {course.assessmentCount === 1 ? "Assessment" : "Assessments"}
+                  Quiz & Assign.
                 </span>
               </div>
               {course.description && (
@@ -250,13 +251,19 @@ export default function CourseDetailPage() {
               onInvite={() => setInviteDialogOpen(true)}
             />
           )}
-          {activeTab === "students" && (
-            enrollmentsLoading ? (
+          {activeTab === "students" &&
+            (enrollmentsLoading ? (
               <Skeleton className="h-64 w-full rounded-xl" />
             ) : enrollmentsError ? (
               <div className="flex flex-col items-center gap-3 py-12">
-                <p className="text-sm text-muted-foreground">Failed to load students</p>
-                <Button variant="outline" size="sm" onClick={() => fetchEnrollments(course._id)}>
+                <p className="text-sm text-muted-foreground">
+                  Failed to load students
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchEnrollments(course._id)}
+                >
                   Retry
                 </Button>
               </div>
@@ -266,14 +273,12 @@ export default function CourseDetailPage() {
                 onDrop={() => fetchEnrollments(course._id)}
                 onRowClick={setSelectedEnrollment}
               />
-            )
-          )}
+            ))}
           {activeTab === "files" && (
             <FileManager courseId={course._id} courseName={course.name} />
           )}
-          {activeTab === "modules" && (
-            <ModulesManager courseId={course._id} />
-          )}
+          {activeTab === "modules" && <ModulesManager courseId={course._id} />}
+          {activeTab === "assessments" && <AssessmentsManager courseId={course._id} />}
           {activeTab === "wiki" && (
             <p className="text-sm text-muted-foreground">Wiki coming soon.</p>
           )}
@@ -292,7 +297,9 @@ export default function CourseDetailPage() {
 
       <StudentDetailSheet
         open={!!selectedEnrollment}
-        onOpenChange={(open) => { if (!open) setSelectedEnrollment(null) }}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEnrollment(null)
+        }}
         enrollment={selectedEnrollment}
         enrollments={enrollments}
         onNavigate={setSelectedEnrollment}

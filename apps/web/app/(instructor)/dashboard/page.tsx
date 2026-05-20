@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { BookOpen, Users, FileText, GraduationCap } from "lucide-react"
+import { GraduationCap } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { getCourses, type Course } from "@/lib/services/courses"
 import { CourseCard } from "@/components/common/course-card"
 import Link from "next/link"
+import { LmsTipCard } from "@/components/lms-tip-card"
+import { useSession } from "@/lib/config/auth-client"
 
 export default function InstructorDashboardPage() {
   const [courses, setCourses] = React.useState<Course[]>([])
@@ -26,18 +27,31 @@ export default function InstructorDashboardPage() {
     load()
   }, [])
 
-  const totalStudents = courses.reduce((sum, c) => sum + c.enrolledCount, 0)
-  const totalAssessments = courses.reduce((sum, c) => sum + c.assessmentCount, 0)
+  const { data: session } = useSession()
+  const [now, setNow] = React.useState(() => new Date())
+
+  React.useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  const dateLabel = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).toUpperCase()
+
+  const hour = now.getHours()
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+  const firstName = session?.user?.name?.split(" ")[0] || "there"
 
   if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full rounded-xl" />
-          ))}
-        </div>
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-8 w-32" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-40 w-full rounded-xl" />
@@ -49,46 +63,14 @@ export default function InstructorDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Courses
-            </CardTitle>
-            <BookOpen className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{courses.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Enrolled Students
-            </CardTitle>
-            <Users className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalStudents}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Assessments
-            </CardTitle>
-            <FileText className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalAssessments}</p>
-          </CardContent>
-        </Card>
+      <div>
+        <span className="text-sm font-medium text-zinc-500">{dateLabel}</span>
+        <h1 className="text-2xl font-bold text-zinc-800">{greeting}, {firstName}!</h1>
+        <LmsTipCard
+          title="Stay Consistent with Your Learning"
+          description="Dedicating just 30 minutes daily to your courses is more effective than cramming. Small, consistent efforts compound into significant progress over time."
+        />
       </div>
-
       <div>
         <h2 className="mb-4 text-lg font-semibold">Recent Courses</h2>
         {courses.length === 0 ? (

@@ -17,11 +17,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   courses: "Courses",
   sections: "Sections",
   students: "Students",
-  assessments: "Assessments",
-  attendance: "Attendance",
-  "my-dashboard": "Dashboard",
-  "my-courses": "My Courses",
-  "my-assessments": "Assessments",
+  assessments: "Quizzes & Assignments",
+
+  "my-assessments": "Quizzes & Assignments",
   "my-attendance": "Attendance",
 }
 

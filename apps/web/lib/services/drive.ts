@@ -50,10 +50,11 @@ export const getCourseFiles = async (
   courseId: string,
   folder?: string,
   parentId?: string,
-  published?: boolean
+  published?: boolean,
+  uploadedBy?: string
 ): Promise<CourseFile[]> => {
   const response = await client.get("/drive/files", {
-    params: { courseId, folder, parentId, ...(published !== undefined ? { published: String(published) } : {}) },
+    params: { courseId, folder, parentId, ...(published !== undefined ? { published: String(published) } : {}), uploadedBy },
   })
   return response.data
 }
@@ -141,6 +142,17 @@ export const moveCourseFileToRoot = async (
     courseId,
     folder,
   })
+  return response.data
+}
+
+export const studentUploadFile = async (
+  courseId: string,
+  file: File
+): Promise<CourseFile> => {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("courseId", courseId)
+  const response = await client.post("/drive/upload/student", formData)
   return response.data
 }
 

@@ -6,6 +6,8 @@ import { Student } from "./models/studentModel.js"
 import { Section } from "./models/sectionModel.js"
 import { Course } from "./models/courseModel.js"
 import { Enrollment } from "./models/enrollmentModel.js"
+import { Assessment } from "./models/assessmentModel.js"
+import { AssessmentScore } from "./models/assessmentScore.js"
 
 const STUDENT_EMAIL = "test.student@klasee.com"
 const STUDENT_NAME = "Test Student"
@@ -81,6 +83,68 @@ async function seed() {
     console.log(`Enrolled ${user.name} in "${section.name}"`)
   } else {
     console.log(`${user.name} is already enrolled in "${section.name}"`)
+  }
+
+  // 5. Seed assessments
+  const pastDate = (daysAgo: number) =>
+    new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().split("T")[0]!
+  const futureDate = (daysFromNow: number) =>
+    new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString().split("T")[0]!
+
+  const assessmentData = [
+    { title: "Midterm Quiz", type: "quiz" as const, totalPoints: 50, dueDate: pastDate(14) },
+    { title: "Prelim Exam", type: "exam" as const, totalPoints: 100, dueDate: pastDate(7) },
+    { title: "Final Project", type: "assignment" as const, totalPoints: 200, dueDate: futureDate(14) },
+  ]
+
+  const createdAssessments: mongoose.FlattenMaps<unknown>[] = []
+
+  for (const data of assessmentData) {
+    let assessment = await Assessment.findOne({
+      courseId: course._id,
+      title: data.title,
+    }).lean()
+
+    if (!assessment) {
+      assessment = await Assessment.create({
+        courseId: course._id,
+        ...data,
+      })
+      console.log(`Created assessment: "${data.title}" (${data.totalPoints} pts)`)
+    } else {
+      console.log(`Assessment already exists: "${data.title}"`)
+    }
+    createdAssessments.push(assessment)
+  }
+
+  // 6. Seed scores (for past-due assessments)
+  const scoreData = [
+    { title: "Midterm Quiz", score: 42, feedback: "Good effort, review module 3 on data structures." },
+    { title: "Prelim Exam", score: 85, feedback: "Solid performance. Watch time management in the essay section." },
+  ]
+
+  for (const data of scoreData) {
+    const assessment = createdAssessments.find(
+      (a: any) => a.title === data.title
+    )
+    if (!assessment) continue
+
+    const existingScore = await AssessmentScore.findOne({
+      assessmentId: assessment._id,
+      studentId: user._id,
+    }).lean()
+
+    if (!existingScore) {
+      await AssessmentScore.create({
+        assessmentId: assessment._id,
+        studentId: user._id,
+        score: data.score,
+        feedback: data.feedback,
+      })
+      console.log(`Scored ${user.name}: ${data.title} = ${data.score}/${(assessment as any).totalPoints}`)
+    } else {
+      console.log(`${user.name} already scored on "${data.title}"`)
+    }
   }
 
   console.log("\nSeed complete!")

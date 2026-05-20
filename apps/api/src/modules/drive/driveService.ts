@@ -273,11 +273,13 @@ export const driveService = {
     courseId: string,
     folder?: string,
     parentId?: string,
-    publishedOnly?: boolean
+    publishedOnly?: boolean,
+    uploadedBy?: string
   ) {
     const filter: Record<string, unknown> = { courseId }
     if (folder) filter.folder = folder
     if (publishedOnly) filter.isPublished = true
+    if (uploadedBy) filter.uploadedBy = toObjectId(uploadedBy)
 
     if (parentId === "root") {
       filter.parentFileId = null
@@ -491,6 +493,35 @@ export const driveService = {
     courseFile.name = newName
     await courseFile.save()
     return courseFile.toObject()
+  },
+
+  async studentUpload(
+    userId: string,
+    courseId: string,
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string
+  ) {
+    const tabFolderIds = await getDb()
+      .collection("course_folder_ids")
+      .findOne({ courseId })
+    const submissionsDriveId = tabFolderIds?.submissions as string | undefined
+    if (!submissionsDriveId) {
+      throw Object.assign(new Error("Course submissions folder not set up. Ensure course folders first."), {
+        status: 400,
+      })
+    }
+
+    return this.uploadFile(
+      userId,
+      courseId,
+      fileBuffer,
+      fileName,
+      mimeType,
+      submissionsDriveId,
+      "submissions",
+      userId
+    )
   },
 
   async togglePublish(userId: string, dbFileId: string) {

@@ -106,7 +106,7 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
           </span>
           <span className="flex items-center gap-1">
             <FileText className="size-3.5" />
-            {course.assessmentCount} {course.assessmentCount === 1 ? "Assessment" : "Assessments"}
+            {course.assessmentCount} Quiz & Assign.
           </span>
         </div>
 

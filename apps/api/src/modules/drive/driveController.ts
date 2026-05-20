@@ -3,6 +3,7 @@ import { driveService } from "./driveService.js"
 import {
   createFolderSchema,
   uploadFileSchema,
+  studentUploadFileSchema,
   renameFileSchema,
   moveFileSchema,
   moveToRootSchema,
@@ -113,11 +114,12 @@ export const driveController = {
 
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { courseId, folder, parentId, published } = req.query as {
+      const { courseId, folder, parentId, published, uploadedBy } = req.query as {
         courseId: string
         folder?: string
         parentId?: string
         published?: string
+        uploadedBy?: string
       }
       if (!courseId) {
         return res.status(400).json({ message: "courseId is required" })
@@ -127,7 +129,8 @@ export const driveController = {
         courseId,
         folder,
         parentId,
-        published === "true"
+        published === "true",
+        uploadedBy
       )
       res.json(files)
     } catch (err) {
@@ -208,6 +211,36 @@ export const driveController = {
       const { courseId, folder } = parsed.data
       const result = await driveService.moveFileToRoot(userId, id, courseId, folder)
       res.json(result)
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async studentUpload(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = getUserId(req)
+      const file = req.file
+      if (!file) {
+        return res.status(400).json({ message: "No file provided" })
+      }
+
+      const parsed = studentUploadFileSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
+
+      const { courseId } = parsed.data
+      const result = await driveService.studentUpload(
+        userId,
+        courseId,
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      )
+      res.status(201).json(result)
     } catch (err) {
       next(err)
     }

@@ -4,12 +4,16 @@ import { Application } from "express"
 import { auth } from "../modules/auth/better-auth.js"
 import announcementRoutes from "../modules/announcement/announcementRoutes.js"
 import assessmentRoutes from "../modules/assessment/assessmentRoutes.js"
+import assignmentSubmissionRoutes from "../modules/assignment-submission/assignmentSubmissionRoutes.js"
 import attendanceRoutes from "../modules/attendance/attendanceRoutes.js"
 import courseRoutes from "../modules/course/courseRoutes.js"
 import driveRoutes from "../modules/drive/driveRoutes.js"
 import enrollmentRoutes from "../modules/enrollment/enrollmentRoutes.js"
 import invitationRoutes from "../modules/invitation/invitationRoutes.js"
+import lessonRoutes from "../modules/lesson/lessonRoutes.js"
 import moduleRoutes from "../modules/module/moduleRoutes.js"
+import questionRoutes from "../modules/question/questionRoutes.js"
+import quizAttemptRoutes from "../modules/quiz-attempt/quizAttemptRoutes.js"
 import sectionRoutes from "../modules/section/sectionRoutes.js"
 
 export default (app: Application): void => {
@@ -27,4 +31,8 @@ export default (app: Application): void => {
   app.use(`${API_PREFIX}/invitations`, invitationRoutes)
   app.use(`${API_PREFIX}/attendance`, attendanceRoutes)
   app.use(`${API_PREFIX}/assessments`, assessmentRoutes)
+  app.use(`${API_PREFIX}/assignment-submissions`, assignmentSubmissionRoutes)
+  app.use(`${API_PREFIX}/lessons`, lessonRoutes)
+  app.use(`${API_PREFIX}/questions`, questionRoutes)
+  app.use(`${API_PREFIX}/quiz-attempts`, quizAttemptRoutes)
 }

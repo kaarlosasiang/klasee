@@ -247,6 +247,7 @@ export default function CoursesPage() {
         course={editingCourse ?? undefined}
         onCreated={handleCreated}
       />
+
     </div>
   )
 }

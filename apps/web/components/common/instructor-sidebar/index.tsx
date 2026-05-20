@@ -61,6 +61,7 @@ const instructorNav = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Courses", url: "/courses", icon: BookOpen },
   { title: "Students", url: "/students", icon: Users },
+  { title: "Schedules", url: "/schedules", icon: CalendarDays },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Grades", url: "/grades", icon: ClipboardList },
 ]
@@ -68,7 +69,7 @@ const instructorNav = [
 const studentNav = [
   { title: "Dashboard", url: "/my-dashboard", icon: Home },
   { title: "My Courses", url: "/my-courses", icon: BookOpen },
-  { title: "Assessments", url: "/my-assessments", icon: ClipboardList },
+  { title: "Quizzes & Assignments", url: "/my-assessments", icon: ClipboardList },
   { title: "Attendance", url: "/my-attendance", icon: CalendarCheck },
 ]
 

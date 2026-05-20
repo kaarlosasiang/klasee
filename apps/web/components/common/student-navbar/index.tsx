@@ -40,7 +40,7 @@ import { JoinCourseDialog } from "@/components/join-course-dialog"
 const NAV_LINKS = [
   { label: "Dashboard", href: "/my-dashboard", icon: Home },
   { label: "Courses", href: "/my-courses", icon: BookOpen },
-  { label: "Assessments", href: "/my-assessments", icon: ClipboardList },
+  { label: "Quizzes & Assignments", href: "/my-assessments", icon: ClipboardList },
   { label: "Attendance", href: "/my-attendance", icon: CalendarCheck },
 ]
 

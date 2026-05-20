@@ -15,6 +15,7 @@ import {
   Eye,
   File,
   Loader2,
+  PenLine,
 } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Badge } from "@workspace/ui/components/badge"
@@ -30,6 +31,7 @@ import {
   type CourseFile,
 } from "@/lib/services/drive"
 import { Announcements } from "@/components/common/announcements"
+import { getAssessments, type Assessment } from "@/lib/services/assessments"
 import Link from "next/link"
 
 const FILE_ICONS: Record<string, React.ElementType> = {
@@ -94,21 +96,24 @@ export default function StudentCourseDetailPage() {
   const [modules, setModules] = React.useState<Module[]>([])
   const [materials, setMaterials] = React.useState<CourseFile[]>([])
   const [activities, setActivities] = React.useState<CourseFile[]>([])
+  const [assessments, setAssessments] = React.useState<Assessment[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
     async function load() {
       try {
-        const [courseData, modulesData, materialsData, activitiesData] = await Promise.all([
+        const [courseData, modulesData, materialsData, activitiesData, assessmentsData] = await Promise.all([
           getCourseById(params.id as string),
           getModules(params.id as string, true),
           getCourseFiles(params.id as string, "materials", undefined, true),
           getCourseFiles(params.id as string, "activities", undefined, true),
+          getAssessments(params.id as string),
         ])
         setCourse(courseData)
         setModules(modulesData)
         setMaterials(materialsData)
         setActivities(activitiesData)
+        setAssessments(assessmentsData)
       } catch {
         toast.error("Failed to load course data")
       } finally {
@@ -196,6 +201,15 @@ export default function StudentCourseDetailPage() {
             )}
           </div>
         </div>
+        <div className="mt-3 flex gap-2">
+          <Link
+            href={`/my-courses/${params.id}/grades`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            <GraduationCap className="size-3.5" />
+            View Grades
+          </Link>
+        </div>
       </div>
 
       {modules.length > 0 && (
@@ -263,6 +277,79 @@ export default function StudentCourseDetailPage() {
         </h2>
         <Announcements courseId={course._id} />
       </div>
+
+      {assessments.filter((a) => a.type === "quiz" || a.type === "exam").length > 0 && (
+        <div>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <FileText className="size-5" />
+            Quizzes & Exams
+          </h2>
+          <div className="space-y-2">
+            {assessments
+              .filter((a) => a.type === "quiz" || a.type === "exam")
+              .map((assessment) => (
+                <Link
+                  key={assessment._id}
+                  href={`/my-courses/${params.id}/quizzes/${assessment._id}`}
+                  className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/30"
+                >
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FileText className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{assessment.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {assessment.totalPoints} pts &middot;{" "}
+                      {assessment.type === "quiz" ? "Quiz" : "Exam"}
+                      {assessment.dueDate && (
+                        <> &middot; Due {new Date(assessment.dueDate).toLocaleDateString()}</>
+                      )}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Take Quiz
+                  </Button>
+                </Link>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {assessments.filter((a) => a.type === "assignment").length > 0 && (
+        <div>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <PenLine className="size-5" />
+            Assignments
+          </h2>
+          <div className="space-y-2">
+            {assessments
+              .filter((a) => a.type === "assignment")
+              .map((assessment) => (
+                <Link
+                  key={assessment._id}
+                  href={`/my-courses/${params.id}/assignments/${assessment._id}`}
+                  className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/30"
+                >
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                    <PenLine className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{assessment.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {assessment.totalPoints} pts
+                      {assessment.dueDate && (
+                        <> &middot; Due {new Date(assessment.dueDate).toLocaleDateString()}</>
+                      )}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Submit
+                  </Button>
+                </Link>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

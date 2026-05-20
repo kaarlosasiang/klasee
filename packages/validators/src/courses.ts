@@ -63,6 +63,10 @@ export const updateAnnouncementSchema = z.object({
   isPinned: z.boolean().optional(),
 })
 
+export const studentUploadFileSchema = z.object({
+  courseId: z.string().min(1, "courseId is required"),
+})
+
 export const ensureCourseFoldersSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   courseName: z.string().min(1, "courseName is required"),

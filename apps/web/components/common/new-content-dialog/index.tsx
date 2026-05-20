@@ -155,9 +155,13 @@ function ContentTypeCard({
 export function NewContentDialog({
   children,
   onCreateCourse,
+  onCreateQuiz,
+  onCreateAssignment,
 }: {
   children: React.ReactNode
   onCreateCourse?: () => void
+  onCreateQuiz?: () => void
+  onCreateAssignment?: () => void
 }) {
   const [open, setOpen] = React.useState(false)
 
@@ -165,6 +169,10 @@ export function NewContentDialog({
     setOpen(false)
     if (id === "course" && onCreateCourse) {
       onCreateCourse()
+    } else if (id === "quiz" && onCreateQuiz) {
+      onCreateQuiz()
+    } else if (id === "assignment" && onCreateAssignment) {
+      onCreateAssignment()
     }
   }
 

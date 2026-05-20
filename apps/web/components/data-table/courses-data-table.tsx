@@ -131,7 +131,7 @@ export function CoursesDataTable({ data, onEdit, showArchived, onUnarchive, onDe
       {
         id: "assessmentCount",
         accessorKey: "assessmentCount",
-        header: ({ column }) => <DataTableColumnHeader column={column} label="Assessments" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} label="Quizzes & Assign." />,
         cell: ({ row }) => (
           <div className="text-center">{row.getValue("assessmentCount")}</div>
         ),
