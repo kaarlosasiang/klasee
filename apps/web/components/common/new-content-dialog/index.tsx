@@ -10,6 +10,7 @@ import {
   Route,
   Sparkles,
 } from "lucide-react"
+import { useRouter, useParams } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   Dialog,
@@ -20,6 +21,8 @@ import {
 } from "@workspace/ui/components/dialog"
 import { cn } from "@workspace/ui/lib/utils"
 import { Separator } from "@workspace/ui/components/separator"
+import { toast } from "sonner"
+import { createAssessment } from "@/lib/services/assessments"
 
 type ContentTypeItem = {
   id: string
@@ -164,16 +167,50 @@ export function NewContentDialog({
   onCreateAssignment?: () => void
 }) {
   const [open, setOpen] = React.useState(false)
+  const router = useRouter()
+  const params = useParams()
+  const courseId = params?.id as string | undefined
 
-  function handleClick(id: string) {
-    setOpen(false)
-    if (id === "course" && onCreateCourse) {
-      onCreateCourse()
-    } else if (id === "quiz" && onCreateQuiz) {
-      onCreateQuiz()
-    } else if (id === "assignment" && onCreateAssignment) {
-      onCreateAssignment()
+  async function handleClick(id: string) {
+    if (id === "course") {
+      setOpen(false)
+      onCreateCourse?.()
+      return
     }
+
+    if (id === "quiz") {
+      if (onCreateQuiz) {
+        setOpen(false)
+        onCreateQuiz()
+        return
+      }
+      if (!courseId) {
+        toast.error("Please open a course first to create a quiz")
+        setOpen(false)
+        return
+      }
+      setOpen(false)
+      try {
+        const assessment = await createAssessment({
+          courseId,
+          title: "Untitled Quiz",
+          type: "quiz",
+          totalPoints: 0,
+        })
+        router.push(`/courses/${courseId}/quiz/${assessment._id}`)
+      } catch {
+        toast.error("Failed to create quiz")
+      }
+      return
+    }
+
+    if (id === "assignment") {
+      setOpen(false)
+      onCreateAssignment?.()
+      return
+    }
+
+    setOpen(false)
   }
 
   return (

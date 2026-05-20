@@ -127,7 +127,7 @@ export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
       payload.correctAnswer = qCorrectAnswer.trim()
     }
 
-    return payload as Parameters<typeof createQuestion>[0]
+    return payload as unknown as Parameters<typeof createQuestion>[0]
   }
 
   async function handleCreate() {
