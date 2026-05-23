@@ -34,6 +34,8 @@ import {
   type Assessment,
   type AssessmentScore,
 } from "@/lib/services/assessments"
+import { type QuizAttempt } from "@/lib/services/quiz-attempts"
+import { type Question } from "@/lib/services/questions"
 import { cn } from "@workspace/ui/lib/utils"
 import { timeAgo } from "@/lib/utils/time"
 
@@ -50,6 +52,8 @@ interface GradingPanelProps {
   submissionFiles: CourseFile[]
   allCourseAssessments: Assessment[]
   allCourseScores: AssessmentScore[]
+  quizAttempts?: QuizAttempt[]
+  questions?: Question[]
   onBack: () => void
 }
 
@@ -84,6 +88,8 @@ export function GradingPanel({
   submissionFiles,
   allCourseAssessments,
   allCourseScores,
+  quizAttempts = [],
+  questions = [],
   onBack,
 }: GradingPanelProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0)
@@ -117,6 +123,18 @@ export function GradingPanel({
       ),
     [submissionFiles, currentStudent]
   )
+
+  const currentAttempt = React.useMemo(
+    () =>
+      quizAttempts.find(
+        (a) =>
+          (typeof a.userId === "string" ? a.userId : a.userId._id) === currentStudent?._id &&
+          a.status === "completed"
+      ),
+    [quizAttempts, currentStudent]
+  )
+
+  const isQuizType = assessment.type === "quiz" || assessment.type === "exam"
 
   const assessmentMap = React.useMemo(
     () => new Map(allCourseAssessments.map((a) => [a._id, a])),
@@ -284,50 +302,107 @@ export function GradingPanel({
 
       {/* Split Panel */}
       <div className="flex flex-1 gap-4 overflow-hidden">
-        {/* Left: File Preview (3/4 of content) */}
+        {/* Left: Quiz answers (quiz/exam) or File Preview (assignment) */}
         <div className="flex w-3/4 shrink-0 flex-col gap-3 rounded-xl border border-border bg-card">
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
-            {selectedFile ? (
-              previewContent
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <File className="size-10" />
-                <p className="text-sm">Select a file to preview</p>
-              </div>
-            )}
-          </div>
-          {studentFiles.length > 0 && (
-            <div className="border-t border-border p-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Submissions ({studentFiles.length})
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {studentFiles.map((file) => (
-                  <button
-                    key={file._id}
-                    type="button"
-                    onClick={() => setSelectedFile(file)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors",
-                      selectedFile?._id === file._id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {fileTypeIcon(file.mimeType)}
-                    <span className="max-w-[120px] truncate">{file.name}</span>
-                    <span className="shrink-0 text-[10px] text-muted-foreground/60">
-                      {timeAgo(file.createdAt)}
-                    </span>
-                  </button>
-                ))}
-              </div>
+          {isQuizType ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+              {currentAttempt ? (
+                <div className="space-y-3 p-4">
+                  {questions.map((q, i) => {
+                    const ans = currentAttempt.answers.find((a) => a.questionId === q._id)
+                    const answerText =
+                      q.type === "multiple_choice" && typeof ans?.answer === "number" && q.options
+                        ? q.options[ans.answer as number]?.text ?? String(ans.answer)
+                        : q.type === "true_false"
+                          ? ans?.answer === true ? "True" : ans?.answer === false ? "False" : "—"
+                          : ans?.answer != null
+                            ? String(ans.answer)
+                            : "—"
+
+                    return (
+                      <div key={q._id} className="rounded-lg border border-border bg-muted/30 p-3">
+                        <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium">Q{i + 1}</span>
+                          <span>{q.points} pt{q.points !== 1 ? "s" : ""}</span>
+                          <Badge variant="outline" className="rounded-full text-[10px] font-normal">
+                            {q.type === "multiple_choice" ? "MC" : q.type === "true_false" ? "T/F" : q.type === "essay" ? "Essay" : "Fill-in"}
+                          </Badge>
+                          {ans && ans.isCorrect !== null && (
+                            <span className={`ml-auto font-medium ${ans.isCorrect ? "text-green-600" : "text-red-500"}`}>
+                              {ans.isCorrect ? `+${ans.pointsEarned}` : "✗"} / {q.points}
+                            </span>
+                          )}
+                          {ans && ans.isCorrect === null && (
+                            <span className="ml-auto text-[10px] text-amber-600">Needs grading</span>
+                          )}
+                        </div>
+                        <p className="mb-2 text-xs font-medium text-foreground">{q.question}</p>
+                        {q.type === "essay" ? (
+                          <div className="rounded-md border-l-2 border-primary/30 bg-background pl-3 py-2 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
+                            {answerText || <span className="text-muted-foreground italic">No answer provided</span>}
+                          </div>
+                        ) : (
+                          <p className="rounded-md bg-background px-2 py-1.5 text-xs text-foreground">
+                            {answerText}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <FileText className="size-10" />
+                  <p className="text-sm">No completed attempt for this student</p>
+                </div>
+              )}
             </div>
-          )}
-          {studentFiles.length === 0 && (
-            <div className="border-t border-border p-3 text-center text-xs text-muted-foreground">
-              No submissions yet
-            </div>
+          ) : (
+            <>
+              <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
+                {selectedFile ? (
+                  previewContent
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <File className="size-10" />
+                    <p className="text-sm">Select a file to preview</p>
+                  </div>
+                )}
+              </div>
+              {studentFiles.length > 0 && (
+                <div className="border-t border-border p-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    Submissions ({studentFiles.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {studentFiles.map((file) => (
+                      <button
+                        key={file._id}
+                        type="button"
+                        onClick={() => setSelectedFile(file)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors",
+                          selectedFile?._id === file._id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {fileTypeIcon(file.mimeType)}
+                        <span className="max-w-[120px] truncate">{file.name}</span>
+                        <span className="shrink-0 text-[10px] text-muted-foreground/60">
+                          {timeAgo(file.createdAt)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {studentFiles.length === 0 && (
+                <div className="border-t border-border p-3 text-center text-xs text-muted-foreground">
+                  No submissions yet
+                </div>
+              )}
+            </>
           )}
         </div>
 
