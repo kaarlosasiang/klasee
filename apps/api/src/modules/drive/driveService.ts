@@ -524,6 +524,35 @@ export const driveService = {
     )
   },
 
+  async uploadLessonFile(
+    userId: string,
+    courseId: string,
+    fileBuffer: Buffer,
+    fileName: string,
+    mimeType: string
+  ) {
+    const tabFolderIds = await getDb()
+      .collection("course_folder_ids")
+      .findOne({ courseId })
+    const materialsDriveId = tabFolderIds?.materials as string | undefined
+    if (!materialsDriveId) {
+      throw Object.assign(
+        new Error("Course materials folder not set up. Open the Files tab to initialize folders."),
+        { status: 400 }
+      )
+    }
+    return this.uploadFile(
+      userId,
+      courseId,
+      fileBuffer,
+      fileName,
+      mimeType,
+      materialsDriveId,
+      "materials",
+      userId
+    )
+  },
+
   async togglePublish(userId: string, dbFileId: string) {
     const courseFile = await CourseFile.findById(dbFileId)
     if (!courseFile) {

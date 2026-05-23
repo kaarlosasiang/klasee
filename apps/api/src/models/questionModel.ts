@@ -26,6 +26,10 @@ const questionSchema = new mongoose.Schema(
     order: { type: Number, default: 0 },
     options: { type: [optionSchema], default: undefined },
     correctAnswer: { type: mongoose.Schema.Types.Mixed }, // string for fill_in, boolean for true_false
+    required: { type: Boolean, default: true },
+    multipleAnswers: { type: Boolean, default: false },
+    randomizeOrder: { type: Boolean, default: false },
+    estimationTime: { type: Number, default: undefined },
   },
   { timestamps: true }
 )

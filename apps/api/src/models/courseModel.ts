@@ -6,6 +6,7 @@ const courseSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     name: { type: String, required: true },
     code: { type: String, required: true, unique: true },
@@ -14,9 +15,11 @@ const courseSchema = new mongoose.Schema(
     cover: { type: String },
     icon: { type: String },
     syllabus: { type: String },
-    isArchived: { type: Boolean, default: false },
+    isArchived: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 )
+
+courseSchema.index({ instructorId: 1, isArchived: 1 })
 
 export const Course = mongoose.model("Course", courseSchema)

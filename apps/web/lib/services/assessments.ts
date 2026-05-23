@@ -7,6 +7,12 @@ export interface Assessment {
   type: "quiz" | "exam" | "assignment"
   totalPoints: number
   dueDate?: string
+  isPublished: boolean
+  timeLimit?: number
+  randomizeQuestions?: boolean
+  instructions?: string
+  allowedFileTypes?: string[]
+  maxFiles?: number
   createdAt: string
   updatedAt: string
 }
@@ -47,6 +53,12 @@ export const createAssessment = async (data: {
   type: "quiz" | "exam" | "assignment"
   totalPoints: number
   dueDate?: string
+  isPublished?: boolean
+  timeLimit?: number
+  randomizeQuestions?: boolean
+  instructions?: string
+  allowedFileTypes?: string[]
+  maxFiles?: number
 }): Promise<Assessment> => {
   const response = await client.post("/assessments", data)
   return response.data
@@ -59,6 +71,12 @@ export const updateAssessment = async (
     type: string
     totalPoints: number
     dueDate: string
+    isPublished: boolean
+    timeLimit: number
+    randomizeQuestions: boolean
+    instructions: string
+    allowedFileTypes: string[]
+    maxFiles: number
   }>
 ): Promise<Assessment> => {
   const response = await client.put(`/assessments/${id}`, data)

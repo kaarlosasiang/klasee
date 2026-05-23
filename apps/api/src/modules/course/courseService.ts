@@ -130,6 +130,40 @@ export const courseService = {
   },
 
   async delete(id: string) {
+    const { Section } = await import("../../models/sectionModel.js")
+    const { Module } = await import("../../models/moduleModel.js")
+    const { Lesson } = await import("../../models/lessonModel.js")
+    const { Assessment } = await import("../../models/assessmentModel.js")
+    const { Question } = await import("../../models/questionModel.js")
+    const { AssessmentScore } = await import("../../models/assessmentScore.js")
+    const { QuizAttempt } = await import("../../models/quizAttemptModel.js")
+    const { Enrollment } = await import("../../models/enrollmentModel.js")
+    const { Announcement } = await import("../../models/announcementModel.js")
+    const { CourseFile } = await import("../../models/courseFileModel.js")
+
+    const [modules, assessments, sections] = await Promise.all([
+      Module.find({ courseId: id }).lean(),
+      Assessment.find({ courseId: id }).lean(),
+      Section.find({ courseId: id }).lean(),
+    ])
+
+    const moduleIds = modules.map((m) => m._id)
+    const assessmentIds = assessments.map((a) => a._id)
+    const sectionIds = sections.map((s) => s._id)
+
+    await Promise.all([
+      Lesson.deleteMany({ moduleId: { $in: moduleIds } }),
+      Module.deleteMany({ courseId: id }),
+      Question.deleteMany({ assessmentId: { $in: assessmentIds } }),
+      QuizAttempt.deleteMany({ assessmentId: { $in: assessmentIds } }),
+      AssessmentScore.deleteMany({ assessmentId: { $in: assessmentIds } }),
+      Assessment.deleteMany({ courseId: id }),
+      Enrollment.deleteMany({ sectionId: { $in: sectionIds } }),
+      Section.deleteMany({ courseId: id }),
+      Announcement.deleteMany({ courseId: id }),
+      CourseFile.deleteMany({ courseId: id }),
+    ])
+
     return Course.findByIdAndDelete(id)
   },
 
@@ -151,5 +185,111 @@ export const courseService = {
       { isArchived: false },
       { new: true }
     ).lean()
+  },
+
+  async duplicate(id: string) {
+    const source = await Course.findById(id).lean()
+    if (!source) return null
+
+    const { Section } = await import("../../models/sectionModel.js")
+    const { Module } = await import("../../models/moduleModel.js")
+    const { Lesson } = await import("../../models/lessonModel.js")
+    const { Assessment } = await import("../../models/assessmentModel.js")
+    const { Question } = await import("../../models/questionModel.js")
+
+    const newCourse = await Course.create({
+      instructorId: source.instructorId,
+      name: `${source.name} (Copy)`,
+      code: `${source.code}-copy`,
+      description: source.description,
+      semester: source.semester,
+      cover: source.cover,
+      icon: source.icon,
+      syllabus: source.syllabus,
+    })
+
+    const newCourseId = newCourse._id
+
+    const [sourceSections, sourceModules, sourceAssessments] = await Promise.all([
+      Section.find({ courseId: id }).lean(),
+      Module.find({ courseId: id }).lean(),
+      Assessment.find({ courseId: id }).lean(),
+    ])
+
+    // Clone sections (without join codes or enrollments)
+    if (sourceSections.length > 0) {
+      await Section.insertMany(
+        sourceSections.map((s) => ({
+          courseId: newCourseId,
+          instructorId: s.instructorId,
+          name: s.name,
+          schedule: s.schedule,
+          room: s.room,
+          maxStudents: s.maxStudents,
+        }))
+      )
+    }
+
+    // Clone modules + their lessons
+    if (sourceModules.length > 0) {
+      for (const mod of sourceModules) {
+        const newMod = await Module.create({
+          courseId: newCourseId,
+          title: mod.title,
+          description: mod.description,
+          order: mod.order,
+          isPublished: false,
+        })
+        const lessons = await Lesson.find({ moduleId: mod._id }).lean()
+        if (lessons.length > 0) {
+          await Lesson.insertMany(
+            lessons.map((l) => ({
+              moduleId: newMod._id,
+              title: l.title,
+              content: l.content,
+              type: l.type,
+              order: l.order,
+              fileId: l.fileId,
+              isPublished: false,
+            }))
+          )
+        }
+      }
+    }
+
+    // Clone assessments + their questions
+    if (sourceAssessments.length > 0) {
+      for (const assessment of sourceAssessments) {
+        const newAssessment = await Assessment.create({
+          courseId: newCourseId,
+          title: assessment.title,
+          type: assessment.type,
+          totalPoints: assessment.totalPoints,
+          dueDate: assessment.dueDate,
+          isPublished: false,
+          timeLimit: assessment.timeLimit,
+          randomizeQuestions: assessment.randomizeQuestions,
+          instructions: assessment.instructions,
+          allowedFileTypes: assessment.allowedFileTypes,
+          maxFiles: assessment.maxFiles,
+        })
+        const questions = await Question.find({ assessmentId: assessment._id }).lean()
+        if (questions.length > 0) {
+          await Question.insertMany(
+            questions.map((q) => ({
+              assessmentId: newAssessment._id,
+              type: q.type,
+              question: q.question,
+              points: q.points,
+              order: q.order,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+            }))
+          )
+        }
+      }
+    }
+
+    return newCourse
   },
 }

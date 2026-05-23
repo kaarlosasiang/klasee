@@ -216,6 +216,30 @@ export const driveController = {
     }
   },
 
+  async uploadLessonFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = getUserId(req)
+      const file = req.file
+      if (!file) {
+        return res.status(400).json({ message: "No file provided" })
+      }
+      const { courseId } = req.body as { courseId?: string }
+      if (!courseId) {
+        return res.status(400).json({ message: "courseId is required" })
+      }
+      const result = await driveService.uploadLessonFile(
+        userId,
+        courseId,
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      )
+      res.status(201).json(result)
+    } catch (err) {
+      next(err)
+    }
+  },
+
   async studentUpload(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = getUserId(req)

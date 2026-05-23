@@ -71,3 +71,21 @@ export const ensureCourseFoldersSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   courseName: z.string().min(1, "courseName is required"),
 })
+
+export const createAssessmentSchema = z.object({
+  courseId: z.string().min(1, "courseId is required"),
+  title: z.string().min(1, "Assessment title is required").max(200),
+  type: z.enum(["quiz", "exam", "assignment"], {
+    required_error: "Assessment type is required",
+  }),
+  totalPoints: z.number().int().min(0, "Total points must be 0 or more"),
+  dueDate: z.string().optional(),
+  isPublished: z.boolean().optional(),
+  timeLimit: z.number().int().min(1).optional(),
+  randomizeQuestions: z.boolean().optional(),
+  instructions: z.string().optional(),
+  allowedFileTypes: z.array(z.string()).optional(),
+  maxFiles: z.number().int().min(1).optional(),
+})
+
+export const updateAssessmentSchema = createAssessmentSchema.omit({ courseId: true }).partial()

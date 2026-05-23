@@ -24,7 +24,7 @@ export interface CreateLessonInput {
   content?: string
   type?: "page" | "video" | "file" | "embed"
   order?: number
-  fileId?: string
+  fileId?: string | null
 }
 
 export interface UpdateLessonInput {
@@ -32,7 +32,7 @@ export interface UpdateLessonInput {
   content?: string
   type?: string
   order?: number
-  fileId?: string
+  fileId?: string | null
   isPublished?: boolean
 }
 
@@ -59,4 +59,9 @@ export const deleteLesson = async (lessonId: string): Promise<void> => {
 
 export const reorderLessons = async (moduleId: string, lessonIds: string[]): Promise<void> => {
   await client.patch("/lessons/reorder", { lessonIds }, { params: { moduleId } })
+}
+
+export const getLessonById = async (lessonId: string): Promise<Lesson> => {
+  const response = await client.get(`/lessons/${lessonId}`)
+  return response.data
 }

@@ -1,12 +1,26 @@
 import { NextFunction, Request, Response } from "express"
 import { assessmentService } from "./assessmentService.js"
+import { Assessment } from "../../models/assessmentModel.js"
+import { Course } from "../../models/courseModel.js"
+import {
+  createAssessmentSchema,
+  updateAssessmentSchema,
+} from "@workspace/validators"
+
+function getRequesterId(req: Request): string {
+  return String((req.authUser as any)?.id)
+}
 
 export const assessmentController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
+      const role = (req.authUser as any)?.role
       const { courseId } = req.query
       const filter: Record<string, unknown> = {}
       if (courseId) filter.courseId = courseId
+      if (role !== "instructor" && role !== "admin") {
+        filter.isPublished = true
+      }
       const assessments = await assessmentService.findAll(filter)
       res.json(assessments)
     } catch (err) {
@@ -16,8 +30,12 @@ export const assessmentController = {
 
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
+      const role = (req.authUser as any)?.role
       const assessment = await assessmentService.findById(req.params['id'] as string)
       if (!assessment) return res.status(404).json({ message: "Assessment not found" })
+      if (role !== "instructor" && role !== "admin" && !assessment.isPublished) {
+        return res.status(403).json({ message: "Forbidden" })
+      }
       res.json(assessment)
     } catch (err) {
       next(err)
@@ -26,7 +44,20 @@ export const assessmentController = {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const assessment = await assessmentService.create(req.body)
+      const parsed = createAssessmentSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
+      const userId = getRequesterId(req)
+      const course = await Course.findById(parsed.data.courseId).lean()
+      if (!course) return res.status(404).json({ message: "Course not found" })
+      if (String(course.instructorId) !== userId) {
+        return res.status(403).json({ message: "Forbidden" })
+      }
+      const assessment = await assessmentService.create(parsed.data)
       res.status(201).json(assessment)
     } catch (err) {
       next(err)
@@ -35,8 +66,21 @@ export const assessmentController = {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const assessment = await assessmentService.update(req.params['id'] as string, req.body)
-      if (!assessment) return res.status(404).json({ message: "Assessment not found" })
+      const parsed = updateAssessmentSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
+      const userId = getRequesterId(req)
+      const existing = await Assessment.findById(req.params["id"] as string).lean()
+      if (!existing) return res.status(404).json({ message: "Assessment not found" })
+      const course = await Course.findById(existing.courseId).lean()
+      if (!course || String(course.instructorId) !== userId) {
+        return res.status(403).json({ message: "Forbidden" })
+      }
+      const assessment = await assessmentService.update(req.params['id'] as string, parsed.data)
       res.json(assessment)
     } catch (err) {
       next(err)
@@ -45,6 +89,13 @@ export const assessmentController = {
 
   async remove(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = getRequesterId(req)
+      const existing = await Assessment.findById(req.params["id"] as string).lean()
+      if (!existing) return res.status(404).json({ message: "Assessment not found" })
+      const course = await Course.findById(existing.courseId).lean()
+      if (!course || String(course.instructorId) !== userId) {
+        return res.status(403).json({ message: "Forbidden" })
+      }
       await assessmentService.delete(req.params['id'] as string)
       res.status(204).send()
     } catch (err) {

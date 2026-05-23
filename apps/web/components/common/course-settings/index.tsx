@@ -10,13 +10,20 @@ import {
   FileText,
   GraduationCap,
   Loader2,
-  ChevronDown,
   Hash,
   Calendar,
+  RefreshCw,
+  Copy,
+  Check,
+  Link,
+  UserPlus,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { Label } from "@workspace/ui/components/label"
 import { Separator } from "@workspace/ui/components/separator"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Badge } from "@workspace/ui/components/badge"
 import {
   Select,
   SelectContent,
@@ -45,6 +52,12 @@ import {
 } from "@/lib/utils/upload"
 import { timeAgo } from "@/lib/utils/time"
 import { useRouter } from "next/navigation"
+import {
+  getSectionsByCourse,
+  generateJoinCode,
+  type Section,
+} from "@/lib/services/sections"
+import { createInvitation, type Invitation } from "@/lib/services/invitations"
 
 interface CourseSettingsProps {
   course: Course
@@ -74,6 +87,24 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
   const [saving, setSaving] = React.useState(false)
   const [archiving, setArchiving] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
+
+  // Student access
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [sectionsLoading, setSectionsLoading] = React.useState(true)
+  const [generatingCodeId, setGeneratingCodeId] = React.useState<string | null>(null)
+  const [copiedCodeId, setCopiedCodeId] = React.useState<string | null>(null)
+  const [inviteSectionId, setInviteSectionId] = React.useState("")
+  const [inviteExpiry, setInviteExpiry] = React.useState("7")
+  const [generatingInvite, setGeneratingInvite] = React.useState(false)
+  const [invitation, setInvitation] = React.useState<Invitation | null>(null)
+  const [copiedInvite, setCopiedInvite] = React.useState(false)
+
+  React.useEffect(() => {
+    getSectionsByCourse(course._id)
+      .then(setSections)
+      .catch(() => {})
+      .finally(() => setSectionsLoading(false))
+  }, [course._id])
 
   const coverInputRef = React.useRef<HTMLInputElement>(null)
   const iconInputRef = React.useRef<HTMLInputElement>(null)
@@ -155,6 +186,55 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
     } finally {
       setDeleting(false)
     }
+  }
+
+  async function handleGenerateCode(section: Section) {
+    setGeneratingCodeId(section._id)
+    try {
+      const updated = await generateJoinCode(section._id)
+      setSections((prev) => prev.map((s) => (s._id === updated._id ? updated : s)))
+      toast.success("Join code generated")
+    } catch {
+      toast.error("Failed to generate code")
+    } finally {
+      setGeneratingCodeId(null)
+    }
+  }
+
+  async function handleCopyCode(section: Section) {
+    if (!section.joinCode) return
+    await navigator.clipboard.writeText(section.joinCode)
+    setCopiedCodeId(section._id)
+    setTimeout(() => setCopiedCodeId(null), 2000)
+    toast.success("Code copied")
+  }
+
+  const inviteUrl = invitation
+    ? `${window.location.origin}/invite?token=${invitation.token}`
+    : ""
+
+  async function handleGenerateInvite() {
+    if (!inviteSectionId) return
+    setGeneratingInvite(true)
+    try {
+      const inv = await createInvitation(
+        course._id,
+        inviteSectionId,
+        inviteExpiry ? parseInt(inviteExpiry) : null
+      )
+      setInvitation(inv)
+    } catch {
+      toast.error("Failed to generate invite link")
+    } finally {
+      setGeneratingInvite(false)
+    }
+  }
+
+  async function handleCopyInvite() {
+    await navigator.clipboard.writeText(inviteUrl)
+    setCopiedInvite(true)
+    setTimeout(() => setCopiedInvite(false), 2000)
+    toast.success("Invite link copied")
   }
 
   return (
@@ -378,6 +458,179 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Status</span>
             <span>{course.isArchived ? "Archived" : "Active"}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Student Access */}
+      <section>
+        <h2 className="mb-4 text-sm font-semibold">Student Access</h2>
+        <div className="space-y-6 rounded-xl border border-border p-5">
+
+          {/* Join Codes */}
+          <div>
+            <div className="mb-3">
+              <p className="text-sm font-medium">Join Codes</p>
+              <p className="text-xs text-muted-foreground">
+                Share a section code so students can join via the student app.
+              </p>
+            </div>
+            {sectionsLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : sections.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No sections yet. Create a section first.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {sections.map((section) => (
+                  <div
+                    key={section._id}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{section.name}</p>
+                      {section.joinCode ? (
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {section.joinCode}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/50">No code yet</p>
+                      )}
+                    </div>
+                    {section.joinCode && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0"
+                        onClick={() => handleCopyCode(section)}
+                      >
+                        {copiedCodeId === section._id ? (
+                          <Check className="size-4 text-emerald-500" />
+                        ) : (
+                          <Copy className="size-4" />
+                        )}
+                      </Button>
+                    )}
+                    <Button
+                      variant={section.joinCode ? "ghost" : "outline"}
+                      size={section.joinCode ? "icon" : "sm"}
+                      className={section.joinCode ? "size-8 shrink-0" : "shrink-0"}
+                      disabled={generatingCodeId === section._id}
+                      onClick={() => handleGenerateCode(section)}
+                    >
+                      {generatingCodeId === section._id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : section.joinCode ? (
+                        <RefreshCw className="size-4" />
+                      ) : (
+                        <>
+                          <Hash className="mr-1.5 size-3.5" />
+                          Generate
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Invite Link */}
+          <div>
+            <div className="mb-3">
+              <p className="text-sm font-medium">Invite Link</p>
+              <p className="text-xs text-muted-foreground">
+                Generate a one-time link to enrol students directly into a section.
+              </p>
+            </div>
+            {invitation ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <Label className="text-xs text-muted-foreground">Invite Link</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <code className="flex-1 truncate rounded bg-muted px-2 py-1 text-xs">
+                      {inviteUrl}
+                    </code>
+                    <Button size="icon" variant="ghost" className="size-8 shrink-0" onClick={handleCopyInvite}>
+                      {copiedInvite ? (
+                        <Check className="size-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="size-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Link className="size-3" />
+                    {invitation.expiresAt
+                      ? `Expires ${new Date(invitation.expiresAt).toLocaleDateString()}`
+                      : "Never expires"}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setInvitation(null)
+                      setInviteSectionId("")
+                    }}
+                  >
+                    New Link
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Section</Label>
+                    <Select value={inviteSectionId} onValueChange={setInviteSectionId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sections.map((s) => (
+                          <SelectItem key={s._id} value={s._id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Expires in (days)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Leave empty — no expiry"
+                      value={inviteExpiry}
+                      onChange={(e) => setInviteExpiry(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleGenerateInvite}
+                    disabled={generatingInvite || !inviteSectionId}
+                  >
+                    {generatingInvite ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <UserPlus className="mr-2 size-4" />
+                    )}
+                    Generate Link
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

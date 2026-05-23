@@ -16,6 +16,9 @@ import {
   File,
   Loader2,
   PenLine,
+  Video,
+  Link2,
+  ChevronRight,
 } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Badge } from "@workspace/ui/components/badge"
@@ -24,6 +27,7 @@ import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
 import { getCourseById, type Course } from "@/lib/services/courses"
 import { getModules, type Module } from "@/lib/services/modules"
+import { getLessons, type Lesson } from "@/lib/services/lessons"
 import {
   getCourseFiles,
   getDownloadLink,
@@ -94,6 +98,7 @@ export default function StudentCourseDetailPage() {
   const params = useParams()
   const [course, setCourse] = React.useState<Course | null>(null)
   const [modules, setModules] = React.useState<Module[]>([])
+  const [lessonsMap, setLessonsMap] = React.useState<Record<string, Lesson[]>>({})
   const [materials, setMaterials] = React.useState<CourseFile[]>([])
   const [activities, setActivities] = React.useState<CourseFile[]>([])
   const [assessments, setAssessments] = React.useState<Assessment[]>([])
@@ -114,6 +119,14 @@ export default function StudentCourseDetailPage() {
         setMaterials(materialsData)
         setActivities(activitiesData)
         setAssessments(assessmentsData)
+        const map: Record<string, Lesson[]> = {}
+        await Promise.all(
+          modulesData.map(async (mod) => {
+            const lessons = await getLessons(mod._id, true)
+            map[mod._id] = lessons
+          })
+        )
+        setLessonsMap(map)
       } catch {
         toast.error("Failed to load course data")
       } finally {
@@ -219,16 +232,41 @@ export default function StudentCourseDetailPage() {
             Modules
           </h2>
           <div className="space-y-2">
-            {modules.map((mod) => (
-              <Card key={mod._id} className="p-4">
-                <h3 className="font-medium">{mod.title}</h3>
-                {mod.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {mod.description}
-                  </p>
-                )}
-              </Card>
-            ))}
+            {[...modules].sort((a, b) => a.order - b.order).map((mod) => {
+              const lessons = [...(lessonsMap[mod._id] ?? [])].sort((a, b) => a.order - b.order)
+              return (
+                <div key={mod._id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">{mod.title}</h3>
+                    {mod.description && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{mod.description}</p>
+                    )}
+                  </div>
+                  {lessons.length > 0 && (
+                    <div className="space-y-0.5 border-t border-border pt-2">
+                      {lessons.map((lesson) => {
+                        const LessonTypeIcon =
+                          lesson.type === "video" ? Video
+                          : lesson.type === "embed" ? Link2
+                          : lesson.type === "file" ? File
+                          : FileText
+                        return (
+                          <Link
+                            key={lesson._id}
+                            href={`/my-courses/${params.id}/lessons/${lesson._id}`}
+                            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                          >
+                            <LessonTypeIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

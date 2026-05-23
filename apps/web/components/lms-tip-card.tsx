@@ -7,7 +7,7 @@ interface LmsTipCardProps {
 export function LmsTipCard({
   title,
   description,
-  backgroundColor = "from-white via-primary/20 to-primary",
+  backgroundColor = "from-white dark:from-background via-primary/20 to-primary",
 }: LmsTipCardProps) {
   return (
     <div

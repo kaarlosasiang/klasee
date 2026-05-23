@@ -23,13 +23,21 @@ export interface Course {
 export interface CreateCourseInput {
   name: string
   code: string
+  semester: string
   description?: string
+  cover?: string
+  icon?: string
+  syllabus?: string
 }
 
 export interface UpdateCourseInput {
   name?: string
   code?: string
+  semester?: string
   description?: string
+  cover?: string
+  icon?: string
+  syllabus?: string
 }
 
 export const getCourses = async (): Promise<Course[]> => {

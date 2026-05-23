@@ -145,6 +145,17 @@ export const moveCourseFileToRoot = async (
   return response.data
 }
 
+export const uploadLessonFile = async (
+  courseId: string,
+  file: File
+): Promise<CourseFile> => {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("courseId", courseId)
+  const response = await client.post("/drive/upload/lesson", formData)
+  return response.data
+}
+
 export const studentUploadFile = async (
   courseId: string,
   file: File

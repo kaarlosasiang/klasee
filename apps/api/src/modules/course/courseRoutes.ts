@@ -13,5 +13,6 @@ router.put("/:id", requireAuth, requireRole("instructor", "admin"), courseContro
 router.delete("/:id", requireAuth, requireRole("instructor", "admin"), courseController.remove)
 router.patch("/:id/archive", requireAuth, requireRole("instructor", "admin"), courseController.archive)
 router.patch("/:id/unarchive", requireAuth, requireRole("instructor", "admin"), courseController.unarchive)
+router.post("/:id/duplicate", requireAuth, requireRole("instructor", "admin"), courseController.duplicate)
 
 export default router

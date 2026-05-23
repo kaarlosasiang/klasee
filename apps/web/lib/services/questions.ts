@@ -14,6 +14,10 @@ export interface Question {
   order: number
   options?: QuestionOption[]
   correctAnswer?: string | boolean
+  required: boolean
+  multipleAnswers: boolean
+  randomizeOrder: boolean
+  estimationTime?: number
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +30,10 @@ export interface CreateQuestionInput {
   order?: number
   options?: QuestionOption[]
   correctAnswer?: string | boolean
+  required?: boolean
+  multipleAnswers?: boolean
+  randomizeOrder?: boolean
+  estimationTime?: number
 }
 
 export interface UpdateQuestionInput {
@@ -35,6 +43,10 @@ export interface UpdateQuestionInput {
   order?: number
   options?: QuestionOption[]
   correctAnswer?: string | boolean
+  required?: boolean
+  multipleAnswers?: boolean
+  randomizeOrder?: boolean
+  estimationTime?: number
 }
 
 export const getQuestions = async (assessmentId: string): Promise<Question[]> => {

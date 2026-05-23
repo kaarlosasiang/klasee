@@ -184,6 +184,12 @@ export default function StudentQuizPage() {
       {!isInProgress && !isCompleted && (
         <Card className="flex flex-col items-center gap-4 py-16">
           <HelpCircle className="size-10 text-muted-foreground" />
+          {assessment.instructions && (
+            <div className="w-full max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left dark:border-amber-900/40 dark:bg-amber-900/20">
+              <p className="mb-1 text-xs font-semibold text-amber-800 dark:text-amber-300">Instructions</p>
+              <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-400">{assessment.instructions}</p>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">
             You have {questions.length} questions to answer.
           </p>
@@ -196,6 +202,12 @@ export default function StudentQuizPage() {
 
       {isInProgress && (
         <div className="space-y-4">
+          {assessment.instructions && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-900/20">
+              <p className="mb-1 text-xs font-semibold text-amber-800 dark:text-amber-300">Instructions</p>
+              <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-400">{assessment.instructions}</p>
+            </div>
+          )}
           {questions.map((question, index) => (
             <div
               key={question._id}

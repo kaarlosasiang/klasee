@@ -35,11 +35,13 @@ export default function InstructorDashboardPage() {
     return () => window.clearInterval(interval)
   }, [])
 
-  const dateLabel = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).toUpperCase()
+  const dateLabel = now
+    .toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    })
+    .toUpperCase()
 
   const hour = now.getHours()
   const greeting =
@@ -64,8 +66,12 @@ export default function InstructorDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <span className="text-sm font-medium text-zinc-500">{dateLabel}</span>
-        <h1 className="text-2xl font-bold text-zinc-800">{greeting}, {firstName}!</h1>
+        <span className="text-sm font-medium text-zinc-500 dark:text-white">
+          {dateLabel}
+        </span>
+        <h1 className="text-2xl font-bold text-zinc-800 dark:text-white">
+          {greeting}, {firstName}!
+        </h1>
         <LmsTipCard
           title="Stay Consistent with Your Learning"
           description="Dedicating just 30 minutes daily to your courses is more effective than cramming. Small, consistent efforts compound into significant progress over time."

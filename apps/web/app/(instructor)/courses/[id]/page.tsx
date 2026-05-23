@@ -124,16 +124,20 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="relative flex h-full gap-4">
+    <div className="relative -ml-4 flex gap-4">
       {/* Sidebar */}
-      <nav className="-ml-4 flex w-48 shrink-0 flex-col space-y-1 self-stretch border-r border-border">
+      <nav className="sticky top-16 flex h-[calc(100svh-4rem)] w-48 shrink-0 flex-col space-y-1 self-start border-r border-border">
         {[
           { id: "announcements", label: "Announcements", icon: Megaphone },
           { id: "sections", label: "Sections", icon: BookOpen },
           { id: "students", label: "Students", icon: Users },
           { id: "files", label: "Files", icon: Folder },
           { id: "modules", label: "Modules", icon: Layers },
-          { id: "assessments", label: "Quizzes & Assignments", icon: ClipboardList },
+          {
+            id: "assessments",
+            label: "Quizzes & Assignments",
+            icon: ClipboardList,
+          },
           { id: "wiki", label: "Wiki", icon: Book },
           { id: "settings", label: "Settings", icon: Cog },
         ].map((item) => (
@@ -154,7 +158,7 @@ export default function CourseDetailPage() {
       </nav>
 
       {/* Right: Back button + Hero + Content */}
-      <div className="flex-1 space-y-4">
+      <div className="flex-1 space-y-4 pb-4">
         <div className="flex items-center justify-between">
           <Link
             href="/courses"
@@ -215,8 +219,7 @@ export default function CourseDetailPage() {
                 </span>
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <FileText className="size-3.5" />
-                  {course.assessmentCount}{" "}
-                  Quiz & Assign.
+                  {course.assessmentCount} Quiz & Assign.
                 </span>
               </div>
               {course.description && (
@@ -278,7 +281,9 @@ export default function CourseDetailPage() {
             <FileManager courseId={course._id} courseName={course.name} />
           )}
           {activeTab === "modules" && <ModulesManager courseId={course._id} />}
-          {activeTab === "assessments" && <AssessmentsManager courseId={course._id} />}
+          {activeTab === "assessments" && (
+            <AssessmentsManager courseId={course._id} />
+          )}
           {activeTab === "wiki" && (
             <p className="text-sm text-muted-foreground">Wiki coming soon.</p>
           )}

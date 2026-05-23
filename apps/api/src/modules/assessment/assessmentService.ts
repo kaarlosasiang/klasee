@@ -15,16 +15,24 @@ export const assessmentService = {
     title: string
     type: "quiz" | "exam" | "assignment"
     totalPoints: number
-    dueDate?: string
+    dueDate?: string | Date
+    isPublished?: boolean
   }) {
     return Assessment.create(data)
   },
 
-  async update(id: string, data: Partial<{ title: string; type: string; totalPoints: number; dueDate: string }>) {
+  async update(id: string, data: Partial<{ title: string; type: string; totalPoints: number; dueDate: string | Date; isPublished: boolean }>) {
     return Assessment.findByIdAndUpdate(id, data, { new: true }).lean()
   },
 
   async delete(id: string) {
+    const { Question } = await import("../../models/questionModel.js")
+    const { QuizAttempt } = await import("../../models/quizAttemptModel.js")
+    await Promise.all([
+      Question.deleteMany({ assessmentId: id }),
+      QuizAttempt.deleteMany({ assessmentId: id }),
+      AssessmentScore.deleteMany({ assessmentId: id }),
+    ])
     return Assessment.findByIdAndDelete(id)
   },
 

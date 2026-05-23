@@ -14,7 +14,13 @@ const assessmentSchema = new mongoose.Schema(
       required: true,
     },
     totalPoints: { type: Number, required: true },
-    dueDate: { type: String }, // ISO date string
+    dueDate: { type: Date },
+    isPublished: { type: Boolean, default: false },
+    timeLimit: { type: Number },
+    randomizeQuestions: { type: Boolean, default: false },
+    instructions: { type: String },
+    allowedFileTypes: { type: [String], default: [] },
+    maxFiles: { type: Number },
   },
   { timestamps: true }
 )

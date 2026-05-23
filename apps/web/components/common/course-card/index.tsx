@@ -1,7 +1,8 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
-import { BookOpen, EllipsisVertical, GraduationCap, Users, FileText, Archive, RotateCcw, Copy, Trash2 } from "lucide-react"
+import { BookOpen, EllipsisVertical, GraduationCap, Users, FileText, Archive, RotateCcw, Copy, Trash2, AlertTriangle } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,17 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
 import { cn } from "@workspace/ui/lib/utils"
 import type { Course } from "@/lib/services/courses"
 import { timeAgo } from "@/lib/utils/time"
@@ -24,6 +36,7 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete, onDuplicate }: CourseCardProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:shadow-md">
       <Link href={`/courses/${course._id}`} className="block">
@@ -77,7 +90,7 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
               </DropdownMenuItem>
               {showArchived && (
                 <DropdownMenuItem
-                  onClick={() => onDelete?.(course)}
+                  onClick={() => setDeleteDialogOpen(true)}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 size-4" />
@@ -114,6 +127,30 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
           <p className="text-[11px] text-muted-foreground/60">Updated {timeAgo(course.lastActivity)}</p>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangle className="size-5 text-destructive" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete course?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{course.name}" and all associated data,
+              including sections, enrollments, and assessments. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => onDelete?.(course)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
