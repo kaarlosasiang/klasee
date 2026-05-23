@@ -6,4 +6,5 @@ export interface StudentDetailSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onNavigate: (enrollment: Enrollment) => void
+  onDrop?: (enrollmentId: string) => void
 }

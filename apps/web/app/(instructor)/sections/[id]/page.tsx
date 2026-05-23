@@ -193,19 +193,6 @@ export default function SectionViewPage() {
         ) : (
           <StudentsDataTable
             data={enrollments}
-            onDrop={() => {
-              getEnrollmentsByCourse(courseId).then((data) =>
-                setEnrollments(
-                  data.filter((e) => {
-                    const sectionIdMatch =
-                      typeof e.sectionId === "string"
-                        ? e.sectionId === sectionId
-                        : e.sectionId._id === sectionId
-                    return sectionIdMatch && e.status === "active"
-                  })
-                )
-              )
-            }}
             onRowClick={setSelectedEnrollment}
           />
         )}
@@ -219,6 +206,19 @@ export default function SectionViewPage() {
         enrollment={selectedEnrollment}
         enrollments={enrollments}
         onNavigate={setSelectedEnrollment}
+        onDrop={() => {
+          getEnrollmentsByCourse(courseId).then((data) =>
+            setEnrollments(
+              data.filter((e) => {
+                const sectionIdMatch =
+                  typeof e.sectionId === "string"
+                    ? e.sectionId === sectionId
+                    : e.sectionId._id === sectionId
+                return sectionIdMatch && e.status === "active"
+              })
+            )
+          )
+        }}
       />
     </div>
   )

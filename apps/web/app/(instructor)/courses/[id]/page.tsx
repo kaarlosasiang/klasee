@@ -273,7 +273,6 @@ export default function CourseDetailPage() {
             ) : (
               <StudentsDataTable
                 data={enrollments}
-                onDrop={() => fetchEnrollments(course._id)}
                 onRowClick={setSelectedEnrollment}
               />
             ))}
@@ -308,6 +307,7 @@ export default function CourseDetailPage() {
         enrollment={selectedEnrollment}
         enrollments={enrollments}
         onNavigate={setSelectedEnrollment}
+        onDrop={() => fetchEnrollments(course._id)}
       />
     </div>
   )

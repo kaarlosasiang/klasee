@@ -1,21 +1,31 @@
 "use client"
 
 import * as React from "react"
-import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { ScrollArea } from "@workspace/ui/components/scroll-area"
 import { Sheet, SheetContent } from "@workspace/ui/components/sheet"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
+import { dropEnrollment } from "@/lib/services/enrollments"
+import { toast } from "sonner"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
-import { useStudentDetail } from "@/lib/hooks/useStudentDetail"
 import { StudentDetailHeader } from "./student-detail-header"
-import { ActivityTab } from "./tabs/activity-tab"
-import { AssignedTab } from "./tabs/assigned-tab"
-import { NeedsReviewTab } from "./tabs/needs-review-tab"
-import { ProgressTab } from "./tabs/progress-tab"
+import { OverviewTab } from "./tabs/overview-tab"
+import { ActivitiesTab } from "./tabs/activities-tab"
+import { GradesTab } from "./tabs/grades-tab"
 import type { StudentDetailSheetProps } from "./types"
 
 export function StudentDetailSheet({
@@ -24,23 +34,21 @@ export function StudentDetailSheet({
   open,
   onOpenChange,
   onNavigate,
+  onDrop,
 }: StudentDetailSheetProps) {
-  const [activeTab, setActiveTab] = React.useState("activity")
+  const [activeTab, setActiveTab] = React.useState("overview")
+  const [dropConfirm, setDropConfirm] = React.useState(false)
+  const [dropping, setDropping] = React.useState(false)
 
   const currentIndex = React.useMemo(
     () => enrollments.findIndex((e) => e._id === enrollment?._id),
     [enrollments, enrollment]
   )
 
-  const { data, loading, error } = useStudentDetail(enrollment?._id ?? null)
-
   // Reset tab when switching students
   React.useEffect(() => {
-    setActiveTab("activity")
+    setActiveTab("overview")
   }, [enrollment?._id])
-
-  const assignedCount = data?.assigned?.length ?? 0
-  const needsReviewCount = data?.needsReview?.length ?? 0
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -73,57 +81,85 @@ export function StudentDetailSheet({
             variant="line"
             className="h-auto w-full justify-start gap-0 rounded-none border-b px-4 py-0"
           >
-            <TabsTrigger value="activity" className="px-3 py-2.5">
-              Activity
+            <TabsTrigger value="overview" className="px-3 py-2.5">
+              Overview
             </TabsTrigger>
-            <TabsTrigger value="assigned" className="gap-1.5 px-3 py-2.5">
-              Assigned
-              {assignedCount > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="size-4 justify-center p-0 text-[10px]"
-                >
-                  {assignedCount}
-                </Badge>
-              )}
+            <TabsTrigger value="activities" className="px-3 py-2.5">
+              Activities
             </TabsTrigger>
-            <TabsTrigger value="needs-review" className="gap-1.5 px-3 py-2.5">
-              Need to review
-              {needsReviewCount > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="size-4 justify-center p-0 text-[10px]"
-                >
-                  {needsReviewCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="px-3 py-2.5">
-              Progress
+            <TabsTrigger value="grades" className="px-3 py-2.5">
+              Grades
             </TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1">
-            {error ? (
-              <p className="p-4 text-sm text-muted-foreground">{error}</p>
-            ) : (
-              <>
-                <TabsContent value="activity" className="mt-0">
-                  <ActivityTab data={data} loading={loading} />
-                </TabsContent>
-                <TabsContent value="assigned" className="mt-0">
-                  <AssignedTab data={data} loading={loading} />
-                </TabsContent>
-                <TabsContent value="needs-review" className="mt-0">
-                  <NeedsReviewTab data={data} loading={loading} />
-                </TabsContent>
-                <TabsContent value="progress" className="mt-0">
-                  <ProgressTab data={data} loading={loading} />
-                </TabsContent>
-              </>
-            )}
+            <TabsContent value="overview" className="mt-0">
+              {enrollment && <OverviewTab enrollment={enrollment} />}
+            </TabsContent>
+            <TabsContent value="activities" className="mt-0">
+              {enrollment && <ActivitiesTab enrollment={enrollment} />}
+            </TabsContent>
+            <TabsContent value="grades" className="mt-0">
+              {enrollment && <GradesTab enrollment={enrollment} />}
+            </TabsContent>
           </ScrollArea>
+
+          {enrollment?.status === "active" && (
+            <div className="flex items-center justify-end border-t p-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDropConfirm(true)}
+              >
+                Drop student
+              </Button>
+            </div>
+          )}
         </Tabs>
+
+        <AlertDialog open={dropConfirm} onOpenChange={setDropConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Drop student?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will mark{" "}
+                <span className="font-medium text-foreground">
+                  {enrollment?.studentId.name}
+                </span>{" "}
+                as dropped from{" "}
+                <span className="font-medium text-foreground">
+                  {enrollment?.sectionId.name}
+                </span>
+                . This cannot be undone from here.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={dropping}
+                onClick={async () => {
+                  if (!enrollment) return
+                  setDropping(true)
+                  try {
+                    await dropEnrollment(enrollment._id)
+                    toast.success(`${enrollment.studentId.name} has been dropped`)
+                    setDropConfirm(false)
+                    onDrop?.(enrollment._id)
+                    onOpenChange(false)
+                  } catch {
+                    toast.error("Failed to drop student")
+                  } finally {
+                    setDropping(false)
+                  }
+                }}
+              >
+                {dropping ? "Dropping..." : "Drop"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   )

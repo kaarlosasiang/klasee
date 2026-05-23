@@ -62,7 +62,6 @@ export default function StudentsPage() {
       ) : (
         <StudentsDataTable
           data={enrollments}
-          onDrop={(id) => setEnrollments((prev) => prev.filter((e) => e._id !== id))}
           onRowClick={setSelectedEnrollment}
         />
       )}
@@ -73,6 +72,7 @@ export default function StudentsPage() {
         enrollment={selectedEnrollment}
         enrollments={enrollments}
         onNavigate={setSelectedEnrollment}
+        onDrop={(id) => setEnrollments((prev) => prev.filter((e) => e._id !== id))}
       />
     </div>
   )
