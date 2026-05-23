@@ -4,6 +4,7 @@ export interface SectionDraft {
   id: string
   name: string
   schedule: string
+  labSchedule: string
   room: string
   maxStudents: number
 }
@@ -49,6 +50,7 @@ const defaultSection = (): SectionDraft => ({
   id: crypto.randomUUID(),
   name: "",
   schedule: "",
+  labSchedule: "",
   room: "",
   maxStudents: 40,
 })

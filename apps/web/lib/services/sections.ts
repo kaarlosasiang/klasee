@@ -10,6 +10,7 @@ export interface Section {
   instructorId: string
   name: string
   schedule?: string
+  labSchedule?: string
   room?: string
   maxStudents: number
   joinCode?: string
@@ -41,6 +42,7 @@ export const createSection = async (data: {
   courseId: string
   name: string
   schedule?: string
+  labSchedule?: string
   room?: string
   maxStudents?: number
 }): Promise<Section> => {
@@ -53,6 +55,7 @@ export const updateSection = async (
   data: Partial<{
     name: string
     schedule: string
+    labSchedule: string
     room: string
     maxStudents: number
   }>

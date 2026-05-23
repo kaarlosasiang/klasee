@@ -76,13 +76,14 @@ export const sectionService = {
     instructorId: string
     name: string
     schedule?: string
+    labSchedule?: string
     room?: string
     maxStudents?: number
   }) {
     return Section.create(data)
   },
 
-  async update(id: string, data: Partial<{ name: string; schedule: string; room: string; maxStudents: number }>) {
+  async update(id: string, data: Partial<{ name: string; schedule: string; labSchedule: string; room: string; maxStudents: number }>) {
     return Section.findByIdAndUpdate(id, data, { new: true }).lean()
   },
 

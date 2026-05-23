@@ -16,6 +16,7 @@ export const createSectionSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   name: z.string().min(1, "Section name is required").max(100),
   schedule: z.string().max(200).optional(),
+  labSchedule: z.string().max(200).optional(),
   room: z.string().max(100).optional(),
   maxStudents: z.number().int().min(1, "Must be at least 1").max(500).default(40),
 })

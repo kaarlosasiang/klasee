@@ -12,8 +12,9 @@ const sectionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    name: { type: String, required: true }, // e.g. "Section A"
-    schedule: { type: String },             // e.g. "MWF 8:00-9:00 AM"
+    name: { type: String, required: true },
+    schedule: { type: String },
+    labSchedule: { type: String },
     room: { type: String },
     maxStudents: { type: Number, default: 40 },
     joinCode: { type: String, unique: true, sparse: true }, // instructor-generated enrollment code

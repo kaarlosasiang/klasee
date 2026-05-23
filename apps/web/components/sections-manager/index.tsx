@@ -24,6 +24,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import { SchedulePicker } from "@/components/common/schedule-picker"
 import { toast } from "sonner"
 import {
   getSectionsByCourse,
@@ -188,7 +189,13 @@ export function SectionsManager({ courseId, onInvite }: SectionsManagerProps) {
                   {section.schedule && (
                     <span className="flex items-center gap-1">
                       <Clock className="size-3" />
-                      {section.schedule}
+                      Lecture: {section.schedule}
+                    </span>
+                  )}
+                  {section.labSchedule && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3" />
+                      Lab: {section.labSchedule}
                     </span>
                   )}
                   {section.room && (
@@ -315,6 +322,7 @@ function SectionDialog({
 }) {
   const [name, setName] = React.useState("")
   const [schedule, setSchedule] = React.useState("")
+  const [labSchedule, setLabSchedule] = React.useState("")
   const [room, setRoom] = React.useState("")
   const [maxStudents, setMaxStudents] = React.useState("40")
   const [saving, setSaving] = React.useState(false)
@@ -325,11 +333,13 @@ function SectionDialog({
     if (editing) {
       setName(editing.name)
       setSchedule(editing.schedule ?? "")
+      setLabSchedule(editing.labSchedule ?? "")
       setRoom(editing.room ?? "")
       setMaxStudents(String(editing.maxStudents))
     } else {
       setName("")
       setSchedule("")
+      setLabSchedule("")
       setRoom("")
       setMaxStudents("40")
     }
@@ -360,6 +370,7 @@ function SectionDialog({
         await updateSection(editing._id, {
           name: name.trim(),
           schedule: schedule.trim() || undefined,
+          labSchedule: labSchedule.trim() || undefined,
           room: room.trim() || undefined,
           maxStudents: parsed,
         })
@@ -369,6 +380,7 @@ function SectionDialog({
           courseId,
           name: name.trim(),
           schedule: schedule.trim() || undefined,
+          labSchedule: labSchedule.trim() || undefined,
           room: room.trim() || undefined,
           maxStudents: parsed,
         })
@@ -411,12 +423,19 @@ function SectionDialog({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="schedule">Schedule</Label>
-            <Input
+            <Label htmlFor="schedule">Lecture Schedule</Label>
+            <SchedulePicker
               id="schedule"
-              placeholder='e.g. "MWF 8:00-9:00 AM"'
               value={schedule}
-              onChange={(e) => setSchedule(e.target.value)}
+              onChange={setSchedule}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="labSchedule">Lab Schedule</Label>
+            <SchedulePicker
+              id="labSchedule"
+              value={labSchedule}
+              onChange={setLabSchedule}
             />
           </div>
           <div className="space-y-2">

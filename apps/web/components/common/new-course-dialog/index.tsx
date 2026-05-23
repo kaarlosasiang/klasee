@@ -35,6 +35,7 @@ import {
 } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
 import { useNewCourseStore } from "@/lib/store/new-course.store"
+import { SchedulePicker } from "@/components/common/schedule-picker"
 import { createCourseSchema } from "@workspace/validators"
 import client from "@/lib/config/axios"
 import {
@@ -54,7 +55,19 @@ const SEMESTER_LABELS: Record<string, string> = {
 
 // ─── Step 1: Course Overview ──────────────────────────────────────────────────
 
-function Step1Content() {
+interface Step1Errors {
+  title?: string
+  code?: string
+  semester?: string
+}
+
+function Step1Content({
+  errors,
+  clearError,
+}: {
+  errors: Step1Errors
+  clearError: (field: keyof Step1Errors) => void
+}) {
   const { step1, setStep1 } = useNewCourseStore()
   const coverInputRef = React.useRef<HTMLInputElement>(null)
   const iconInputRef = React.useRef<HTMLInputElement>(null)
@@ -142,10 +155,16 @@ function Step1Content() {
       <input
         type="text"
         value={step1.title}
-        onChange={(e) => setStep1({ title: e.target.value })}
+        onChange={(e) => {
+          setStep1({ title: e.target.value })
+          clearError("title")
+        }}
         placeholder="Course Title"
         className="mb-4 w-full border-none bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/40 focus:ring-0"
       />
+      {errors.title && (
+        <p className="-mt-3 mb-4 text-xs text-destructive">{errors.title}</p>
+      )}
 
       <Separator className="mb-1" />
 
@@ -159,9 +178,19 @@ function Step1Content() {
           </div>
           <Select
             value={step1.semester}
-            onValueChange={(v) => setStep1({ semester: v })}
+            onValueChange={(v) => {
+              setStep1({ semester: v })
+              clearError("semester")
+            }}
           >
-            <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-sm shadow-none focus:ring-0 focus-visible:ring-0">
+            <SelectTrigger
+              className={cn(
+                "h-auto w-auto bg-transparent p-0 text-sm shadow-none focus:ring-0 focus-visible:ring-0",
+                errors.semester
+                  ? "border-0 border-none text-destructive"
+                  : "border-0"
+              )}
+            >
               <SelectValue placeholder="Select semester" />
             </SelectTrigger>
             <SelectContent>
@@ -170,6 +199,11 @@ function Step1Content() {
               <SelectItem value="summer">Summer</SelectItem>
             </SelectContent>
           </Select>
+          {errors.semester && (
+            <span className="text-xs text-destructive">
+              {errors.semester}
+            </span>
+          )}
         </div>
 
         {/* Course Code */}
@@ -181,11 +215,20 @@ function Step1Content() {
           <input
             type="text"
             value={step1.code}
-            onChange={(e) => setStep1({ code: e.target.value })}
+            onChange={(e) => {
+              setStep1({ code: e.target.value })
+              clearError("code")
+            }}
             placeholder="e.g. CS101"
             className="flex-1 border-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:ring-0"
           />
         </div>
+        {errors.code && (
+          <div className="flex items-center gap-4 py-1">
+            <div className="w-40 shrink-0" />
+            <p className="text-xs text-destructive">{errors.code}</p>
+          </div>
+        )}
       </div>
 
       <Separator className="mt-1" />
@@ -329,16 +372,28 @@ function Step2Content() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">
-                    Schedule
+                    Lecture Schedule
                   </label>
-                  <Input
+                  <SchedulePicker
                     value={section.schedule}
-                    onChange={(e) =>
-                      updateSection(section.id, { schedule: e.target.value })
+                    onChange={(schedule) =>
+                      updateSection(section.id, { schedule })
                     }
-                    placeholder="e.g. MWF 8:00–9:00 AM"
                   />
                 </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Lab Schedule
+                  </label>
+                  <SchedulePicker
+                    value={section.labSchedule}
+                    onChange={(labSchedule) =>
+                      updateSection(section.id, { labSchedule })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                     <DoorOpen className="size-3" />
@@ -471,7 +526,8 @@ function Step3Content({ error }: { error: string | null }) {
               <div>
                 <p className="text-sm font-medium">{section.name}</p>
                 <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                  {section.schedule && <span>{section.schedule}</span>}
+                  {section.schedule && <span>Lecture: {section.schedule}</span>}
+                  {section.labSchedule && <span>Lab: {section.labSchedule}</span>}
                   {section.room && <span>{section.room}</span>}
                   <span>{section.maxStudents} max students</span>
                 </div>
@@ -570,6 +626,7 @@ export function NewCourseDialog({
   const [step, setStep] = React.useState<1 | 2 | 3>(1)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [step1Errors, setStep1Errors] = React.useState<Step1Errors>({})
 
   const { step1, sections, setStep1, reset } = useNewCourseStore()
 
@@ -602,6 +659,14 @@ export function NewCourseDialog({
 
   const canAdvanceStep2 = sections.every((s) => s.name.trim().length > 0)
 
+  const clearStep1Error = React.useCallback((field: keyof Step1Errors) => {
+    setStep1Errors((prev) => {
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }, [])
+
   const steps = isEditMode ? EDIT_STEPS : CREATE_STEPS
   // Map logical step numbers to step indicator position
   // Edit mode: step 1 → indicator 1, step 3 → indicator 2
@@ -609,15 +674,25 @@ export function NewCourseDialog({
 
   function handleNext() {
     if (isEditMode) {
-      // Skip step 2, go straight to review
       setStep(3)
-    } else {
-      setStep((s) => (s + 1) as 2 | 3)
+      return
     }
+
+    if (step === 1) {
+      const newErrors: Step1Errors = {}
+      if (!step1.title.trim()) newErrors.title = "Course title is required"
+      if (!step1.code.trim()) newErrors.code = "Course code is required"
+      if (!step1.semester) newErrors.semester = "Please select a semester"
+      setStep1Errors(newErrors)
+      if (Object.keys(newErrors).length > 0) return
+    }
+
+    setStep((s) => (s + 1) as 2 | 3)
   }
 
   function handleBack() {
     setError(null)
+    setStep1Errors({})
     if (isEditMode) {
       setStep(1)
     } else {
@@ -678,6 +753,7 @@ export function NewCourseDialog({
               courseId,
               name: section.name,
               schedule: section.schedule || undefined,
+              labSchedule: section.labSchedule || undefined,
               room: section.room || undefined,
               maxStudents: section.maxStudents,
             })
@@ -728,7 +804,12 @@ export function NewCourseDialog({
           <div className="mb-5">
             <StepIndicator current={indicatorStep} steps={steps} />
           </div>
-          {step === 1 && <Step1Content />}
+          {step === 1 && (
+            <Step1Content
+              errors={step1Errors}
+              clearError={clearStep1Error}
+            />
+          )}
           {step === 2 && <Step2Content />}
           {step === 3 && <Step3Content error={error} />}
         </div>
