@@ -25,6 +25,7 @@ export const attendanceService = {
     studentId: string
     date: string
     status: "present" | "absent" | "late" | "excused"
+    note?: string
   }) {
     return Attendance.create(data)
   },
@@ -34,18 +35,19 @@ export const attendanceService = {
     sectionId: string,
     courseId: string,
     date: string,
-    status: "present" | "absent" | "late" | "excused"
+    status: "present" | "absent" | "late" | "excused",
+    note?: string
   ) {
     return Attendance.findOneAndUpdate(
       { studentId, sectionId, date },
-      { studentId, sectionId, courseId, date, status },
+      { studentId, sectionId, courseId, date, status, ...(note !== undefined ? { note } : {}) },
       { upsert: true, new: true, runValidators: true }
     ).lean()
   },
 
   async update(
     id: string,
-    data: Partial<{ status: "present" | "absent" | "late" | "excused" }>
+    data: Partial<{ status: "present" | "absent" | "late" | "excused"; note?: string }>
   ) {
     return Attendance.findByIdAndUpdate(id, data, {
       new: true,

@@ -27,6 +27,8 @@ import {
   AttendanceDataTable,
   type AttendanceRow,
 } from "@/components/attendance/AttendanceDataTable"
+import { AttendanceSheet } from "@/components/attendance/AttendanceSheet"
+import { DatePicker } from "@/components/attendance/DatePicker"
 
 function isNetworkError(err: unknown): boolean {
   if (!navigator.onLine) return true
@@ -56,6 +58,11 @@ export default function AttendancePage() {
   const [loading, setLoading] = React.useState(false)
 
   const [saving, setSaving] = React.useState<string | null>(null)
+  const [noteMap, setNoteMap] = React.useState<Record<string, string>>({})
+  const [sheetStudent, setSheetStudent] = React.useState<AttendanceRow | null>(null)
+  const [historyMap, setHistoryMap] = React.useState<
+    Record<string, AttendanceRecord[]>
+  >({})
 
   const handleSynced = React.useCallback(() => {
     refreshSession()
@@ -102,9 +109,10 @@ export default function AttendancePage() {
   }
 
   async function loadData() {
-    const [enrollments, records] = await Promise.all([
+    const [enrollments, records, allRecords] = await Promise.all([
       getEnrollmentsBySection(sectionId),
       getAttendance({ sectionId, date }),
+      getAttendance({ sectionId }),
     ])
     const active = enrollments
       .filter((e) => e.status === "active")
@@ -115,9 +123,17 @@ export default function AttendancePage() {
       }))
     const map: Record<string, AttendanceRecord> = {}
     for (const r of records) map[r.studentId._id] = r
+    const hMap: Record<string, AttendanceRecord[]> = {}
+    for (const r of allRecords) {
+      const sid = r.studentId._id
+      if (!hMap[sid]) hMap[sid] = []
+      hMap[sid]!.push(r)
+    }
     setEnrolledIds(active)
     setRecordMap(map)
+    setHistoryMap(hMap)
     setOptimistic({})
+    setNoteMap({})
   }
 
   React.useEffect(() => {
@@ -131,18 +147,22 @@ export default function AttendancePage() {
         name: s.name,
         email: s.email,
         status: optimistic[s.studentId] ?? recordMap[s.studentId]?.status ?? null,
+        note: noteMap[s.studentId] ?? recordMap[s.studentId]?.note ?? undefined,
         isPending: s.studentId in optimistic,
       })),
-    [enrolledIds, recordMap, optimistic]
+    [enrolledIds, recordMap, optimistic, noteMap]
   )
 
-  async function handleStatusChange(studentId: string, status: AttendanceStatus) {
+  async function handleStatusChange(studentId: string, status: AttendanceStatus, note?: string) {
     if (saving) return
     setSaving(studentId)
     setOptimistic((prev) => ({ ...prev, [studentId]: status }))
+    if (note !== undefined) {
+      setNoteMap((prev) => ({ ...prev, [studentId]: note }))
+    }
 
     if (!isOnline) {
-      await queueOffline(studentId, status)
+      await queueOffline(studentId, status, note)
       setSaving(null)
       return
     }
@@ -150,13 +170,13 @@ export default function AttendancePage() {
     try {
       const existing = recordMap[studentId]
       if (existing) {
-        await updateAttendance(existing._id, { status })
+        await updateAttendance(existing._id, { status, note })
       } else {
-        await createAttendance({ courseId, sectionId, studentId, date, status })
+        await createAttendance({ courseId, sectionId, studentId, date, status, note })
       }
     } catch (err) {
       if (isNetworkError(err)) {
-        await queueOffline(studentId, status)
+        await queueOffline(studentId, status, note)
         return
       }
       toast.error("Failed to save attendance")
@@ -173,13 +193,51 @@ export default function AttendancePage() {
     refreshSession()
   }
 
-  async function queueOffline(studentId: string, status: AttendanceStatus) {
+  async function handleNoteChange(studentId: string, note: string) {
+    setNoteMap((prev) => ({ ...prev, [studentId]: note }))
+    const existing = recordMap[studentId]
+    if (!existing) return
+    if (!isOnline) {
+      await db.pendingAttendance.add({
+        courseId,
+        sectionId,
+        studentId,
+        date,
+        status: optimistic[studentId] ?? existing.status,
+        note,
+        queuedAt: Date.now(),
+      })
+      toast.info("Saved offline — will sync when reconnected")
+      return
+    }
+    try {
+      await updateAttendance(existing._id, { note })
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await db.pendingAttendance.add({
+          courseId,
+          sectionId,
+          studentId,
+          date,
+          status: optimistic[studentId] ?? existing.status,
+          note,
+          queuedAt: Date.now(),
+        })
+        toast.info("Saved offline — will sync when reconnected")
+        return
+      }
+      toast.error("Failed to save note")
+    }
+  }
+
+  async function queueOffline(studentId: string, status: AttendanceStatus, note?: string) {
     await db.pendingAttendance.add({
       courseId,
       sectionId,
       studentId,
       date,
       status,
+      note,
       queuedAt: Date.now(),
     })
     toast.info("Saved offline — will sync when reconnected")
@@ -250,12 +308,7 @@ export default function AttendancePage() {
           <label className="text-xs font-medium text-muted-foreground">
             Date
           </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
+          <DatePicker value={date} onChange={setDate} />
         </div>
       </div>
 
@@ -280,11 +333,25 @@ export default function AttendancePage() {
           </p>
         </div>
       ) : (
-        <AttendanceDataTable
-          rows={rows}
-          saving={saving}
-          onStatusChange={handleStatusChange}
-        />
+        <>
+          <AttendanceDataTable
+            rows={rows}
+            saving={saving}
+            onStatusChange={handleStatusChange}
+            onOpenSheet={(student) => setSheetStudent(student)}
+          />
+          <AttendanceSheet
+            student={sheetStudent}
+            history={sheetStudent ? historyMap[sheetStudent.studentId] ?? [] : []}
+            open={!!sheetStudent}
+            onOpenChange={(open) => {
+              if (!open) setSheetStudent(null)
+            }}
+            onStatusChange={handleStatusChange}
+            onNoteChange={handleNoteChange}
+            saving={saving}
+          />
+        </>
       )}
     </div>
   )

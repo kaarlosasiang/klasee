@@ -23,12 +23,13 @@ export function useAttendanceSync(onSynced?: () => void) {
     setIsSyncing(true)
     try {
       await bulkUpsertAttendance(
-        pending.map(({ courseId, sectionId, studentId, date, status }) => ({
+        pending.map(({ courseId, sectionId, studentId, date, status, note }) => ({
           courseId,
           sectionId,
           studentId,
           date,
           status,
+          note,
         }))
       )
       await db.pendingAttendance.clear()

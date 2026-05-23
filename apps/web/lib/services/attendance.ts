@@ -13,6 +13,7 @@ export interface AttendanceRecord {
   }
   date: string
   status: AttendanceStatus
+  note?: string
   createdAt: string
   updatedAt: string
 }
@@ -33,6 +34,7 @@ export const createAttendance = async (data: {
   studentId: string
   date: string
   status: "present" | "absent" | "late" | "excused"
+  note?: string
 }): Promise<AttendanceRecord> => {
   const response = await client.post("/attendance", data)
   return response.data
@@ -40,7 +42,7 @@ export const createAttendance = async (data: {
 
 export const updateAttendance = async (
   id: string,
-  data: Partial<{ status: AttendanceStatus }>
+  data: { status?: AttendanceStatus; note?: string }
 ): Promise<AttendanceRecord> => {
   const response = await client.put(`/attendance/${id}`, data)
   return response.data
@@ -58,6 +60,7 @@ export const bulkUpsertAttendance = async (
     studentId: string
     date: string
     status: AttendanceStatus
+    note?: string
   }>
 ): Promise<{ upserted: number; modified: number }> => {
   const response = await client.post("/attendance/bulk", { records })

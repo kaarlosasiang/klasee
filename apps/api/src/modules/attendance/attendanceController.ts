@@ -53,13 +53,14 @@ export const attendanceController = {
           errors: parsed.error.flatten().fieldErrors,
         })
       }
-      const { studentId, sectionId, courseId, date, status } = parsed.data
+      const { studentId, sectionId, courseId, date, status, note } = parsed.data
       const record = await attendanceService.upsert(
         studentId,
         sectionId,
         courseId,
         date,
-        status
+        status,
+        note
       )
       res.status(201).json(record)
     } catch (err) {
@@ -81,7 +82,7 @@ export const attendanceController = {
       const ops = records.map((r) => ({
         updateOne: {
           filter: { studentId: new ObjectId(r.studentId), sectionId: new ObjectId(r.sectionId), date: r.date },
-          update: { $set: { courseId: new ObjectId(r.courseId), status: r.status } },
+          update: { $set: { courseId: new ObjectId(r.courseId), status: r.status, ...(r.note ? { note: r.note } : {}) } },
           upsert: true,
         },
       }))

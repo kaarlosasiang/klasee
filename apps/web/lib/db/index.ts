@@ -8,6 +8,7 @@ export interface PendingAttendance {
   studentId: string
   date: string
   status: AttendanceStatus
+  note?: string
   queuedAt: number
 }
 
@@ -16,7 +17,7 @@ class KlaseeDB extends Dexie {
 
   constructor() {
     super("klasee-db")
-    this.version(1).stores({
+    this.version(2).stores({
       pendingAttendance: "++id, sectionId, studentId, date",
     })
   }

@@ -10,9 +10,10 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
-import { Search } from "lucide-react"
+import { FileText, Search } from "lucide-react"
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -31,16 +32,27 @@ export interface AttendanceRow {
   name: string
   email: string
   status: AttendanceStatus | null
+  note?: string
   isPending: boolean
 }
 
 interface AttendanceDataTableProps {
   rows: AttendanceRow[]
   saving: string | null
-  onStatusChange: (studentId: string, status: AttendanceStatus) => void
+  onStatusChange: (
+    studentId: string,
+    status: AttendanceStatus,
+    note?: string
+  ) => void
+  onOpenSheet?: (student: AttendanceRow) => void
 }
 
-const STATUS_OPTIONS: AttendanceStatus[] = ["present", "absent", "late", "excused"]
+const STATUS_OPTIONS: AttendanceStatus[] = [
+  "present",
+  "absent",
+  "late",
+  "excused",
+]
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
   present:
@@ -70,6 +82,7 @@ export function AttendanceDataTable({
   rows,
   saving,
   onStatusChange,
+  onOpenSheet,
 }: AttendanceDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
@@ -79,6 +92,8 @@ export function AttendanceDataTable({
 
   const onStatusChangeRef = React.useRef(onStatusChange)
   onStatusChangeRef.current = onStatusChange
+  const onOpenSheetRef = React.useRef(onOpenSheet)
+  onOpenSheetRef.current = onOpenSheet
 
   const columns = React.useMemo<ColumnDef<AttendanceRow>[]>(
     () => [
@@ -127,26 +142,26 @@ export function AttendanceDataTable({
             className="flex justify-end"
           />
         ),
+        enableHiding: false,
         enableSorting: false,
         cell: ({ row }) => {
           const { studentId, status } = row.original
           const isSaving = savingRef.current === studentId
           return (
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-1">
               <Select
                 value={status ?? ""}
                 onValueChange={(v) =>
                   onStatusChangeRef.current(
                     studentId,
-                    v as AttendanceStatus
+                    v as AttendanceStatus,
+                    row.original.note
                   )
                 }
                 disabled={isSaving}
               >
                 <SelectTrigger
-                  className={`w-32 h-8 ${
-                    status ? STATUS_COLORS[status] : ""
-                  }`}
+                  className={`h-8 w-32 ${status ? STATUS_COLORS[status] : ""}`}
                 >
                   <SelectValue placeholder="Mark…" />
                 </SelectTrigger>
@@ -163,6 +178,15 @@ export function AttendanceDataTable({
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={isSaving}
+                onClick={() => onOpenSheetRef.current?.(row.original)}
+              >
+                <FileText className="size-4" />
+                <span className="sr-only">Details</span>
+              </Button>
             </div>
           )
         },
@@ -195,7 +219,7 @@ export function AttendanceDataTable({
     <DataTable table={table}>
       <div className="flex items-center justify-between gap-4">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search students..."
             value={globalFilter}
@@ -208,7 +232,6 @@ export function AttendanceDataTable({
           {table.getFilteredRowModel().rows.length !== 1 ? "s" : ""}
         </span>
       </div>
-      <DataTablePagination table={table} />
     </DataTable>
   )
 }

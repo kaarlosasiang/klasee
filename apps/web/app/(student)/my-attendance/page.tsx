@@ -221,6 +221,11 @@ export default function MyAttendancePage() {
                       <p className="text-xs text-muted-foreground">
                         {record.date}
                       </p>
+                      {record.note && (
+                        <p className="mt-1 text-xs italic text-muted-foreground">
+                          {record.note}
+                        </p>
+                      )}
                     </div>
                     <Badge
                       variant="outline"

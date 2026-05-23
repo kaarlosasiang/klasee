@@ -8,10 +8,12 @@ export const createAttendanceSchema = z.object({
   studentId: z.string().min(1, "studentId is required"),
   date: z.string().min(1, "date is required"),
   status: attendanceStatus,
+  note: z.string().max(500).optional(),
 })
 
 export const updateAttendanceSchema = z.object({
   status: attendanceStatus,
+  note: z.string().max(500).optional(),
 })
 
 export const bulkAttendanceSchema = z.object({
