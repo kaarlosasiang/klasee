@@ -17,14 +17,16 @@ const attendanceSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    date: { type: String, required: true }, // ISO date string e.g. "2026-04-26"
+    date: { type: String, required: true },
     status: {
       type: String,
-      enum: ["present", "absent", "late"],
+      enum: ["present", "absent", "late", "excused"],
       required: true,
     },
   },
   { timestamps: true }
 )
+
+attendanceSchema.index({ studentId: 1, sectionId: 1, date: 1 }, { unique: true })
 
 export const Attendance = mongoose.model("Attendance", attendanceSchema)

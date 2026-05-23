@@ -32,6 +32,15 @@ export const getEnrollmentsByCourse = async (
   return response.data
 }
 
+export const getEnrollmentsBySection = async (
+  sectionId: string
+): Promise<Enrollment[]> => {
+  const response = await client.get("/enrollments", {
+    params: { sectionId },
+  })
+  return response.data
+}
+
 export const dropEnrollment = async (id: string): Promise<Enrollment> => {
   const response = await client.delete(`/enrollments/${id}`)
   return response.data

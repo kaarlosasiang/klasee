@@ -1,13 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  CalendarCheck,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-} from "lucide-react"
-import { Button } from "@workspace/ui/components/button"
+import { CalendarCheck, RefreshCw, WifiOff } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -16,26 +10,29 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { Badge } from "@workspace/ui/components/badge"
 import { toast } from "sonner"
 import { getCourses, type Course } from "@/lib/services/courses"
-import {
-  getSectionsByCourse,
-  type Section,
-} from "@/lib/services/sections"
+import { getSectionsByCourse, type Section } from "@/lib/services/sections"
 import {
   getAttendance,
   createAttendance,
   updateAttendance,
   type AttendanceRecord,
+  type AttendanceStatus,
 } from "@/lib/services/attendance"
+import { getEnrollmentsBySection } from "@/lib/services/enrollments"
+import { db } from "@/lib/db"
+import { useAttendanceSync } from "@/lib/hooks/useAttendanceSync"
+import {
+  AttendanceDataTable,
+  type AttendanceRow,
+} from "@/components/attendance/AttendanceDataTable"
 
-const STATUS_OPTIONS = ["present", "absent", "late", "excused"] as const
-const STATUS_COLORS: Record<string, string> = {
-  present: "bg-emerald-500 hover:bg-emerald-600",
-  absent: "bg-red-500 hover:bg-red-600",
-  late: "bg-amber-500 hover:bg-amber-600",
-  excused: "bg-gray-400 hover:bg-gray-500",
+function isNetworkError(err: unknown): boolean {
+  if (!navigator.onLine) return true
+  const code = (err as any)?.code
+  const msg = (err as any)?.message ?? ""
+  return code === "ERR_NETWORK" || msg === "Network Error"
 }
 
 export default function AttendancePage() {
@@ -43,10 +40,28 @@ export default function AttendancePage() {
   const [sections, setSections] = React.useState<Section[]>([])
   const [courseId, setCourseId] = React.useState("")
   const [sectionId, setSectionId] = React.useState("")
-  const [date, setDate] = React.useState(new Date().toISOString().split("T")[0]!)
-  const [records, setRecords] = React.useState<AttendanceRecord[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [date, setDate] = React.useState(
+    new Date().toISOString().split("T")[0]!
+  )
+
+  const [enrolledIds, setEnrolledIds] = React.useState<
+    { studentId: string; name: string; email: string }[]
+  >([])
+  const [recordMap, setRecordMap] = React.useState<
+    Record<string, AttendanceRecord>
+  >({})
+  const [optimistic, setOptimistic] = React.useState<
+    Record<string, AttendanceStatus>
+  >({})
+  const [loading, setLoading] = React.useState(false)
+
   const [saving, setSaving] = React.useState<string | null>(null)
+
+  const handleSynced = React.useCallback(() => {
+    refreshSession()
+  }, [])
+
+  const { pendingCount, isSyncing, isOnline } = useAttendanceSync(handleSynced)
 
   React.useEffect(() => {
     getCourses()
@@ -57,6 +72,7 @@ export default function AttendancePage() {
   React.useEffect(() => {
     if (!courseId) {
       setSections([])
+      setSectionId("")
       return
     }
     getSectionsByCourse(courseId)
@@ -64,57 +80,130 @@ export default function AttendancePage() {
       .catch(() => toast.error("Failed to load sections"))
   }, [courseId])
 
-  const fetchAttendance = React.useCallback(async () => {
+  async function fetchSession() {
     if (!courseId || !sectionId || !date) return
     setLoading(true)
     try {
-      const data = await getAttendance({ courseId, sectionId, date })
-      setRecords(data)
+      await loadData()
     } catch {
       toast.error("Failed to load attendance")
     } finally {
       setLoading(false)
     }
-  }, [courseId, sectionId, date])
+  }
 
-  React.useEffect(() => {
-    fetchAttendance()
-  }, [fetchAttendance])
-
-  const selectedCourse = courses.find((c) => c._id === courseId)
-  const enrolledSections = selectedCourse
-    ? sections
-    : []
-
-  async function handleStatusChange(
-    studentId: string,
-    status: (typeof STATUS_OPTIONS)[number],
-    existingRecord?: AttendanceRecord
-  ) {
-    setSaving(studentId)
+  async function refreshSession() {
+    if (!courseId || !sectionId || !date) return
     try {
-      if (existingRecord) {
-        await updateAttendance(existingRecord._id, { status })
-      } else {
-        await createAttendance({
-          courseId,
-          sectionId,
-          studentId,
-          date,
-          status,
-        })
-      }
-      await fetchAttendance()
+      await loadData()
     } catch {
-      toast.error("Failed to update attendance")
-    } finally {
-      setSaving(null)
+      // silent — user-facing error already shown by loadData
     }
   }
 
+  async function loadData() {
+    const [enrollments, records] = await Promise.all([
+      getEnrollmentsBySection(sectionId),
+      getAttendance({ sectionId, date }),
+    ])
+    const active = enrollments
+      .filter((e) => e.status === "active")
+      .map((e) => ({
+        studentId: e.studentId._id,
+        name: e.studentId.name,
+        email: e.studentId.email,
+      }))
+    const map: Record<string, AttendanceRecord> = {}
+    for (const r of records) map[r.studentId._id] = r
+    setEnrolledIds(active)
+    setRecordMap(map)
+    setOptimistic({})
+  }
+
+  React.useEffect(() => {
+    fetchSession()
+  }, [courseId, sectionId, date])
+
+  const rows = React.useMemo<AttendanceRow[]>(
+    () =>
+      enrolledIds.map((s) => ({
+        studentId: s.studentId,
+        name: s.name,
+        email: s.email,
+        status: optimistic[s.studentId] ?? recordMap[s.studentId]?.status ?? null,
+        isPending: s.studentId in optimistic,
+      })),
+    [enrolledIds, recordMap, optimistic]
+  )
+
+  async function handleStatusChange(studentId: string, status: AttendanceStatus) {
+    if (saving) return
+    setSaving(studentId)
+    setOptimistic((prev) => ({ ...prev, [studentId]: status }))
+
+    if (!isOnline) {
+      await queueOffline(studentId, status)
+      setSaving(null)
+      return
+    }
+
+    try {
+      const existing = recordMap[studentId]
+      if (existing) {
+        await updateAttendance(existing._id, { status })
+      } else {
+        await createAttendance({ courseId, sectionId, studentId, date, status })
+      }
+    } catch (err) {
+      if (isNetworkError(err)) {
+        await queueOffline(studentId, status)
+        return
+      }
+      toast.error("Failed to save attendance")
+      setOptimistic((prev) => {
+        const next = { ...prev }
+        delete next[studentId]
+        return next
+      })
+      return
+    } finally {
+      setSaving(null)
+    }
+
+    refreshSession()
+  }
+
+  async function queueOffline(studentId: string, status: AttendanceStatus) {
+    await db.pendingAttendance.add({
+      courseId,
+      sectionId,
+      studentId,
+      date,
+      status,
+      queuedAt: Date.now(),
+    })
+    toast.info("Saved offline — will sync when reconnected")
+  }
+
+  const ready = !!courseId && !!sectionId && !!date
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Attendance</h1>
+    <div className="space-y-6 pt-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Attendance</h1>
+        {pendingCount > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
+            {isSyncing ? (
+              <RefreshCw className="size-3 animate-spin" />
+            ) : (
+              <WifiOff className="size-3" />
+            )}
+            {isSyncing
+              ? "Syncing…"
+              : `${pendingCount} change${pendingCount === 1 ? "" : "s"} pending sync`}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
@@ -126,9 +215,9 @@ export default function AttendancePage() {
               <SelectValue placeholder="Select a course" />
             </SelectTrigger>
             <SelectContent>
-              {courses.map((course) => (
-                <SelectItem key={course._id} value={course._id}>
-                  {course.name}
+              {courses.map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -148,9 +237,9 @@ export default function AttendancePage() {
               <SelectValue placeholder="Select a section" />
             </SelectTrigger>
             <SelectContent>
-              {enrolledSections.map((section) => (
-                <SelectItem key={section._id} value={section._id}>
-                  {section.name}
+              {sections.map((s) => (
+                <SelectItem key={s._id} value={s._id}>
+                  {s.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -170,72 +259,32 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : !courseId || !sectionId ? (
+      {!ready ? (
         <div className="flex flex-col items-center gap-3 py-16">
           <CalendarCheck className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             Select a course, section, and date to manage attendance
           </p>
         </div>
-      ) : records.length === 0 ? (
+      ) : loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : enrolledIds.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">
           <CalendarCheck className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No attendance records for this date. Select a student to mark
-            attendance.
+            No students enrolled in this section
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {records.map((record) => (
-            <div
-              key={record.studentId._id}
-              className="flex items-center justify-between rounded-xl border border-border p-3"
-            >
-              <div>
-                <p className="text-sm font-medium">
-                  {record.studentId.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {record.studentId.email}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {STATUS_OPTIONS.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    disabled={saving === record.studentId._id}
-                    onClick={() =>
-                      handleStatusChange(
-                        record.studentId._id,
-                        status,
-                        record
-                      )
-                    }
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium text-white transition-opacity disabled:opacity-50 ${
-                      record.status === status
-                        ? STATUS_COLORS[status]
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {saving === record.studentId._id ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      status.charAt(0).toUpperCase() + status.slice(1)
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <AttendanceDataTable
+          rows={rows}
+          saving={saving}
+          onStatusChange={handleStatusChange}
+        />
       )}
     </div>
   )

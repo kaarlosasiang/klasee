@@ -7,17 +7,53 @@ export const attendanceService = {
       .lean()
   },
 
+  async findById(id: string) {
+    return Attendance.findById(id).lean()
+  },
+
+  async findByStudent(studentId: string, filter: Record<string, unknown> = {}) {
+    return Attendance.find({ ...filter, studentId })
+      .populate("studentId", "name email")
+      .populate("sectionId", "name courseId")
+      .sort({ date: -1 })
+      .lean()
+  },
+
   async create(data: {
     courseId: string
     sectionId: string
     studentId: string
     date: string
-    status: "present" | "absent" | "late"
+    status: "present" | "absent" | "late" | "excused"
   }) {
     return Attendance.create(data)
   },
 
-  async update(id: string, data: Partial<{ status: string }>) {
-    return Attendance.findByIdAndUpdate(id, data, { new: true }).lean()
+  async upsert(
+    studentId: string,
+    sectionId: string,
+    courseId: string,
+    date: string,
+    status: "present" | "absent" | "late" | "excused"
+  ) {
+    return Attendance.findOneAndUpdate(
+      { studentId, sectionId, date },
+      { studentId, sectionId, courseId, date, status },
+      { upsert: true, new: true, runValidators: true }
+    ).lean()
+  },
+
+  async update(
+    id: string,
+    data: Partial<{ status: "present" | "absent" | "late" | "excused" }>
+  ) {
+    return Attendance.findByIdAndUpdate(id, data, {
+      new: true,
+      runValidators: true,
+    }).lean()
+  },
+
+  async delete(id: string) {
+    return Attendance.findByIdAndDelete(id)
   },
 }
