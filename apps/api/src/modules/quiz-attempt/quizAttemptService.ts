@@ -1,5 +1,8 @@
 import { QuizAttempt } from "../../models/quizAttemptModel.js"
 import { Question } from "../../models/questionModel.js"
+import { Assessment } from "../../models/assessmentModel.js"
+import { calcLatePenalty } from "../../shared/utils/latePenalty.js"
+import { getEffectiveDueDate } from "../../shared/utils/effectiveDueDate.js"
 
 export const quizAttemptService = {
   async findByAssessment(assessmentId: string) {
@@ -24,7 +27,23 @@ export const quizAttemptService = {
       status: "in_progress",
     }).lean()
     if (existing) return existing
-    return QuizAttempt.create({ assessmentId, userId })
+
+    const assessment = await Assessment.findById(assessmentId).lean()
+    const questionGroups = (assessment as any)?.questionGroups ?? []
+
+    if (questionGroups.length === 0) {
+      return QuizAttempt.create({ assessmentId, userId })
+    }
+
+    const selectedQuestionIds: unknown[] = []
+    for (const group of questionGroups) {
+      const bankQuestions = await Question.find({ itemBankId: group.bankId }).lean()
+      const shuffled = [...bankQuestions].sort(() => Math.random() - 0.5)
+      const drawn = shuffled.slice(0, group.count).map((q) => q._id)
+      selectedQuestionIds.push(...drawn)
+    }
+
+    return QuizAttempt.create({ assessmentId, userId, selectedQuestionIds })
   },
 
   async submitAttempt(id: string, answers: { questionId: string; answer: unknown }[]) {
@@ -33,16 +52,23 @@ export const quizAttemptService = {
       throw new Error("Attempt not found or already completed")
     }
 
+    const selectedIds: unknown[] = (attempt as any).selectedQuestionIds ?? []
+    const questionIds =
+      selectedIds.length > 0
+        ? selectedIds.map(String)
+        : answers.map((a) => a.questionId)
+
     const questions = await Question.find({
-      _id: { $in: answers.map((a) => a.questionId) },
+      _id: { $in: questionIds },
     }).lean()
 
     let totalPointsEarned = 0
     const totalPointsPossible = questions.reduce((sum, q) => sum + (q.points || 1), 0)
 
-    const gradedAnswers = answers.map((submitted) => {
+    const gradedAnswers = questionIds.map((qId) => {
+      const submitted = answers.find((a) => a.questionId === qId) ?? { questionId: qId, answer: null }
       const question = questions.find(
-        (q) => q._id.toString() === submitted.questionId
+        (q) => q._id.toString() === qId
       )
       if (!question) {
         return {
@@ -87,9 +113,27 @@ export const quizAttemptService = {
       }
     })
 
+    const assessment = await Assessment.findById(attempt.assessmentId).lean()
+    let latePenalty = 0
+    if (assessment) {
+      const effectiveDue = await getEffectiveDueDate(
+        String(attempt.assessmentId),
+        String(attempt.userId),
+        String(assessment.courseId),
+        assessment.dueDate ?? undefined
+      )
+      latePenalty = calcLatePenalty(
+        new Date(),
+        effectiveDue,
+        totalPointsPossible,
+        assessment.latePolicy as any
+      )
+    }
+
     attempt.answers = gradedAnswers as any
-    attempt.totalPointsEarned = totalPointsEarned
+    attempt.totalPointsEarned = Math.max(0, totalPointsEarned - latePenalty)
     attempt.totalPointsPossible = totalPointsPossible
+    ;(attempt as any).latePenalty = latePenalty
     attempt.status = "completed"
     attempt.completedAt = new Date()
 

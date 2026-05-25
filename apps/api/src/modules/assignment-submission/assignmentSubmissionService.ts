@@ -1,4 +1,7 @@
 import { AssignmentSubmission } from "../../models/assignmentSubmissionModel.js"
+import { Assessment } from "../../models/assessmentModel.js"
+import { calcLatePenalty } from "../../shared/utils/latePenalty.js"
+import { getEffectiveDueDate } from "../../shared/utils/effectiveDueDate.js"
 
 interface FileInfo {
   fileId?: string
@@ -55,6 +58,25 @@ export const assignmentSubmissionService = {
     id: string,
     data: { grade: number; feedback?: string; gradedBy: string }
   ) {
+    const submission = await AssignmentSubmission.findById(id).lean()
+    let latePenalty = 0
+    if (submission) {
+      const assessment = await Assessment.findById(submission.assessmentId).lean()
+      if (assessment && submission.submittedAt) {
+        const effectiveDue = await getEffectiveDueDate(
+          String(submission.assessmentId),
+          String(submission.userId),
+          String(assessment.courseId),
+          assessment.dueDate ?? undefined
+        )
+        latePenalty = calcLatePenalty(
+          new Date(submission.submittedAt),
+          effectiveDue,
+          assessment.totalPoints,
+          assessment.latePolicy as any
+        )
+      }
+    }
     return AssignmentSubmission.findByIdAndUpdate(
       id,
       {
@@ -62,6 +84,7 @@ export const assignmentSubmissionService = {
         feedback: data.feedback,
         gradedAt: new Date(),
         gradedBy: data.gradedBy,
+        latePenalty,
       },
       { new: true }
     ).lean()

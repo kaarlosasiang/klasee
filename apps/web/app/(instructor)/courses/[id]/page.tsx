@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Book,
   Cog,
+  Database,
 } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
@@ -36,6 +37,7 @@ import { InviteStudentDialog } from "@/components/invite-student-dialog"
 import { Announcements } from "@/components/common/announcements"
 import { ModulesManager } from "@/components/modules-manager"
 import { AssessmentsManager } from "@/components/assessments-manager"
+import { ItemBankManager } from "@/components/item-bank-manager"
 import { CourseSettings } from "@/components/common/course-settings"
 
 export default function CourseDetailPage() {
@@ -138,6 +140,7 @@ export default function CourseDetailPage() {
             label: "Quizzes & Assignments",
             icon: ClipboardList,
           },
+          { id: "question-banks", label: "Question Banks", icon: Database },
           { id: "wiki", label: "Wiki", icon: Book },
           { id: "settings", label: "Settings", icon: Cog },
         ].map((item) => (
@@ -282,6 +285,9 @@ export default function CourseDetailPage() {
           {activeTab === "modules" && <ModulesManager courseId={course._id} />}
           {activeTab === "assessments" && (
             <AssessmentsManager courseId={course._id} />
+          )}
+          {activeTab === "question-banks" && (
+            <ItemBankManager courseId={course._id} />
           )}
           {activeTab === "wiki" && (
             <p className="text-sm text-muted-foreground">Wiki coming soon.</p>

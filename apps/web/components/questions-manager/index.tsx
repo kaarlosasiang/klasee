@@ -41,6 +41,7 @@ import {
 import { toast } from "sonner"
 import {
   getQuestions,
+  getQuestionsByBank,
   createQuestion,
   updateQuestion,
   deleteQuestion,
@@ -49,7 +50,8 @@ import {
 } from "@/lib/services/questions"
 
 interface QuestionsManagerProps {
-  assessmentId: string
+  assessmentId?: string
+  itemBankId?: string
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -66,7 +68,7 @@ const TYPE_LABELS: Record<string, string> = {
   fill_in: "Fill in the Blank",
 }
 
-export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
+export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerProps) {
   const [questions, setQuestions] = React.useState<Question[]>([])
   const [loading, setLoading] = React.useState(true)
   const [creating, setCreating] = React.useState(false)
@@ -85,14 +87,16 @@ export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
   const fetchQuestions = React.useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getQuestions(assessmentId)
+      const data = itemBankId
+        ? await getQuestionsByBank(itemBankId)
+        : await getQuestions(assessmentId!)
       setQuestions(data)
     } catch {
       toast.error("Failed to load questions")
     } finally {
       setLoading(false)
     }
-  }, [assessmentId])
+  }, [assessmentId, itemBankId])
 
   React.useEffect(() => {
     fetchQuestions()
@@ -111,7 +115,7 @@ export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
   function buildCreatePayload() {
     const points = qPoints ? Number(qPoints) : 1
     const payload: Record<string, unknown> = {
-      assessmentId,
+      ...(itemBankId ? { itemBankId } : { assessmentId }),
       type: qType,
       question: qText.trim(),
       points,
@@ -204,7 +208,7 @@ export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
     ids[index - 1] = a
     ids[index] = b
     try {
-      await reorderQuestions(assessmentId, ids)
+      await reorderQuestions(assessmentId!, ids)
       fetchQuestions()
     } catch {
       toast.error("Failed to reorder questions")
@@ -220,7 +224,7 @@ export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
     ids[index] = b
     ids[index + 1] = a
     try {
-      await reorderQuestions(assessmentId, ids)
+      await reorderQuestions(assessmentId!, ids)
       fetchQuestions()
     } catch {
       toast.error("Failed to reorder questions")

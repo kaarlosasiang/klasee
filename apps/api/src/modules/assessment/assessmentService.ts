@@ -1,9 +1,48 @@
+import mongoose from "mongoose"
 import { Assessment } from "../../models/assessmentModel.js"
 import { AssessmentScore } from "../../models/assessmentScore.js"
+import { DueDateOverride } from "../../models/dueDateOverrideModel.js"
+import { Enrollment } from "../../models/enrollmentModel.js"
+
+function toId(v: unknown): string {
+  return String(v instanceof mongoose.Types.ObjectId ? v : (v as any))
+}
 
 export const assessmentService = {
-  async findAll(filter: Record<string, unknown> = {}) {
-    return Assessment.find(filter).lean()
+  async findAll(filter: Record<string, unknown> = {}, studentId?: string) {
+    const assessments = await Assessment.find(filter).lean()
+    if (!studentId) return assessments
+
+    const assessmentIds = assessments.map((a) => a._id)
+    const courseIds = [...new Set(assessments.map((a) => toId(a.courseId)))]
+
+    const [overrides, enrollments] = await Promise.all([
+      DueDateOverride.find({ assessmentId: { $in: assessmentIds } }).lean(),
+      Enrollment.find({ studentId, courseId: { $in: courseIds }, status: "active" }).lean(),
+    ])
+
+    const sectionIdByCourse = new Map(
+      enrollments.map((e) => [toId(e.courseId), toId(e.sectionId)])
+    )
+
+    return assessments.map((a) => {
+      const aId = toId(a._id)
+      const sectionId = sectionIdByCourse.get(toId(a.courseId))
+
+      const studentOverride = overrides.find(
+        (o) => toId(o.assessmentId) === aId && o.type === "student" && toId(o.targetId) === studentId
+      )
+      if (studentOverride) return { ...a, effectiveDueDate: studentOverride.dueDate }
+
+      if (sectionId) {
+        const sectionOverride = overrides.find(
+          (o) => toId(o.assessmentId) === aId && o.type === "section" && toId(o.targetId) === sectionId
+        )
+        if (sectionOverride) return { ...a, effectiveDueDate: sectionOverride.dueDate }
+      }
+
+      return { ...a, effectiveDueDate: a.dueDate ?? undefined }
+    })
   },
 
   async findById(id: string) {
@@ -32,6 +71,7 @@ export const assessmentService = {
       Question.deleteMany({ assessmentId: id }),
       QuizAttempt.deleteMany({ assessmentId: id }),
       AssessmentScore.deleteMany({ assessmentId: id }),
+      DueDateOverride.deleteMany({ assessmentId: id }),
     ])
     return Assessment.findByIdAndDelete(id)
   },

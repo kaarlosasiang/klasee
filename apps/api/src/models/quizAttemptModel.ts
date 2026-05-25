@@ -38,6 +38,8 @@ const quizAttemptSchema = new mongoose.Schema(
     answers: [answerSchema],
     totalPointsEarned: { type: Number, default: 0 },
     totalPointsPossible: { type: Number, default: 0 },
+    latePenalty: { type: Number, default: 0 },
+    selectedQuestionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Question" }],
   },
   { timestamps: true }
 )

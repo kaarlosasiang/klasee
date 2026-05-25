@@ -6,7 +6,8 @@ interface QuestionOption {
 }
 
 interface CreateQuestionData {
-  assessmentId: string
+  assessmentId?: string
+  itemBankId?: string
   type: "multiple_choice" | "true_false" | "essay" | "fill_in"
   question: string
   points?: number
@@ -29,13 +30,23 @@ export const questionService = {
     return Question.find({ assessmentId }).sort({ order: 1, createdAt: 1 }).lean()
   },
 
+  async findByBank(itemBankId: string) {
+    return Question.find({ itemBankId }).sort({ order: 1, createdAt: 1 }).lean()
+  },
+
+  async findByIds(ids: string[]) {
+    return Question.find({ _id: { $in: ids } }).lean()
+  },
+
   async findById(id: string) {
     return Question.findById(id).lean()
   },
 
   async create(data: CreateQuestionData) {
-    const order =
-      data.order ?? (await Question.countDocuments({ assessmentId: data.assessmentId }))
+    const filter = data.assessmentId
+      ? { assessmentId: data.assessmentId }
+      : { itemBankId: data.itemBankId }
+    const order = data.order ?? (await Question.countDocuments(filter))
     return Question.create({ ...data, order })
   },
 

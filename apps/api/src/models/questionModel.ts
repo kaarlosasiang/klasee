@@ -13,7 +13,11 @@ const questionSchema = new mongoose.Schema(
     assessmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Assessment",
-      required: true,
+      index: true,
+    },
+    itemBankId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ItemBank",
       index: true,
     },
     type: {

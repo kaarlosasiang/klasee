@@ -4,11 +4,15 @@ import { Application } from "express"
 import { auth } from "../modules/auth/better-auth.js"
 import announcementRoutes from "../modules/announcement/announcementRoutes.js"
 import assessmentRoutes from "../modules/assessment/assessmentRoutes.js"
+import assignmentGroupRoutes from "../modules/assignment-group/assignmentGroupRoutes.js"
 import assignmentSubmissionRoutes from "../modules/assignment-submission/assignmentSubmissionRoutes.js"
 import attendanceRoutes from "../modules/attendance/attendanceRoutes.js"
 import courseRoutes from "../modules/course/courseRoutes.js"
 import driveRoutes from "../modules/drive/driveRoutes.js"
+import dueDateOverrideRoutes from "../modules/due-date-override/dueDateOverrideRoutes.js"
 import enrollmentRoutes from "../modules/enrollment/enrollmentRoutes.js"
+import itemBankRoutes from "../modules/item-bank/itemBankRoutes.js"
+import gradebookRoutes from "../modules/gradebook/gradebookRoutes.js"
 import invitationRoutes from "../modules/invitation/invitationRoutes.js"
 import lessonRoutes from "../modules/lesson/lessonRoutes.js"
 import moduleRoutes from "../modules/module/moduleRoutes.js"
@@ -26,12 +30,16 @@ export default (app: Application): void => {
   app.use(`${API_PREFIX}/modules`, moduleRoutes)
   app.use(`${API_PREFIX}/courses`, courseRoutes)
   app.use(`${API_PREFIX}/drive`, driveRoutes)
+  app.use(`${API_PREFIX}/due-date-overrides`, dueDateOverrideRoutes)
   app.use(`${API_PREFIX}/sections`, sectionRoutes)
   app.use(`${API_PREFIX}/enrollments`, enrollmentRoutes)
   app.use(`${API_PREFIX}/invitations`, invitationRoutes)
   app.use(`${API_PREFIX}/attendance`, attendanceRoutes)
   app.use(`${API_PREFIX}/assessments`, assessmentRoutes)
+  app.use(`${API_PREFIX}/assignment-groups`, assignmentGroupRoutes)
   app.use(`${API_PREFIX}/assignment-submissions`, assignmentSubmissionRoutes)
+  app.use(`${API_PREFIX}/gradebook`, gradebookRoutes)
+  app.use(`${API_PREFIX}/item-banks`, itemBankRoutes)
   app.use(`${API_PREFIX}/lessons`, lessonRoutes)
   app.use(`${API_PREFIX}/questions`, questionRoutes)
   app.use(`${API_PREFIX}/quiz-attempts`, quizAttemptRoutes)

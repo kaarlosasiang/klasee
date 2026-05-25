@@ -10,6 +10,7 @@ const announcementSchema = new mongoose.Schema(
     title: { type: String, required: true, maxlength: 200 },
     content: { type: String, required: true },
     isPinned: { type: Boolean, default: false },
+    sectionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Section" }],
     authorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

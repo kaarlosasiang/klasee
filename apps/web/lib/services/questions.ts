@@ -7,7 +7,8 @@ export interface QuestionOption {
 
 export interface Question {
   _id: string
-  assessmentId: string
+  assessmentId?: string
+  itemBankId?: string
   type: "multiple_choice" | "true_false" | "essay" | "fill_in"
   question: string
   points: number
@@ -23,7 +24,8 @@ export interface Question {
 }
 
 export interface CreateQuestionInput {
-  assessmentId: string
+  assessmentId?: string
+  itemBankId?: string
   type: "multiple_choice" | "true_false" | "essay" | "fill_in"
   question: string
   points?: number
@@ -51,6 +53,16 @@ export interface UpdateQuestionInput {
 
 export const getQuestions = async (assessmentId: string): Promise<Question[]> => {
   const response = await client.get("/questions", { params: { assessmentId } })
+  return response.data
+}
+
+export const getQuestionsByBank = async (itemBankId: string): Promise<Question[]> => {
+  const response = await client.get("/questions", { params: { itemBankId } })
+  return response.data
+}
+
+export const getQuestionsByIds = async (ids: string[]): Promise<Question[]> => {
+  const response = await client.get("/questions", { params: { ids: ids.join(",") } })
   return response.data
 }
 

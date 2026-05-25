@@ -2,11 +2,13 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Plus, Search, Timer, Shuffle } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Search, Timer, Shuffle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Switch } from "@workspace/ui/components/switch"
+import { Checkbox } from "@workspace/ui/components/checkbox"
+import { Label } from "@workspace/ui/components/label"
 import {
   Select,
   SelectContent,
@@ -15,7 +17,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { toast } from "sonner"
-import { createAssessment } from "@/lib/services/assessments"
+import { createAssessment, type LatePolicy } from "@/lib/services/assessments"
 import { createQuestion, type UpdateQuestionInput } from "@/lib/services/questions"
 import { QuestionSidebar } from "@/components/quiz-builder/question-sidebar"
 import { QuestionCard } from "@/components/quiz-builder/question-card"
@@ -78,6 +80,22 @@ export default function NewAssessmentPage() {
   const [instructions, setInstructions] = React.useState("")
   const [allowedFileTypes, setAllowedFileTypes] = React.useState<string[]>([])
   const [maxFiles, setMaxFiles] = React.useState("")
+
+  // Late policy (shared across types)
+  const [latePolicyEnabled, setLatePolicyEnabled] = React.useState(false)
+  const [deductionType, setDeductionType] = React.useState<"percent" | "flat">("percent")
+  const [deductionPerDay, setDeductionPerDay] = React.useState("")
+  const [maxDeduction, setMaxDeduction] = React.useState("")
+
+  function buildLatePolicy(): LatePolicy | undefined {
+    if (!latePolicyEnabled || !dueDate) return undefined
+    return {
+      enabled: true,
+      deductionType,
+      deductionPerDay: Number(deductionPerDay) || 0,
+      maxDeduction: Number(maxDeduction) || 100,
+    }
+  }
 
   // Quiz/exam question state
   const [questions, setQuestions] = React.useState<QuestionLike[]>([])
@@ -167,6 +185,7 @@ export default function NewAssessmentPage() {
         type: assessmentType,
         totalPoints: pts,
         dueDate: dueDate || undefined,
+        latePolicy: buildLatePolicy(),
         ...(assessmentType === "exam" && {
           timeLimit: Number(timeLimit) || undefined,
           randomizeQuestions,
@@ -322,6 +341,54 @@ export default function NewAssessmentPage() {
               </div>
             )}
 
+            {/* Late policy row (quiz/exam) */}
+            {dueDate && (
+              <div className="flex shrink-0 items-center gap-4 border-b border-border bg-muted/20 px-4 py-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={latePolicyEnabled}
+                    onCheckedChange={(v) => setLatePolicyEnabled(!!v)}
+                  />
+                  <span className="text-xs text-muted-foreground">Late penalty</span>
+                </label>
+                {latePolicyEnabled && (
+                  <>
+                    <Select
+                      value={deductionType}
+                      onValueChange={(v) => setDeductionType(v as "percent" | "flat")}
+                    >
+                      <SelectTrigger className="h-7 w-28 shrink-0 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">% / day</SelectItem>
+                        <SelectItem value="flat">pts / day</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={deductionPerDay}
+                      onChange={(e) => setDeductionPerDay(e.target.value)}
+                      placeholder="0"
+                      className="h-7 w-16 text-xs"
+                    />
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      max
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={maxDeduction}
+                      onChange={(e) => setMaxDeduction(e.target.value)}
+                      placeholder={deductionType === "percent" ? "100%" : "pts"}
+                      className="h-7 w-16 text-xs"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Question list */}
             <div className="flex-1 space-y-4 overflow-y-auto p-4">
               {filtered.length === 0 ? (
@@ -396,6 +463,65 @@ export default function NewAssessmentPage() {
                 className="w-full resize-none rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
               />
             </div>
+
+            {/* Late policy */}
+            {dueDate && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium">Late Policy</h3>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={latePolicyEnabled}
+                    onCheckedChange={(v) => setLatePolicyEnabled(!!v)}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Deduct points for late submissions
+                  </span>
+                </label>
+                {latePolicyEnabled && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Type</Label>
+                      <Select
+                        value={deductionType}
+                        onValueChange={(v) => setDeductionType(v as "percent" | "flat")}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percent">% per day</SelectItem>
+                          <SelectItem value="flat">pts per day</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Per day</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={deductionPerDay}
+                        onChange={(e) => setDeductionPerDay(e.target.value)}
+                        placeholder="0"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        Max {deductionType === "percent" ? "%" : "pts"}
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={maxDeduction}
+                        onChange={(e) => setMaxDeduction(e.target.value)}
+                        placeholder={deductionType === "percent" ? "100" : "—"}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Submission settings */}
             <div className="space-y-4">

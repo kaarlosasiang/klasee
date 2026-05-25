@@ -7,6 +7,7 @@ export interface Announcement {
   title: string
   content: string
   isPinned: boolean
+  sectionIds?: string[]
   authorId: string
   authorName?: string
   createdAt: string
@@ -18,12 +19,14 @@ export interface CreateAnnouncementInput {
   title: string
   content: string
   isPinned?: boolean
+  sectionIds?: string[]
 }
 
 export interface UpdateAnnouncementInput {
   title?: string
   content?: string
   isPinned?: boolean
+  sectionIds?: string[]
 }
 
 export const getAnnouncements = async (

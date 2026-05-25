@@ -1,5 +1,12 @@
 import client from "../config/axios"
 
+export interface LatePolicy {
+  enabled: boolean
+  deductionType: "percent" | "flat"
+  deductionPerDay: number
+  maxDeduction: number
+}
+
 export interface Assessment {
   _id: string
   courseId: string
@@ -13,6 +20,10 @@ export interface Assessment {
   instructions?: string
   allowedFileTypes?: string[]
   maxFiles?: number
+  groupId?: string
+  latePolicy?: LatePolicy
+  questionGroups?: { bankId: string; count: number }[]
+  effectiveDueDate?: string
   createdAt: string
   updatedAt: string
 }
@@ -59,6 +70,7 @@ export const createAssessment = async (data: {
   instructions?: string
   allowedFileTypes?: string[]
   maxFiles?: number
+  latePolicy?: LatePolicy
 }): Promise<Assessment> => {
   const response = await client.post("/assessments", data)
   return response.data
@@ -77,6 +89,9 @@ export const updateAssessment = async (
     instructions: string
     allowedFileTypes: string[]
     maxFiles: number
+    groupId: string
+    latePolicy: LatePolicy
+    questionGroups: { bankId: string; count: number }[]
   }>
 ): Promise<Assessment> => {
   const response = await client.put(`/assessments/${id}`, data)

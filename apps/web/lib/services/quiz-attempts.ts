@@ -17,6 +17,8 @@ export interface QuizAttempt {
   answers: QuizAttemptAnswer[]
   totalPointsEarned: number
   totalPointsPossible: number
+  latePenalty?: number
+  selectedQuestionIds?: string[]
   createdAt: string
   updatedAt: string
 }

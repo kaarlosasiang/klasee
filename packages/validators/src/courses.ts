@@ -56,12 +56,14 @@ export const createAnnouncementSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   content: z.string().min(1, "Content is required"),
   isPinned: z.boolean().optional(),
+  sectionIds: z.array(z.string()).optional(),
 })
 
 export const updateAnnouncementSchema = z.object({
   title: z.string().min(1, "Title is required").max(200).optional(),
   content: z.string().min(1, "Content is required").optional(),
   isPinned: z.boolean().optional(),
+  sectionIds: z.array(z.string()).optional(),
 })
 
 export const studentUploadFileSchema = z.object({
@@ -71,6 +73,13 @@ export const studentUploadFileSchema = z.object({
 export const ensureCourseFoldersSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   courseName: z.string().min(1, "courseName is required"),
+})
+
+const latePolicySchema = z.object({
+  enabled: z.boolean().default(false),
+  deductionType: z.enum(["percent", "flat"]).default("percent"),
+  deductionPerDay: z.number().min(0).default(0),
+  maxDeduction: z.number().min(0).default(100),
 })
 
 export const createAssessmentSchema = z.object({
@@ -87,6 +96,38 @@ export const createAssessmentSchema = z.object({
   instructions: z.string().optional(),
   allowedFileTypes: z.array(z.string()).optional(),
   maxFiles: z.number().int().min(1).optional(),
+  groupId: z.string().optional(),
+  latePolicy: latePolicySchema.optional(),
+  questionGroups: z.array(z.object({
+    bankId: z.string().min(1),
+    count: z.number().int().min(1),
+  })).optional(),
 })
 
 export const updateAssessmentSchema = createAssessmentSchema.omit({ courseId: true }).partial()
+
+export const createDueDateOverrideSchema = z.object({
+  assessmentId: z.string().min(1, "assessmentId is required"),
+  type: z.enum(["section", "student"]),
+  targetId: z.string().min(1, "targetId is required"),
+  dueDate: z.string().min(1, "dueDate is required"),
+})
+
+export const createItemBankSchema = z.object({
+  courseId: z.string().min(1, "courseId is required"),
+  name: z.string().min(1, "Name is required").max(200),
+})
+
+export const updateItemBankSchema = createItemBankSchema.omit({ courseId: true }).partial()
+
+export const createAssignmentGroupSchema = z.object({
+  courseId: z.string().min(1, "courseId is required"),
+  name: z.string().min(1, "Group name is required").max(100),
+  weight: z.number().min(0).max(100),
+  dropLowest: z.number().int().min(0).default(0),
+  order: z.number().int().min(0).optional(),
+})
+
+export const updateAssignmentGroupSchema = createAssignmentGroupSchema
+  .omit({ courseId: true })
+  .partial()

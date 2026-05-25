@@ -14,7 +14,10 @@ export const announcementController = {
       if (!courseId) {
         return res.status(400).json({ message: "courseId query param is required" })
       }
-      const announcements = await announcementService.findByCourse(courseId)
+      const role = (req.authUser as any)?.role
+      const studentId =
+        role === "student" ? String((req.authUser as any)?.id) : undefined
+      const announcements = await announcementService.findByCourse(courseId, studentId)
       res.json(announcements)
     } catch (err) {
       next(err)

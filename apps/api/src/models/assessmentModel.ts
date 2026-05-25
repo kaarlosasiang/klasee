@@ -1,5 +1,23 @@
 import mongoose from "mongoose"
 
+const latePolicySchema = new mongoose.Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    deductionType: { type: String, enum: ["percent", "flat"], default: "percent" },
+    deductionPerDay: { type: Number, default: 0 },
+    maxDeduction: { type: Number, default: 100 },
+  },
+  { _id: false }
+)
+
+const questionGroupSchema = new mongoose.Schema(
+  {
+    bankId: { type: mongoose.Schema.Types.ObjectId, ref: "ItemBank" },
+    count: { type: Number, min: 1 },
+  },
+  { _id: false }
+)
+
 const assessmentSchema = new mongoose.Schema(
   {
     courseId: {
@@ -21,6 +39,12 @@ const assessmentSchema = new mongoose.Schema(
     instructions: { type: String },
     allowedFileTypes: { type: [String], default: [] },
     maxFiles: { type: Number },
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AssignmentGroup",
+    },
+    latePolicy: { type: latePolicySchema },
+    questionGroups: { type: [questionGroupSchema], default: [] },
   },
   { timestamps: true }
 )

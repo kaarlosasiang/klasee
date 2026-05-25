@@ -21,7 +21,8 @@ export const assessmentController = {
       if (role !== "instructor" && role !== "admin") {
         filter.isPublished = true
       }
-      const assessments = await assessmentService.findAll(filter)
+      const studentId = role === "student" ? getRequesterId(req) : undefined
+      const assessments = await assessmentService.findAll(filter, studentId)
       res.json(assessments)
     } catch (err) {
       next(err)

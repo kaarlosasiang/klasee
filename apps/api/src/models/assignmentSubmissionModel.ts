@@ -30,6 +30,7 @@ const assignmentSubmissionSchema = new mongoose.Schema(
     feedback: { type: String },
     gradedAt: { type: Date },
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    latePenalty: { type: Number, default: 0 },
     submittedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

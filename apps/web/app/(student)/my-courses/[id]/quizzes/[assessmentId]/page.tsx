@@ -30,7 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@workspace/ui/components/alert-dialog"
 import { getAssessmentById, type Assessment } from "@/lib/services/assessments"
-import { getQuestions, type Question } from "@/lib/services/questions"
+import { getQuestions, getQuestionsByIds, type Question } from "@/lib/services/questions"
 import {
   startQuizAttempt,
   getMyQuizAttempts,
@@ -54,18 +54,29 @@ export default function StudentQuizPage() {
   React.useEffect(() => {
     async function load() {
       try {
-        const [assessmentData, questionsData, existingAttempts] = await Promise.all([
+        const [assessmentData, existingAttempts] = await Promise.all([
           getAssessmentById(assessmentId),
-          getQuestions(assessmentId),
           getMyQuizAttempts(assessmentId).catch(() => []),
         ])
         setAssessment(assessmentData)
-        setQuestions(questionsData.sort((a: { order: number }, b: { order: number }) => a.order - b.order))
 
         const completed = existingAttempts.find((a: { status: string }) => a.status === "completed")
         if (completed) {
           setAttempt(completed)
         }
+
+        // Load questions: use selectedQuestionIds if this is a bank-drawn quiz
+        const inProgress = existingAttempts.find((a: { status: string }) => a.status === "in_progress")
+        const activeAttempt = completed ?? inProgress
+        const selectedIds = (activeAttempt as any)?.selectedQuestionIds
+
+        let questionsData: Question[]
+        if (selectedIds && selectedIds.length > 0) {
+          questionsData = await getQuestionsByIds(selectedIds)
+        } else {
+          questionsData = await getQuestions(assessmentId)
+        }
+        setQuestions(questionsData.sort((a: { order: number }, b: { order: number }) => a.order - b.order))
       } catch {
         toast.error("Failed to load quiz")
       } finally {
@@ -80,6 +91,11 @@ export default function StudentQuizPage() {
     try {
       const newAttempt = await startQuizAttempt(assessmentId)
       setAttempt(newAttempt)
+      // If bank-drawn, load the server-selected questions
+      if (newAttempt.selectedQuestionIds && newAttempt.selectedQuestionIds.length > 0) {
+        const bankQuestions = await getQuestionsByIds(newAttempt.selectedQuestionIds)
+        setQuestions(bankQuestions.sort((a, b) => a.order - b.order))
+      }
       toast.success("Quiz started!")
     } catch {
       toast.error("Failed to start quiz")

@@ -50,7 +50,8 @@ function formatDueDate(dateStr: string): string {
 
 function AssessmentRow({ item }: { item: AssessmentWithCourse }) {
   const TypeIcon = TYPE_ICONS[item.type] ?? ClipboardList
-  const status = dueDateStatus(item.dueDate)
+  const displayDueDate = item.effectiveDueDate ?? item.dueDate
+  const status = dueDateStatus(displayDueDate)
   const href =
     item.type === "assignment"
       ? `/my-courses/${item.courseId}/assignments/${item._id}`
@@ -77,7 +78,7 @@ function AssessmentRow({ item }: { item: AssessmentWithCourse }) {
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           <span>{item.courseName} · {item.courseCode}</span>
           <span>{item.totalPoints} pts</span>
-          {item.dueDate && (
+          {displayDueDate && (
             <span className={`flex items-center gap-1 ${status === "overdue" ? "text-red-500" : ""}`}>
               {status === "overdue" ? (
                 <AlertCircle className="size-3" />
@@ -85,7 +86,12 @@ function AssessmentRow({ item }: { item: AssessmentWithCourse }) {
                 <Clock className="size-3" />
               )}
               {status === "overdue" ? "Overdue · " : "Due "}
-              {formatDueDate(item.dueDate)}
+              {formatDueDate(displayDueDate)}
+              {item.effectiveDueDate && item.effectiveDueDate !== item.dueDate && (
+                <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                  extended
+                </span>
+              )}
             </span>
           )}
         </div>

@@ -15,6 +15,8 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -51,13 +53,24 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
+import { Checkbox } from "@workspace/ui/components/checkbox"
 import { toast } from "sonner"
 import {
   getAssessments,
   updateAssessment,
   deleteAssessment,
   type Assessment,
+  type LatePolicy,
 } from "@/lib/services/assessments"
+import {
+  getOverrides,
+  upsertOverride,
+  deleteOverride,
+  type DueDateOverride,
+} from "@/lib/services/due-date-overrides"
+import { getSectionsByCourse, type Section } from "@/lib/services/sections"
+import { getEnrollmentsByCourse, type Enrollment } from "@/lib/services/enrollments"
+import { getItemBanks, type ItemBank } from "@/lib/services/item-banks"
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   quiz: FileText,
@@ -99,7 +112,28 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
   const [type, setType] = React.useState<"quiz" | "exam" | "assignment">("quiz")
   const [totalPoints, setTotalPoints] = React.useState("")
   const [dueDate, setDueDate] = React.useState("")
+  const [latePolicyEnabled, setLatePolicyEnabled] = React.useState(false)
+  const [deductionType, setDeductionType] = React.useState<"percent" | "flat">("percent")
+  const [deductionPerDay, setDeductionPerDay] = React.useState("")
+  const [maxDeduction, setMaxDeduction] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
+
+  // Due date overrides state
+  const [overrides, setOverrides] = React.useState<DueDateOverride[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [enrollments, setEnrollments] = React.useState<Enrollment[]>([])
+  const [overrideType, setOverrideType] = React.useState<"section" | "student">("section")
+  const [overrideTargetId, setOverrideTargetId] = React.useState("")
+  const [overrideDueDate, setOverrideDueDate] = React.useState("")
+  const [addingOverride, setAddingOverride] = React.useState(false)
+  const [overrideSaving, setOverrideSaving] = React.useState(false)
+
+  // Question groups state (for quiz/exam)
+  const [questionGroups, setQuestionGroups] = React.useState<{ bankId: string; count: number }[]>([])
+  const [itemBanks, setItemBanks] = React.useState<ItemBank[]>([])
+  const [addingGroup, setAddingGroup] = React.useState(false)
+  const [groupBankId, setGroupBankId] = React.useState("")
+  const [groupCount, setGroupCount] = React.useState("")
 
   const fetchAssessments = React.useCallback(async () => {
     setLoading(true)
@@ -123,6 +157,24 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
     setType("quiz")
     setTotalPoints("")
     setDueDate("")
+    setLatePolicyEnabled(false)
+    setDeductionType("percent")
+    setDeductionPerDay("")
+    setMaxDeduction("")
+    setQuestionGroups([])
+    setAddingGroup(false)
+    setGroupBankId("")
+    setGroupCount("")
+  }
+
+  function buildLatePolicy(): LatePolicy | undefined {
+    if (!latePolicyEnabled) return undefined
+    return {
+      enabled: true,
+      deductionType,
+      deductionPerDay: Number(deductionPerDay) || 0,
+      maxDeduction: Number(maxDeduction) || 100,
+    }
   }
 
   async function handleUpdate(assessment: Assessment) {
@@ -142,6 +194,8 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
         type,
         totalPoints: points,
         dueDate: dueDate || undefined,
+        latePolicy: buildLatePolicy(),
+        questionGroups: questionGroups.length > 0 ? questionGroups : [],
       })
       setEditingId(null)
       resetForm()
@@ -188,6 +242,62 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
     setType(assessment.type)
     setTotalPoints(String(assessment.totalPoints))
     setDueDate(assessment.dueDate ?? "")
+    setLatePolicyEnabled(assessment.latePolicy?.enabled ?? false)
+    setDeductionType(assessment.latePolicy?.deductionType ?? "percent")
+    setDeductionPerDay(String(assessment.latePolicy?.deductionPerDay ?? ""))
+    setMaxDeduction(String(assessment.latePolicy?.maxDeduction ?? ""))
+    setAddingOverride(false)
+    setOverrideType("section")
+    setOverrideTargetId("")
+    setOverrideDueDate("")
+
+    setQuestionGroups(assessment.questionGroups ?? [])
+    setAddingGroup(false)
+    setGroupBankId("")
+    setGroupCount("")
+
+    Promise.all([
+      getOverrides(assessment._id),
+      getSectionsByCourse(courseId),
+      getEnrollmentsByCourse(courseId),
+      getItemBanks(courseId),
+    ]).then(([ovrs, secs, enrs, banks]) => {
+      setOverrides(ovrs)
+      setSections(secs)
+      setEnrollments(enrs)
+      setItemBanks(banks)
+    }).catch(() => {})
+  }
+
+  async function handleAddOverride(assessmentId: string) {
+    if (!overrideTargetId || !overrideDueDate) {
+      toast.error("Select a target and due date")
+      return
+    }
+    setOverrideSaving(true)
+    try {
+      await upsertOverride({ assessmentId, type: overrideType, targetId: overrideTargetId, dueDate: overrideDueDate })
+      const updated = await getOverrides(assessmentId)
+      setOverrides(updated)
+      setAddingOverride(false)
+      setOverrideTargetId("")
+      setOverrideDueDate("")
+      toast.success("Override saved")
+    } catch {
+      toast.error("Failed to save override")
+    } finally {
+      setOverrideSaving(false)
+    }
+  }
+
+  async function handleDeleteOverride(id: string, assessmentId: string) {
+    try {
+      await deleteOverride(id)
+      setOverrides((prev) => prev.filter((o) => o._id !== id))
+      toast.success("Override removed")
+    } catch {
+      toast.error("Failed to remove override")
+    }
   }
 
   function cancelEdit() {
@@ -325,6 +435,250 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
                           />
                         </div>
                       </div>
+                      {/* Late policy */}
+                      <div className="mt-3 border-t border-border pt-3">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <Checkbox
+                            checked={latePolicyEnabled}
+                            onCheckedChange={(v) => setLatePolicyEnabled(!!v)}
+                          />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Deduct points for late submissions
+                          </span>
+                        </label>
+                        {latePolicyEnabled && (
+                          <div className="mt-2 grid grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Type</Label>
+                              <Select
+                                value={deductionType}
+                                onValueChange={(v) => setDeductionType(v as "percent" | "flat")}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="percent">% per day</SelectItem>
+                                  <SelectItem value="flat">pts per day</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Per day
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={deductionPerDay}
+                                onChange={(e) => setDeductionPerDay(e.target.value)}
+                                placeholder="0"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Max {deductionType === "percent" ? "%" : "pts"}
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={maxDeduction}
+                                onChange={(e) => setMaxDeduction(e.target.value)}
+                                placeholder={deductionType === "percent" ? "100" : "—"}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Question groups (quiz/exam only) */}
+                      {(type === "quiz" || type === "exam") && (
+                        <div className="mt-3 border-t border-border pt-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-medium text-muted-foreground">Question groups (random draw)</p>
+                            <button
+                              type="button"
+                              onClick={() => setAddingGroup((v) => !v)}
+                              className="flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <Plus className="size-3" />
+                              Add group
+                            </button>
+                          </div>
+
+                          {questionGroups.length > 0 && (
+                            <div className="mt-2 space-y-1.5">
+                              {questionGroups.map((g, i) => {
+                                const bank = itemBanks.find((b) => b._id === g.bankId)
+                                return (
+                                  <div key={i} className="flex items-center justify-between rounded-md bg-muted/30 px-2 py-1.5 text-xs">
+                                    <span>
+                                      <span className="font-medium">{bank?.name ?? g.bankId}</span>
+                                      <span className="mx-1.5 text-muted-foreground">—</span>
+                                      draw {g.count}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setQuestionGroups((prev) => prev.filter((_, j) => j !== i))}
+                                      className="ml-2 text-muted-foreground hover:text-destructive"
+                                    >
+                                      <Trash2 className="size-3" />
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {questionGroups.length === 0 && !addingGroup && (
+                            <p className="mt-1.5 text-[10px] text-muted-foreground">
+                              No groups — questions are fixed per assessment
+                            </p>
+                          )}
+
+                          {addingGroup && itemBanks.length > 0 && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <Select value={groupBankId} onValueChange={setGroupBankId}>
+                                <SelectTrigger className="h-7 flex-1 text-xs">
+                                  <SelectValue placeholder="Pick bank" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {itemBanks.map((b) => (
+                                    <SelectItem key={b._id} value={b._id}>{b.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={groupCount}
+                                onChange={(e) => setGroupCount(e.target.value)}
+                                placeholder="Count"
+                                className="h-7 w-16 text-xs"
+                              />
+                              <Button
+                                size="sm"
+                                className="h-7 shrink-0 text-xs"
+                                onClick={() => {
+                                  if (!groupBankId || !groupCount) return
+                                  setQuestionGroups((prev) => [...prev, { bankId: groupBankId, count: Number(groupCount) }])
+                                  setGroupBankId("")
+                                  setGroupCount("")
+                                  setAddingGroup(false)
+                                }}
+                              >
+                                Add
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAddingGroup(false)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
+                          {addingGroup && itemBanks.length === 0 && (
+                            <p className="mt-1.5 text-[10px] text-muted-foreground">
+                              No question banks yet — create one in the Question Banks tab first
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Due date overrides */}
+                      <div className="mt-3 border-t border-border pt-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground">Due date overrides</p>
+                          <button
+                            type="button"
+                            onClick={() => setAddingOverride((v) => !v)}
+                            className="flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <Plus className="size-3" />
+                            Add
+                          </button>
+                        </div>
+
+                        {overrides.length === 0 && !addingOverride && (
+                          <p className="mt-1.5 text-[10px] text-muted-foreground">
+                            No overrides — everyone uses the default due date
+                          </p>
+                        )}
+
+                        {overrides.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {overrides.map((o) => {
+                              const targetName = o.type === "section"
+                                ? (sections.find((s) => s._id === o.targetId)?.name ?? o.targetId)
+                                : (enrollments.find((e) => e.studentId._id === o.targetId)?.studentId.name ?? o.targetId)
+                              return (
+                                <div key={o._id} className="flex items-center justify-between rounded-md bg-muted/30 px-2 py-1.5 text-xs">
+                                  <span>
+                                    <span className="font-medium">{targetName}</span>
+                                    <span className="mx-1.5 text-muted-foreground">→</span>
+                                    {new Date(o.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteOverride(o._id, assessment._id)}
+                                    className="ml-2 text-muted-foreground hover:text-destructive"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {addingOverride && (
+                          <div className="mt-2 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Select value={overrideType} onValueChange={(v) => { setOverrideType(v as "section" | "student"); setOverrideTargetId("") }}>
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="section">Section</SelectItem>
+                                  <SelectItem value="student">Student</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Select value={overrideTargetId} onValueChange={setOverrideTargetId}>
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Pick target" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {overrideType === "section"
+                                    ? sections.map((s) => (
+                                        <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+                                      ))
+                                    : enrollments
+                                        .filter((e) => e.status === "active")
+                                        .map((e) => (
+                                          <SelectItem key={e.studentId._id} value={e.studentId._id}>
+                                            {e.studentId.name}
+                                          </SelectItem>
+                                        ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="date"
+                                value={overrideDueDate}
+                                onChange={(e) => setOverrideDueDate(e.target.value)}
+                                className="h-7 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              />
+                              <Button size="sm" className="h-7 text-xs" onClick={() => handleAddOverride(assessment._id)} disabled={overrideSaving}>
+                                {overrideSaving ? <Loader2 className="size-3 animate-spin" /> : "Save"}
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAddingOverride(false)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="mt-3 flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"
