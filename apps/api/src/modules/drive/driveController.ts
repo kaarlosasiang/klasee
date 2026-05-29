@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express"
 import { driveService } from "./driveService.js"
+import { CourseFile } from "../../models/courseFileModel.js"
 import {
   createFolderSchema,
   uploadFileSchema,
@@ -153,14 +154,17 @@ export const driveController = {
     try {
       const userId = getUserId(req)
       const { id } = req.params as { id: string }
+
+      const driveFile = await CourseFile.findOne({ driveFileId: id }).lean()
+      const mimeType = driveFile?.mimeType ?? "application/octet-stream"
+
       const response = await driveService.streamFile(userId, id)
 
-      const contentType = response.headers["content-type"]
-      if (contentType) {
-        res.setHeader("Content-Type", contentType)
-      }
-
+      res.setHeader("Content-Type", mimeType)
+      res.setHeader("Content-Disposition", "inline")
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin")
+      res.setHeader("Cache-Control", "private, max-age=3600")
+      res.removeHeader("X-Frame-Options")
 
       response.data.pipe(res)
     } catch (err) {

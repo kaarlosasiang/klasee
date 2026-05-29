@@ -1,23 +1,8 @@
 import { NextFunction, Request, Response } from "express"
 import { dueDateOverrideService } from "./dueDateOverrideService.js"
-import { Assessment } from "../../models/assessmentModel.js"
-import { Course } from "../../models/courseModel.js"
+import { verifyAssessmentOwnership } from "../../shared/utils/ownership.js"
+import { getUserId } from "../../shared/utils/request.js"
 import { createDueDateOverrideSchema } from "@workspace/validators"
-
-function getRequesterId(req: Request): string {
-  return String((req.authUser as any)?.id)
-}
-
-async function verifyAssessmentOwnership(
-  assessmentId: string,
-  requesterId: string
-): Promise<boolean> {
-  const assessment = await Assessment.findById(assessmentId).lean()
-  if (!assessment) return false
-  const course = await Course.findById(assessment.courseId).lean()
-  if (!course) return false
-  return String(course.instructorId) === requesterId
-}
 
 export const dueDateOverrideController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -26,7 +11,7 @@ export const dueDateOverrideController = {
       if (!assessmentId) {
         return res.status(400).json({ message: "assessmentId query param is required" })
       }
-      const requesterId = getRequesterId(req)
+      const requesterId = getUserId(req)
       const allowed = await verifyAssessmentOwnership(assessmentId, requesterId)
       if (!allowed) return res.status(403).json({ message: "Forbidden" })
 
@@ -46,7 +31,7 @@ export const dueDateOverrideController = {
           errors: parsed.error.flatten().fieldErrors,
         })
       }
-      const requesterId = getRequesterId(req)
+      const requesterId = getUserId(req)
       const allowed = await verifyAssessmentOwnership(parsed.data.assessmentId, requesterId)
       if (!allowed) return res.status(403).json({ message: "Forbidden" })
 
@@ -66,7 +51,7 @@ export const dueDateOverrideController = {
       const existing = await DueDateOverride.findById(req.params["id"]).lean()
       if (!existing) return res.status(404).json({ message: "Override not found" })
 
-      const requesterId = getRequesterId(req)
+      const requesterId = getUserId(req)
       const allowed = await verifyAssessmentOwnership(String(existing.assessmentId), requesterId)
       if (!allowed) return res.status(403).json({ message: "Forbidden" })
 

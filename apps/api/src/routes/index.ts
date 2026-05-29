@@ -11,7 +11,6 @@ import courseRoutes from "../modules/course/courseRoutes.js"
 import driveRoutes from "../modules/drive/driveRoutes.js"
 import dueDateOverrideRoutes from "../modules/due-date-override/dueDateOverrideRoutes.js"
 import enrollmentRoutes from "../modules/enrollment/enrollmentRoutes.js"
-import itemBankRoutes from "../modules/item-bank/itemBankRoutes.js"
 import gradebookRoutes from "../modules/gradebook/gradebookRoutes.js"
 import invitationRoutes from "../modules/invitation/invitationRoutes.js"
 import lessonRoutes from "../modules/lesson/lessonRoutes.js"
@@ -39,7 +38,6 @@ export default (app: Application): void => {
   app.use(`${API_PREFIX}/assignment-groups`, assignmentGroupRoutes)
   app.use(`${API_PREFIX}/assignment-submissions`, assignmentSubmissionRoutes)
   app.use(`${API_PREFIX}/gradebook`, gradebookRoutes)
-  app.use(`${API_PREFIX}/item-banks`, itemBankRoutes)
   app.use(`${API_PREFIX}/lessons`, lessonRoutes)
   app.use(`${API_PREFIX}/questions`, questionRoutes)
   app.use(`${API_PREFIX}/quiz-attempts`, quizAttemptRoutes)

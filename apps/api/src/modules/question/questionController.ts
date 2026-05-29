@@ -2,32 +2,16 @@ import { NextFunction, Request, Response } from "express"
 import { questionService } from "./questionService.js"
 import { Question } from "../../models/questionModel.js"
 import { Assessment } from "../../models/assessmentModel.js"
-import { Course } from "../../models/courseModel.js"
-import { ItemBank } from "../../models/itemBankModel.js"
-
-function getRequesterId(req: Request): string {
-  return String((req.authUser as any)?.id)
-}
-
-async function verifyAssessmentOwnership(assessmentId: string, requesterId: string): Promise<boolean> {
-  const assessment = await Assessment.findById(assessmentId).lean()
-  if (!assessment) return false
-  const course = await Course.findById(assessment.courseId).lean()
-  return !!course && String(course.instructorId) === requesterId
-}
-
-async function verifyBankOwnership(itemBankId: string, requesterId: string): Promise<boolean> {
-  const bank = await ItemBank.findById(itemBankId).lean()
-  if (!bank) return false
-  return String(bank.instructorId) === requesterId
-}
+import { Enrollment } from "../../models/enrollmentModel.js"
+import { verifyAssessmentOwnership } from "../../shared/utils/ownership.js"
+import { getUserId } from "../../shared/utils/request.js"
+import { createQuestionSchema, updateQuestionSchema } from "@workspace/validators"
 
 export const questionController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { assessmentId, itemBankId, ids } = req.query as {
+      const { assessmentId, ids } = req.query as {
         assessmentId?: string
-        itemBankId?: string
         ids?: string
       }
 
@@ -37,13 +21,8 @@ export const questionController = {
         return res.json(questions)
       }
 
-      if (itemBankId) {
-        const questions = await questionService.findByBank(itemBankId)
-        return res.json(questions)
-      }
-
       if (!assessmentId) {
-        return res.status(400).json({ message: "assessmentId, itemBankId, or ids query param is required" })
+        return res.status(400).json({ message: "assessmentId or ids query param is required" })
       }
       const questions = await questionService.findByAssessment(assessmentId)
       res.json(questions)
@@ -56,6 +35,21 @@ export const questionController = {
     try {
       const question = await questionService.findById(req.params["id"] as string)
       if (!question) return res.status(404).json({ message: "Question not found" })
+
+      const role = (req.authUser as any)?.role
+      if (role === "student") {
+        if (question.assessmentId) {
+          const assessment = await Assessment.findById(question.assessmentId).lean()
+          if (!assessment) return res.status(404).json({ message: "Question not found" })
+          const enrollment = await Enrollment.findOne({
+            studentId: getUserId(req),
+            courseId: assessment.courseId,
+            status: "active",
+          }).lean()
+          if (!enrollment) return res.status(403).json({ message: "Forbidden" })
+        }
+      }
+
       res.json(question)
     } catch (err) {
       next(err)
@@ -64,70 +58,35 @@ export const questionController = {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const {
-        assessmentId,
-        itemBankId,
-        type,
-        question,
-        points,
-        order,
-        options,
-        correctAnswer,
-        required,
-        multipleAnswers,
-        randomizeOrder,
-        estimationTime,
-      } = req.body as {
-        assessmentId?: string
-        itemBankId?: string
-        type: "multiple_choice" | "true_false" | "essay" | "fill_in"
-        question: string
-        points?: number
-        order?: number
-        options?: { text: string; isCorrect?: boolean }[]
-        correctAnswer?: string | boolean
-        required?: boolean
-        multipleAnswers?: boolean
-        randomizeOrder?: boolean
-        estimationTime?: number
-      }
-
-      if (!type || !question?.trim()) {
-        return res.status(400).json({ message: "type and question are required" })
-      }
-      if (!assessmentId && !itemBankId) {
-        return res.status(400).json({ message: "assessmentId or itemBankId is required" })
-      }
-
-      const requesterId = getRequesterId(req)
-
-      if (assessmentId) {
-        if (!(await verifyAssessmentOwnership(assessmentId, requesterId))) {
-          return res.status(403).json({ message: "Forbidden" })
-        }
-        const created = await questionService.create({
-          assessmentId,
-          type,
-          question: question.trim(),
-          points,
-          order,
-          options,
-          correctAnswer,
+      const parsed = createQuestionSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
         })
-        return res.status(201).json(created)
       }
 
-      if (!(await verifyBankOwnership(itemBankId!, requesterId))) {
+      if (!parsed.data.assessmentId) {
+        return res.status(400).json({ message: "assessmentId is required" })
+      }
+
+      const requesterId = getUserId(req)
+
+      if (!(await verifyAssessmentOwnership(parsed.data.assessmentId, requesterId))) {
         return res.status(403).json({ message: "Forbidden" })
       }
       const created = await questionService.create({
-        itemBankId,
-        type,
-        question: question.trim(),
-        points,
-        order,
-        options,
-        correctAnswer,
+        assessmentId: parsed.data.assessmentId,
+        type: parsed.data.type,
+        question: parsed.data.question.trim(),
+        points: parsed.data.points,
+        order: parsed.data.order,
+        options: parsed.data.options,
+        correctAnswer: parsed.data.correctAnswer,
+        required: parsed.data.required,
+        multipleAnswers: parsed.data.multipleAnswers,
+        randomizeOrder: parsed.data.randomizeOrder,
+        estimationTime: parsed.data.estimationTime,
       })
       res.status(201).json(created)
     } catch (err) {
@@ -141,16 +100,20 @@ export const questionController = {
       const existing = await Question.findById(id).lean()
       if (!existing) return res.status(404).json({ message: "Question not found" })
 
-      const requesterId = getRequesterId(req)
-      const allowed = existing.assessmentId
-        ? await verifyAssessmentOwnership(String(existing.assessmentId), requesterId)
-        : existing.itemBankId
-          ? await verifyBankOwnership(String(existing.itemBankId), requesterId)
-          : false
+      const parsed = updateQuestionSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: parsed.error.flatten().fieldErrors,
+        })
+      }
 
+      const requesterId = getUserId(req)
+      if (!existing.assessmentId) return res.status(403).json({ message: "Forbidden" })
+      const allowed = await verifyAssessmentOwnership(String(existing.assessmentId), requesterId)
       if (!allowed) return res.status(403).json({ message: "Forbidden" })
 
-      const question = await questionService.update(id, req.body)
+      const question = await questionService.update(id, parsed.data)
       res.json(question)
     } catch (err) {
       next(err)
@@ -163,13 +126,9 @@ export const questionController = {
       const existing = await Question.findById(id).lean()
       if (!existing) return res.status(404).json({ message: "Question not found" })
 
-      const requesterId = getRequesterId(req)
-      const allowed = existing.assessmentId
-        ? await verifyAssessmentOwnership(String(existing.assessmentId), requesterId)
-        : existing.itemBankId
-          ? await verifyBankOwnership(String(existing.itemBankId), requesterId)
-          : false
-
+      const requesterId = getUserId(req)
+      if (!existing.assessmentId) return res.status(403).json({ message: "Forbidden" })
+      const allowed = await verifyAssessmentOwnership(String(existing.assessmentId), requesterId)
       if (!allowed) return res.status(403).json({ message: "Forbidden" })
 
       await questionService.delete(id)
@@ -186,7 +145,7 @@ export const questionController = {
       if (!assessmentId || !questionIds?.length) {
         return res.status(400).json({ message: "assessmentId and questionIds are required" })
       }
-      if (!(await verifyAssessmentOwnership(assessmentId, getRequesterId(req)))) {
+      if (!(await verifyAssessmentOwnership(assessmentId, getUserId(req)))) {
         return res.status(403).json({ message: "Forbidden" })
       }
       await questionService.reorder(assessmentId, questionIds)

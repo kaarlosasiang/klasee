@@ -21,8 +21,9 @@ function calcGroupScores(
   scoreMap: Map<string, RawScore>,
   dropLowest: number
 ) {
-  // --- Final score: missing submissions count as 0 ---
-  const allScores = groupAssessments.map((a) => {
+  const scorable = groupAssessments.filter((a) => a.totalPoints > 0)
+
+  const allScores = scorable.map((a) => {
     const s = scoreMap.get(a._id)
     return { earned: s?.earned ?? 0, possible: a.totalPoints, isGraded: !!s }
   })
@@ -48,14 +49,18 @@ function calcGroupScores(
 }
 
 export const gradebookService = {
-  async getCourseGradebook(courseId: string) {
-    const [assessments, groups, enrollments] = await Promise.all([
+  async getCourseGradebook(courseId: string, page = 1, limit = 20) {
+    const [assessments, groups, allEnrollments] = await Promise.all([
       Assessment.find({ courseId }).lean(),
       AssignmentGroup.find({ courseId }).sort({ order: 1 }).lean(),
       Enrollment.find({ courseId, status: "active" })
         .populate("studentId", "name email")
         .lean(),
     ])
+
+    const skip = (page - 1) * limit
+    const total = allEnrollments.length
+    const enrollments = allEnrollments.slice(skip, skip + limit)
 
     const assessmentIds = assessments.map((a) => a._id)
     const studentIds = enrollments.map((e) => toId((e.studentId as any)._id))
@@ -171,7 +176,7 @@ export const gradebookService = {
       }
     })
 
-    return { assessments, groups, students }
+    return { assessments, groups, students, total, page, limit }
   },
 
   async getStudentGradebook(courseId: string, studentId: string) {

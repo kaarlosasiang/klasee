@@ -1,9 +1,10 @@
 import { ArrowLeft, FileText, Video, Link2, File, ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
 import Link from "next/link"
 import { getLessonById, getLessons } from "@/lib/services/lessons"
 import { getModules } from "@/lib/services/modules"
+import { getVideoEmbed } from "@/lib/utils/video"
+import { LessonFileActions } from "@/components/common/lesson-file-actions"
 
 const TYPE_LABELS: Record<string, string> = {
   page: "Page",
@@ -24,14 +25,6 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   video: Video,
   file: File,
   embed: Link2,
-}
-
-function getVideoEmbed(url: string): string | null {
-  const yt = url.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([\w-]+)/)
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
-  const vm = url.match(/vimeo\.com\/(\d+)/)
-  if (vm) return `https://player.vimeo.com/video/${vm[1]}`
-  return null
 }
 
 export default async function LessonPage({
@@ -151,17 +144,7 @@ export default async function LessonPage({
                 <p className="truncate text-sm font-medium">{lesson.fileId.name}</p>
                 <p className="text-xs text-muted-foreground">{lesson.fileId.mimeType}</p>
               </div>
-              {lesson.fileId.driveFileId && (
-                <a
-                  href={`https://drive.google.com/uc?id=${lesson.fileId.driveFileId}&export=download`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button size="sm" variant="outline">
-                    Download
-                  </Button>
-                </a>
-              )}
+              <LessonFileActions lesson={lesson} />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No file attached to this lesson.</p>

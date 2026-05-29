@@ -49,6 +49,7 @@ export const auth = betterAuth({
     google: {
       clientId: constants.googleClientId as string,
       clientSecret: constants.googleClientSecret as string,
+      scopes: ["https://www.googleapis.com/auth/drive.file"],
       accessType: "offline",
       prompt: "select_account consent",
     },

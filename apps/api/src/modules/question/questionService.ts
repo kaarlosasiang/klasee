@@ -6,14 +6,17 @@ interface QuestionOption {
 }
 
 interface CreateQuestionData {
-  assessmentId?: string
-  itemBankId?: string
+  assessmentId: string
   type: "multiple_choice" | "true_false" | "essay" | "fill_in"
   question: string
   points?: number
   order?: number
   options?: QuestionOption[]
   correctAnswer?: string | boolean
+  required?: boolean
+  multipleAnswers?: boolean
+  randomizeOrder?: boolean
+  estimationTime?: number
 }
 
 interface UpdateQuestionData {
@@ -23,15 +26,15 @@ interface UpdateQuestionData {
   order?: number
   options?: QuestionOption[]
   correctAnswer?: string | boolean
+  required?: boolean
+  multipleAnswers?: boolean
+  randomizeOrder?: boolean
+  estimationTime?: number
 }
 
 export const questionService = {
   async findByAssessment(assessmentId: string) {
     return Question.find({ assessmentId }).sort({ order: 1, createdAt: 1 }).lean()
-  },
-
-  async findByBank(itemBankId: string) {
-    return Question.find({ itemBankId }).sort({ order: 1, createdAt: 1 }).lean()
   },
 
   async findByIds(ids: string[]) {
@@ -43,10 +46,7 @@ export const questionService = {
   },
 
   async create(data: CreateQuestionData) {
-    const filter = data.assessmentId
-      ? { assessmentId: data.assessmentId }
-      : { itemBankId: data.itemBankId }
-    const order = data.order ?? (await Question.countDocuments(filter))
+    const order = data.order ?? (await Question.countDocuments({ assessmentId: data.assessmentId }))
     return Question.create({ ...data, order })
   },
 

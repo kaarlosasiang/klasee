@@ -23,10 +23,17 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
       return null
     } catch (e) {
-      // If refresh failed - user needs to log in again
       useAuthStore.getState().logout()
-      window.location.href = "/login"
 
+      try {
+        const { toast } = await import("sonner")
+        toast.error("Session expired. Please log in again.")
+        await new Promise((r) => setTimeout(r, 800))
+      } catch {
+        // toast may fail if React context not available — redirect anyway
+      }
+
+      window.location.href = "/login"
       return null
     } finally {
       refreshPromise = null

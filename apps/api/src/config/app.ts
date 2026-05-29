@@ -25,6 +25,7 @@ export default (app: Application): Application => {
   app.use(
     helmet({
       contentSecurityPolicy: false,
+      frameguard: false,
     })
   )
 

@@ -2,10 +2,8 @@ import { NextFunction, Request, Response } from "express"
 import { announcementService } from "./announcementService.js"
 import { Announcement } from "../../models/announcementModel.js"
 import { createAnnouncementSchema, updateAnnouncementSchema } from "@workspace/validators"
-
-function getRequesterId(req: Request): string {
-  return String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
-}
+import { verifyCourseOwnership } from "../../shared/utils/ownership.js"
+import { getUserId } from "../../shared/utils/request.js"
 
 export const announcementController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -33,7 +31,7 @@ export const announcementController = {
           errors: parsed.error.flatten().fieldErrors,
         })
       }
-      const authorId = getRequesterId(req)
+      const authorId = getUserId(req)
       const announcement = await announcementService.create({ ...parsed.data, authorId })
       res.status(201).json(announcement)
     } catch (err) {
@@ -51,8 +49,11 @@ export const announcementController = {
         })
       }
       const id = req.params["id"] as string
+      const requesterId = getUserId(req)
       const existing = await Announcement.findById(id).lean()
       if (!existing) return res.status(404).json({ message: "Announcement not found" })
+      const owned = await verifyCourseOwnership(String(existing.courseId), requesterId)
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
       const announcement = await announcementService.update(id, parsed.data)
       res.json(announcement)
     } catch (err) {
@@ -63,8 +64,11 @@ export const announcementController = {
   async remove(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params["id"] as string
+      const requesterId = getUserId(req)
       const existing = await Announcement.findById(id).lean()
       if (!existing) return res.status(404).json({ message: "Announcement not found" })
+      const owned = await verifyCourseOwnership(String(existing.courseId), requesterId)
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
       await announcementService.delete(id)
       res.status(204).send()
     } catch (err) {

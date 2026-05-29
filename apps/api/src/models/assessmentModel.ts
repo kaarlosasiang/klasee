@@ -10,14 +10,6 @@ const latePolicySchema = new mongoose.Schema(
   { _id: false }
 )
 
-const questionGroupSchema = new mongoose.Schema(
-  {
-    bankId: { type: mongoose.Schema.Types.ObjectId, ref: "ItemBank" },
-    count: { type: Number, min: 1 },
-  },
-  { _id: false }
-)
-
 const assessmentSchema = new mongoose.Schema(
   {
     courseId: {
@@ -44,7 +36,6 @@ const assessmentSchema = new mongoose.Schema(
       ref: "AssignmentGroup",
     },
     latePolicy: { type: latePolicySchema },
-    questionGroups: { type: [questionGroupSchema], default: [] },
   },
   { timestamps: true }
 )

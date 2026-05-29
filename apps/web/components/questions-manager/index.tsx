@@ -41,7 +41,6 @@ import {
 import { toast } from "sonner"
 import {
   getQuestions,
-  getQuestionsByBank,
   createQuestion,
   updateQuestion,
   deleteQuestion,
@@ -50,8 +49,7 @@ import {
 } from "@/lib/services/questions"
 
 interface QuestionsManagerProps {
-  assessmentId?: string
-  itemBankId?: string
+  assessmentId: string
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -68,7 +66,7 @@ const TYPE_LABELS: Record<string, string> = {
   fill_in: "Fill in the Blank",
 }
 
-export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerProps) {
+export function QuestionsManager({ assessmentId }: QuestionsManagerProps) {
   const [questions, setQuestions] = React.useState<Question[]>([])
   const [loading, setLoading] = React.useState(true)
   const [creating, setCreating] = React.useState(false)
@@ -87,16 +85,14 @@ export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerP
   const fetchQuestions = React.useCallback(async () => {
     setLoading(true)
     try {
-      const data = itemBankId
-        ? await getQuestionsByBank(itemBankId)
-        : await getQuestions(assessmentId!)
+      const data = await getQuestions(assessmentId)
       setQuestions(data)
     } catch {
       toast.error("Failed to load questions")
     } finally {
       setLoading(false)
     }
-  }, [assessmentId, itemBankId])
+  }, [assessmentId])
 
   React.useEffect(() => {
     fetchQuestions()
@@ -115,7 +111,7 @@ export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerP
   function buildCreatePayload() {
     const points = qPoints ? Number(qPoints) : 1
     const payload: Record<string, unknown> = {
-      ...(itemBankId ? { itemBankId } : { assessmentId }),
+      assessmentId,
       type: qType,
       question: qText.trim(),
       points,
@@ -131,7 +127,7 @@ export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerP
       payload.correctAnswer = qCorrectAnswer.trim()
     }
 
-    return payload as Parameters<typeof createQuestion>[0]
+    return payload as unknown as Parameters<typeof createQuestion>[0]
   }
 
   async function handleCreate() {
@@ -208,7 +204,7 @@ export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerP
     ids[index - 1] = a
     ids[index] = b
     try {
-      await reorderQuestions(assessmentId!, ids)
+      await reorderQuestions(assessmentId, ids)
       fetchQuestions()
     } catch {
       toast.error("Failed to reorder questions")
@@ -224,7 +220,7 @@ export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerP
     ids[index] = b
     ids[index + 1] = a
     try {
-      await reorderQuestions(assessmentId!, ids)
+      await reorderQuestions(assessmentId, ids)
       fetchQuestions()
     } catch {
       toast.error("Failed to reorder questions")
@@ -401,7 +397,7 @@ export function QuestionsManager({ assessmentId, itemBankId }: QuestionsManagerP
           {qType === "fill_in" && (
             <div className="mb-3">
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Correct Answer{""}
+                Correct Answer
                 <span className="font-normal text-muted-foreground/60"> (separate alternatives with commas)</span>
               </label>
               <Input

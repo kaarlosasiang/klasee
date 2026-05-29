@@ -1,15 +1,14 @@
 import { NextFunction, Request, Response } from "express"
 import { assessmentService } from "./assessmentService.js"
 import { Assessment } from "../../models/assessmentModel.js"
+import { AssessmentScore } from "../../models/assessmentScore.js"
 import { Course } from "../../models/courseModel.js"
 import {
   createAssessmentSchema,
   updateAssessmentSchema,
 } from "@workspace/validators"
-
-function getRequesterId(req: Request): string {
-  return String((req.authUser as any)?.id)
-}
+import { verifyAssessmentOwnership } from "../../shared/utils/ownership.js"
+import { getUserId } from "../../shared/utils/request.js"
 
 export const assessmentController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -21,7 +20,7 @@ export const assessmentController = {
       if (role !== "instructor" && role !== "admin") {
         filter.isPublished = true
       }
-      const studentId = role === "student" ? getRequesterId(req) : undefined
+      const studentId = role === "student" ? getUserId(req) : undefined
       const assessments = await assessmentService.findAll(filter, studentId)
       res.json(assessments)
     } catch (err) {
@@ -52,12 +51,13 @@ export const assessmentController = {
           errors: parsed.error.flatten().fieldErrors,
         })
       }
-      const userId = getRequesterId(req)
+      const userId = getUserId(req)
       const course = await Course.findById(parsed.data.courseId).lean()
       if (!course) return res.status(404).json({ message: "Course not found" })
       if (String(course.instructorId) !== userId) {
         return res.status(403).json({ message: "Forbidden" })
       }
+
       const assessment = await assessmentService.create(parsed.data)
       res.status(201).json(assessment)
     } catch (err) {
@@ -74,7 +74,7 @@ export const assessmentController = {
           errors: parsed.error.flatten().fieldErrors,
         })
       }
-      const userId = getRequesterId(req)
+      const userId = getUserId(req)
       const existing = await Assessment.findById(req.params["id"] as string).lean()
       if (!existing) return res.status(404).json({ message: "Assessment not found" })
       const course = await Course.findById(existing.courseId).lean()
@@ -90,7 +90,7 @@ export const assessmentController = {
 
   async remove(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = getRequesterId(req)
+      const userId = getUserId(req)
       const existing = await Assessment.findById(req.params["id"] as string).lean()
       if (!existing) return res.status(404).json({ message: "Assessment not found" })
       const course = await Course.findById(existing.courseId).lean()
@@ -106,10 +106,17 @@ export const assessmentController = {
 
   async listScores(req: Request, res: Response, next: NextFunction) {
     try {
+      const role = (req.authUser as any)?.role
       const { assessmentId, studentId } = req.query
       const filter: Record<string, unknown> = {}
       if (assessmentId) filter.assessmentId = assessmentId
-      if (studentId) filter.studentId = studentId
+
+      if (role === "student") {
+        filter.studentId = getUserId(req)
+      } else if (studentId) {
+        filter.studentId = studentId
+      }
+
       const scores = await assessmentService.findScores(filter)
       res.json(scores)
     } catch (err) {
@@ -119,6 +126,10 @@ export const assessmentController = {
 
   async createScore(req: Request, res: Response, next: NextFunction) {
     try {
+      const { assessmentId } = req.body as { assessmentId?: string }
+      if (!assessmentId) return res.status(400).json({ message: "assessmentId is required" })
+      const owned = await verifyAssessmentOwnership(assessmentId, getUserId(req))
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
       const score = await assessmentService.createScore(req.body)
       res.status(201).json(score)
     } catch (err) {
@@ -128,6 +139,10 @@ export const assessmentController = {
 
   async updateScore(req: Request, res: Response, next: NextFunction) {
     try {
+      const existingScore = await AssessmentScore.findById(req.params["id"] as string).lean()
+      if (!existingScore) return res.status(404).json({ message: "Score not found" })
+      const owned = await verifyAssessmentOwnership(String(existingScore.assessmentId), getUserId(req))
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
       const score = await assessmentService.updateScore(req.params['id'] as string, req.body)
       if (!score) return res.status(404).json({ message: "Score not found" })
       res.json(score)

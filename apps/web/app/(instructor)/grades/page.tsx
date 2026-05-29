@@ -21,6 +21,8 @@ export default function GradesPage() {
   const [gradebook, setGradebook] = React.useState<CourseGradebook | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [loadingGradebook, setLoadingGradebook] = React.useState(false)
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
 
   React.useEffect(() => {
     getCourses()
@@ -29,17 +31,36 @@ export default function GradesPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const fetchGradebook = React.useCallback(
+    (courseId: string, p: number, l: number) => {
+      setLoadingGradebook(true)
+      getCourseGradebook(courseId, p, l)
+        .then(setGradebook)
+        .catch(() => toast.error("Failed to load gradebook"))
+        .finally(() => setLoadingGradebook(false))
+    },
+    []
+  )
+
   React.useEffect(() => {
     if (!courseId) {
       setGradebook(null)
       return
     }
-    setLoadingGradebook(true)
-    getCourseGradebook(courseId)
-      .then(setGradebook)
-      .catch(() => toast.error("Failed to load gradebook"))
-      .finally(() => setLoadingGradebook(false))
-  }, [courseId])
+    setPage(1)
+    fetchGradebook(courseId, 1, limit)
+  }, [courseId, limit, fetchGradebook])
+
+  const handlePaginationChange = React.useCallback(
+    (newPage: number, newLimit: number) => {
+      setPage(newPage)
+      if (newLimit !== limit) {
+        setLimit(newLimit)
+      }
+      fetchGradebook(courseId, newPage, newLimit)
+    },
+    [courseId, limit, fetchGradebook]
+  )
 
   if (loading) {
     return (
@@ -83,7 +104,7 @@ export default function GradesPage() {
           ))}
         </div>
       ) : gradebook ? (
-        <GradebookDataTable gradebook={gradebook} />
+        <GradebookDataTable gradebook={gradebook} onPaginationChange={handlePaginationChange} />
       ) : null}
     </div>
   )

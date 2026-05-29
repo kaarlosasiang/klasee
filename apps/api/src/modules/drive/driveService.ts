@@ -3,6 +3,7 @@ import { google } from "googleapis"
 import mongoose from "mongoose"
 import { CourseFile } from "../../models/courseFileModel.js"
 import { constants } from "../../config/index.js"
+import logger from "../../config/logger.js"
 
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
@@ -70,25 +71,12 @@ export const driveService = {
     )
 
     if (!hasDriveScope) {
-      try {
-        const auth = new google.auth.OAuth2(
-          constants.googleClientId,
-          constants.googleClientSecret
-        )
-        auth.setCredentials({
-          access_token: account.accessToken as string,
-          refresh_token: (account.refreshToken as string) ?? undefined,
-          scope: SCOPES.join(" "),
-        })
-        const drive = google.drive({ version: "v3", auth })
-        await drive.about.get({ fields: "user" })
-
-        await getAccountCollection().updateOne(
-          { _id: account._id },
-          { $set: { scope: SCOPES.join(" ") } }
-        )
-      } catch {
-        return { connected: false }
+      return {
+        connected: true,
+        folderId: null,
+        setupComplete: false,
+        healthy: false,
+        reason: "missing_drive_scope",
       }
     }
 
@@ -108,7 +96,14 @@ export const driveService = {
             connected: true,
             folderId: null,
             setupComplete: false,
+            healthy: true,
           }
+        }
+        return {
+          connected: true,
+          folderId: doc.folderId ?? null,
+          setupComplete: true,
+          healthy: false,
         }
       }
     }
@@ -117,11 +112,58 @@ export const driveService = {
       connected: true,
       folderId: doc?.folderId ?? null,
       setupComplete: !!doc,
+      healthy: true,
     }
+  },
+
+  async findOrCreateFolder(
+    drive: any,
+    name: string,
+    parentId: string
+  ): Promise<{ id?: string | null; name?: string | null }> {
+    const existing = await drive.files.list({
+      q: `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
+      fields: "files(id,name)",
+      pageSize: 1,
+    })
+
+    if (existing.data.files?.[0]?.id) {
+      return existing.data.files[0]
+    }
+
+    const folder = await drive.files.create({
+      requestBody: {
+        name,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [parentId],
+      },
+      fields: "id,name",
+    })
+
+    return folder.data
   },
 
   async setupFolders(userId: string) {
     const drive = await this.getDriveClient(userId)
+
+    const existing = await drive.files.list({
+      q: "name='Klasee LMS' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+      fields: "files(id,name)",
+      pageSize: 1,
+    })
+
+    let klaseeFolderId = existing.data.files?.[0]?.id
+
+    if (klaseeFolderId) {
+      await getDb()
+        .collection("drive_setup")
+        .updateOne(
+          { userId },
+          { $set: { userId, folderId: klaseeFolderId, createdAt: new Date() } },
+          { upsert: true }
+        )
+      return { folderId: klaseeFolderId }
+    }
 
     const klaseeFolder = await drive.files.create({
       requestBody: {
@@ -131,7 +173,7 @@ export const driveService = {
       fields: "id",
     })
 
-    const klaseeFolderId = klaseeFolder.data.id!
+    klaseeFolderId = klaseeFolder.data.id!
 
     await getDb()
       .collection("drive_setup")
@@ -178,33 +220,27 @@ export const driveService = {
 
     const klaseeFolderId = doc.folderId as string
 
-    const courseFolder = await drive.files.create({
-      requestBody: {
-        name: courseName,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [klaseeFolderId],
-      },
-      fields: "id",
-    })
+    const courseFolder = await this.findOrCreateFolder(
+      drive,
+      courseName,
+      klaseeFolderId
+    )
 
-    const courseFolderId = courseFolder.data.id!
+    const courseFolderId = courseFolder.id!
 
     const subfolders = ["Materials", "Activities", "Submissions"]
     const folderIds: Record<string, string> = {}
     const upsertDoc: Record<string, string> = { courseFolderId }
 
     for (const name of subfolders) {
-      const folder = await drive.files.create({
-        requestBody: {
-          name,
-          mimeType: "application/vnd.google-apps.folder",
-          parents: [courseFolderId],
-        },
-        fields: "id",
-      })
+      const folder = await this.findOrCreateFolder(
+        drive,
+        name,
+        courseFolderId
+      )
       const folderKey = name.toLowerCase()
-      folderIds[folderKey] = folder.data.id!
-      upsertDoc[folderKey] = folder.data.id!
+      folderIds[folderKey] = folder.id!
+      upsertDoc[folderKey] = folder.id!
     }
 
     await getDb()
@@ -227,34 +263,50 @@ export const driveService = {
   ) {
     const drive = await this.getDriveClient(userId)
 
-    const response = await drive.files.create({
-      requestBody: {
+    try {
+      const response = await drive.files.create({
+        requestBody: {
+          name: fileName,
+          parents: [parentFolderId],
+        },
+        media: {
+          mimeType,
+          body: Readable.from(fileBuffer),
+        },
+        fields: "id,name,size,mimeType",
+      })
+
+      const file = response.data
+
+      const courseFile = await CourseFile.create({
+        courseId,
         name: fileName,
-        parents: [parentFolderId],
-      },
-      media: {
         mimeType,
-        body: Readable.from(fileBuffer),
-      },
-      fields: "id,name,size,mimeType",
-    })
+        size: Number(file.size ?? 0),
+        source: "drive",
+        driveFileId: file.id!,
+        driveParentFolderId: parentFolderId,
+        uploadedBy,
+        folder,
+        ...(parentFileId ? { parentFileId } : {}),
+      })
 
-    const file = response.data
-
-    const courseFile = await CourseFile.create({
-      courseId,
-      name: fileName,
-      mimeType,
-      size: Number(file.size ?? 0),
-      source: "drive",
-      driveFileId: file.id!,
-      driveParentFolderId: parentFolderId,
-      uploadedBy,
-      folder,
-      ...(parentFileId ? { parentFileId } : {}),
-    })
-
-    return courseFile.toObject()
+      return courseFile.toObject()
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.code
+      if (status === 401 || status === 403 || status === "401" || status === "403") {
+        logger.warn("Google Drive auth error during upload", {
+          userId,
+          fileName,
+          errorCode: status,
+        })
+        throw Object.assign(
+          new Error("Google Drive authentication failed. Please reconnect your Google account in Settings."),
+          { status: 401 }
+        )
+      }
+      throw err
+    }
   },
 
   async disconnect(userId: string) {
@@ -263,7 +315,7 @@ export const driveService = {
       providerId: "google",
     })
     await getDb().collection("drive_setup").deleteOne({ userId })
-    await getDb().collection("course_folder_ids").deleteMany({})
+    await getDb().collection("course_folder_ids").deleteMany({ userId })
 
     return { disconnected: true }
   },
@@ -330,7 +382,7 @@ export const driveService = {
         )
       }
     } catch {
-      // Drive not connected or token expired — return cached files as-is
+      logger.warn("Drive validation skipped — token may be expired or Drive disconnected", { userId })
     }
 
     return files

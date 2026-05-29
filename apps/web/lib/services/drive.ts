@@ -4,6 +4,8 @@ export interface DriveStatus {
   connected: boolean
   folderId?: string | null
   setupComplete?: boolean
+  healthy?: boolean
+  reason?: string
 }
 
 export interface CourseFile {
@@ -90,7 +92,7 @@ export const uploadFile = async (
   formData.append("folder", folder)
   if (parentFileId) formData.append("parentFileId", parentFileId)
 
-  const response = await client.post("/drive/upload", formData)
+  const response = await client.post("/drive/upload", formData, { timeout: 120000 })
   return response.data
 }
 
@@ -152,7 +154,7 @@ export const uploadLessonFile = async (
   const formData = new FormData()
   formData.append("file", file)
   formData.append("courseId", courseId)
-  const response = await client.post("/drive/upload/lesson", formData)
+  const response = await client.post("/drive/upload/lesson", formData, { timeout: 120000 })
   return response.data
 }
 
@@ -163,7 +165,7 @@ export const studentUploadFile = async (
   const formData = new FormData()
   formData.append("file", file)
   formData.append("courseId", courseId)
-  const response = await client.post("/drive/upload/student", formData)
+  const response = await client.post("/drive/upload/student", formData, { timeout: 120000 })
   return response.data
 }
 

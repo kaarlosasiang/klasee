@@ -105,7 +105,7 @@ export default function StudentQuizPage() {
   }
 
   async function handleSubmit() {
-    if (!attempt) return
+    if (!attempt || submitting) return
 
     const unanswered = questions.filter((q) => {
       const val = answers[q._id]
@@ -139,6 +139,30 @@ export default function StudentQuizPage() {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
+  const [timeLeft, setTimeLeft] = React.useState<number | null>(null)
+  const submittingRef = React.useRef(false)
+  React.useEffect(() => { submittingRef.current = submitting }, [submitting])
+
+  const isCompleted = attempt?.status === "completed"
+  const isInProgress = attempt?.status === "in_progress"
+
+  React.useEffect(() => {
+    if (!isInProgress || !attempt) return
+    const expiresAt = attempt.expiresAt
+    if (!expiresAt) return
+
+    const calc = () => {
+      const remaining = Math.max(0, new Date(expiresAt).getTime() - Date.now())
+      setTimeLeft(Math.ceil(remaining / 1000))
+      if (remaining <= 0 && !submittingRef.current) {
+        handleSubmit()
+      }
+    }
+    calc()
+    const timer = setInterval(calc, 1000)
+    return () => clearInterval(timer)
+  }, [isInProgress, attempt?._id, attempt?.expiresAt])
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -156,9 +180,6 @@ export default function StudentQuizPage() {
       </div>
     )
   }
-
-  const isCompleted = attempt?.status === "completed"
-  const isInProgress = attempt?.status === "in_progress"
 
   return (
     <div className="space-y-6">
@@ -224,6 +245,37 @@ export default function StudentQuizPage() {
               <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-400">{assessment.instructions}</p>
             </div>
           )}
+          {attempt.expiresAt && (() => {
+            const totalSecs = assessment.timeLimit! * 60
+            const elapsed = totalSecs - (timeLeft ?? totalSecs)
+            const progressPct = Math.min(100, (elapsed / totalSecs) * 100)
+            const formatTime = (s: number) => {
+              const m = Math.floor(s / 60)
+              const sec = s % 60
+              return `${m}:${String(sec).padStart(2, "0")}`
+            }
+            return (
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="size-3.5" />
+                    Time remaining
+                  </span>
+                  <span className={`font-mono text-sm font-semibold ${(timeLeft ?? 0) <= 60 ? "text-destructive" : ""}`}>
+                    {timeLeft !== null ? formatTime(timeLeft) : "—"}
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${
+                      progressPct > 75 ? "bg-destructive" : progressPct > 50 ? "bg-amber-500" : "bg-primary"
+                    }`}
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            )
+          })()}
           {questions.map((question, index) => (
             <div
               key={question._id}

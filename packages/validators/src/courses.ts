@@ -98,10 +98,6 @@ export const createAssessmentSchema = z.object({
   maxFiles: z.number().int().min(1).optional(),
   groupId: z.string().optional(),
   latePolicy: latePolicySchema.optional(),
-  questionGroups: z.array(z.object({
-    bankId: z.string().min(1),
-    count: z.number().int().min(1),
-  })).optional(),
 })
 
 export const updateAssessmentSchema = createAssessmentSchema.omit({ courseId: true }).partial()
@@ -112,13 +108,6 @@ export const createDueDateOverrideSchema = z.object({
   targetId: z.string().min(1, "targetId is required"),
   dueDate: z.string().min(1, "dueDate is required"),
 })
-
-export const createItemBankSchema = z.object({
-  courseId: z.string().min(1, "courseId is required"),
-  name: z.string().min(1, "Name is required").max(200),
-})
-
-export const updateItemBankSchema = createItemBankSchema.omit({ courseId: true }).partial()
 
 export const createAssignmentGroupSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
@@ -131,3 +120,33 @@ export const createAssignmentGroupSchema = z.object({
 export const updateAssignmentGroupSchema = createAssignmentGroupSchema
   .omit({ courseId: true })
   .partial()
+
+export const createQuestionSchema = z.object({
+  assessmentId: z.string().min(1, "assessmentId is required"),
+  type: z.enum(["multiple_choice", "true_false", "essay", "fill_in"], {
+    required_error: "Question type is required",
+  }),
+  question: z.string().min(1, "Question text is required"),
+  points: z.number().int().min(0).default(1),
+  order: z.number().int().min(0).optional(),
+  options: z.array(z.object({
+    text: z.string().min(1),
+    isCorrect: z.boolean().optional(),
+  })).optional(),
+  correctAnswer: z.union([z.string(), z.boolean()]).optional(),
+  required: z.boolean().optional(),
+  multipleAnswers: z.boolean().optional(),
+  randomizeOrder: z.boolean().optional(),
+  estimationTime: z.number().int().min(0).optional(),
+})
+
+export const updateQuestionSchema = createQuestionSchema
+  .omit({ assessmentId: true })
+  .partial()
+
+export const submitQuizAttemptSchema = z.object({
+  answers: z.array(z.object({
+    questionId: z.string().min(1, "questionId is required"),
+    answer: z.any(),
+  })).min(1, "At least one answer is required"),
+})

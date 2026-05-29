@@ -29,34 +29,22 @@ export const quizAttemptService = {
     if (existing) return existing
 
     const assessment = await Assessment.findById(assessmentId).lean()
-    const questionGroups = (assessment as any)?.questionGroups ?? []
+    const timeLimit = (assessment as any)?.timeLimit as number | undefined
 
-    if (questionGroups.length === 0) {
-      return QuizAttempt.create({ assessmentId, userId })
-    }
-
-    const selectedQuestionIds: unknown[] = []
-    for (const group of questionGroups) {
-      const bankQuestions = await Question.find({ itemBankId: group.bankId }).lean()
-      const shuffled = [...bankQuestions].sort(() => Math.random() - 0.5)
-      const drawn = shuffled.slice(0, group.count).map((q) => q._id)
-      selectedQuestionIds.push(...drawn)
-    }
-
-    return QuizAttempt.create({ assessmentId, userId, selectedQuestionIds })
+    return QuizAttempt.create({
+      assessmentId,
+      userId,
+      ...(timeLimit ? { expiresAt: new Date(Date.now() + timeLimit * 60000) } : {}),
+    })
   },
 
-  async submitAttempt(id: string, answers: { questionId: string; answer: unknown }[]) {
-    const attempt = await QuizAttempt.findById(id)
-    if (!attempt || attempt.status === "completed") {
+  async submitAttempt(id: string, answers: { questionId: string; answer?: unknown }[]) {
+    const attempt = await QuizAttempt.findOne({ _id: id, status: "in_progress" })
+    if (!attempt) {
       throw new Error("Attempt not found or already completed")
     }
 
-    const selectedIds: unknown[] = (attempt as any).selectedQuestionIds ?? []
-    const questionIds =
-      selectedIds.length > 0
-        ? selectedIds.map(String)
-        : answers.map((a) => a.questionId)
+    const questionIds = answers.map((a) => a.questionId)
 
     const questions = await Question.find({
       _id: { $in: questionIds },
@@ -136,6 +124,7 @@ export const quizAttemptService = {
     ;(attempt as any).latePenalty = latePenalty
     attempt.status = "completed"
     attempt.completedAt = new Date()
+    attempt.expiresAt = undefined
 
     await attempt.save()
     return attempt.toObject()

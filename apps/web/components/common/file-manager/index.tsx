@@ -22,6 +22,7 @@ import {
   LayoutGrid,
   List,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
@@ -964,6 +965,18 @@ export function FileManager({ courseId, courseName }: FileManagerProps) {
         <DriveConnectCard />
       ) : (
         <>
+          {driveStatus?.healthy === false && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span>
+                {driveStatus?.reason === "missing_drive_scope"
+                  ? "Google Drive access not granted — reconnect your account in Settings to enable file uploads."
+                  : driveStatus?.reason === "google_token_invalid"
+                    ? "Google Drive token expired — reconnect your account in Settings."
+                    : "Drive connection is unstable — files shown may be outdated."}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 rounded-lg border border-border p-1">
               {FOLDER_TABS.map((tab) => (

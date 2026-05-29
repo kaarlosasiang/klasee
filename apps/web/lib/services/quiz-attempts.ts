@@ -19,6 +19,7 @@ export interface QuizAttempt {
   totalPointsPossible: number
   latePenalty?: number
   selectedQuestionIds?: string[]
+  expiresAt?: string
   createdAt: string
   updatedAt: string
 }

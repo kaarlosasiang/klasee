@@ -22,7 +22,6 @@ export interface Assessment {
   maxFiles?: number
   groupId?: string
   latePolicy?: LatePolicy
-  questionGroups?: { bankId: string; count: number }[]
   effectiveDueDate?: string
   createdAt: string
   updatedAt: string
@@ -91,7 +90,6 @@ export const updateAssessment = async (
     maxFiles: number
     groupId: string
     latePolicy: LatePolicy
-    questionGroups: { bankId: string; count: number }[]
   }>
 ): Promise<Assessment> => {
   const response = await client.put(`/assessments/${id}`, data)

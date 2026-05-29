@@ -15,11 +15,6 @@ const questionSchema = new mongoose.Schema(
       ref: "Assessment",
       index: true,
     },
-    itemBankId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ItemBank",
-      index: true,
-    },
     type: {
       type: String,
       enum: ["multiple_choice", "true_false", "essay", "fill_in"],

@@ -45,6 +45,9 @@ export interface CourseGradebook {
   }[]
   groups: AssignmentGroup[]
   students: GradebookStudent[]
+  total: number
+  page: number
+  limit: number
 }
 
 export interface StudentGradebook {
@@ -54,8 +57,12 @@ export interface StudentGradebook {
   finalScore: number | null
 }
 
-export const getCourseGradebook = async (courseId: string): Promise<CourseGradebook> => {
-  const response = await client.get("/gradebook", { params: { courseId } })
+export const getCourseGradebook = async (
+  courseId: string,
+  page = 1,
+  limit = 20
+): Promise<CourseGradebook> => {
+  const response = await client.get("/gradebook", { params: { courseId, page, limit } })
   return response.data
 }
 

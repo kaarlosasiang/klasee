@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express"
 import { assignmentSubmissionService } from "./assignmentSubmissionService.js"
 import { AssignmentSubmission } from "../../models/assignmentSubmissionModel.js"
+import { verifyAssessmentOwnership } from "../../shared/utils/ownership.js"
+import { getUserId } from "../../shared/utils/request.js"
 
 export const assignmentSubmissionController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -9,6 +11,8 @@ export const assignmentSubmissionController = {
       if (!assessmentId) {
         return res.status(400).json({ message: "assessmentId query param is required" })
       }
+      const owned = await verifyAssessmentOwnership(assessmentId, getUserId(req))
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
       const submissions = await assignmentSubmissionService.findByAssessment(assessmentId)
       res.json(submissions)
     } catch (err) {
@@ -22,7 +26,7 @@ export const assignmentSubmissionController = {
       if (!assessmentId) {
         return res.status(400).json({ message: "assessmentId query param is required" })
       }
-      const userId = String((req as any).authUser?._id ?? (req as any).authUser?.id)
+      const userId = getUserId(req)
       if (!userId) return res.status(401).json({ message: "Unauthorized" })
       const submission = await assignmentSubmissionService.findByUser(assessmentId, userId)
       if (!submission) return res.status(404).json({ message: "Submission not found" })
@@ -38,6 +42,15 @@ export const assignmentSubmissionController = {
         req.params["id"] as string
       )
       if (!submission) return res.status(404).json({ message: "Submission not found" })
+
+      const role = (req.authUser as any)?.role
+      if (role === "student") {
+        const requesterId = getUserId(req)
+        if (String(submission.userId) !== requesterId) {
+          return res.status(403).json({ message: "Forbidden" })
+        }
+      }
+
       res.json(submission)
     } catch (err) {
       next(err)
@@ -54,7 +67,7 @@ export const assignmentSubmissionController = {
       if (!assessmentId) {
         return res.status(400).json({ message: "assessmentId is required" })
       }
-      const userId = String((req as any).authUser?._id ?? (req as any).authUser?.id)
+      const userId = getUserId(req)
       if (!userId) return res.status(401).json({ message: "Unauthorized" })
       const submission = await assignmentSubmissionService.submit(assessmentId, userId, {
         content,
@@ -72,11 +85,17 @@ export const assignmentSubmissionController = {
       const existing = await AssignmentSubmission.findById(id).lean()
       if (!existing) return res.status(404).json({ message: "Submission not found" })
 
+      const owned = await verifyAssessmentOwnership(
+        String(existing.assessmentId),
+        getUserId(req)
+      )
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
+
       const { grade, feedback } = req.body as { grade: number; feedback?: string }
       if (grade === undefined || grade === null) {
         return res.status(400).json({ message: "grade is required" })
       }
-      const userId = String((req as any).authUser?._id ?? (req as any).authUser?.id)
+      const userId = getUserId(req)
       if (!userId) return res.status(401).json({ message: "Unauthorized" })
 
       const submission = await assignmentSubmissionService.grade(id, {

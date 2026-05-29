@@ -80,10 +80,12 @@ import {
   updateLesson,
   deleteLesson,
   reorderLessons,
+  getLessonById,
   type Lesson,
 } from "@/lib/services/lessons"
 import { uploadLessonFile, getCourseFiles, type CourseFile } from "@/lib/services/drive"
 import { RichTextEditor } from "@/components/rich-text-editor"
+import { LessonPreviewDialog } from "@/components/common/lesson-preview-dialog"
 
 const TYPE_ICON: Record<string, React.ElementType> = {
   page: FileText,
@@ -183,6 +185,7 @@ interface SortableLessonRowProps {
   onEdit: (lesson: Lesson) => void
   onDelete: (lesson: Lesson) => void
   onTogglePublish: (lesson: Lesson) => void
+  onPreview: (lessonId: string) => void
   editingLessonId: string | null
   lessonTitle: string
   setLessonTitle: (v: string) => void
@@ -204,6 +207,7 @@ function SortableLessonRow({
   onEdit,
   onDelete,
   onTogglePublish,
+  onPreview,
   editingLessonId,
   lessonTitle,
   setLessonTitle,
@@ -318,6 +322,9 @@ function SortableLessonRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => onPreview(lesson._id)}>
+              <Eye className="mr-2 size-3.5" />Preview
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onTogglePublish(lesson)}>
               {lesson.isPublished ? (
                 <><EyeOff className="mr-2 size-3.5" />Set to draft</>
@@ -393,8 +400,13 @@ function LessonContentField({
       const result = await uploadLessonFile(courseId, file)
       onFileChange(result._id, result.name)
       toast.success("File uploaded")
-    } catch {
-      toast.error("Upload failed — open the Files tab to initialize course folders first")
+    } catch (err: any) {
+      const msg = err?.message || "Upload failed"
+      if (err?.type === "auth" || msg.includes("reconnect") || msg.includes("authentication failed")) {
+        toast.error("Google Drive authentication expired. Please reconnect in Settings.")
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -564,6 +576,7 @@ interface SortableModuleRowProps {
   onSaveLesson: (lesson: Lesson) => void
   onDeleteLesson: (lesson: Lesson) => void
   onToggleLessonPublish: (lesson: Lesson) => void
+  onPreviewLesson: (lessonId: string) => void
   onCreateLesson: (moduleId: string) => void
   onLessonDragEnd: (moduleId: string, event: DragEndEvent) => void
 }
@@ -598,6 +611,7 @@ function SortableModuleRow({
   onSaveLesson,
   onDeleteLesson,
   onToggleLessonPublish,
+  onPreviewLesson,
   onCreateLesson,
   onLessonDragEnd,
 }: SortableModuleRowProps) {
@@ -741,6 +755,7 @@ function SortableModuleRow({
                       onEdit={onStartLessonEdit}
                       onDelete={onDeleteLesson}
                       onTogglePublish={onToggleLessonPublish}
+                      onPreview={onPreviewLesson}
                       editingLessonId={editingLessonId}
                       lessonTitle={lessonTitle}
                       setLessonTitle={setLessonTitle}
@@ -859,6 +874,9 @@ export function ModulesManager({ courseId }: ModulesManagerProps) {
   const [lessonFileName, setLessonFileName] = React.useState<string | null>(null)
   const [lessonSubmitting, setLessonSubmitting] = React.useState(false)
   const [newLessonDrafts, setNewLessonDrafts] = React.useState<NewLessonDraft[]>([])
+
+  const [previewLesson, setPreviewLesson] = React.useState<Lesson | null>(null)
+  const [previewOpen, setPreviewOpen] = React.useState(false)
 
   function setLessonFile(id: string | null, name: string | null) {
     setLessonFileId(id)
@@ -1036,6 +1054,29 @@ export function ModulesManager({ courseId }: ModulesManagerProps) {
       fetchLessons(lesson.moduleId)
     } catch {
       toast.error("Failed to update lesson")
+    }
+  }
+
+  async function handlePreviewLesson(lessonId: string) {
+    try {
+      const lesson = await getLessonById(lessonId)
+
+      if (lesson.type === "video" || lesson.type === "embed") {
+        if (lesson.content) window.open(lesson.content, "_blank")
+        return
+      }
+
+      if (lesson.type === "page" || (lesson.type === "file" && lesson.fileId?.mimeType === "application/pdf")) {
+        setPreviewLesson(lesson)
+        setPreviewOpen(true)
+        return
+      }
+
+      if (lesson.type === "file" && lesson.fileId?.driveFileId) {
+        window.open(`https://drive.google.com/uc?id=${lesson.fileId.driveFileId}&export=download`, "_blank")
+      }
+    } catch {
+      toast.error("Failed to load lesson preview")
     }
   }
 
@@ -1366,6 +1407,7 @@ export function ModulesManager({ courseId }: ModulesManagerProps) {
                     onSaveLesson={handleUpdateLesson}
                     onDeleteLesson={handleDeleteLesson}
                     onToggleLessonPublish={handleToggleLessonPublish}
+                    onPreviewLesson={handlePreviewLesson}
                     onCreateLesson={handleCreateLesson}
                     onLessonDragEnd={handleLessonDragEnd}
                   />
@@ -1375,6 +1417,15 @@ export function ModulesManager({ courseId }: ModulesManagerProps) {
           </SortableContext>
         </DndContext>
       )}
+
+      <LessonPreviewDialog
+        lesson={previewLesson}
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open)
+          if (!open) setPreviewLesson(null)
+        }}
+      />
     </div>
   )
 }

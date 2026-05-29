@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "../../shared/middleware/auth.middlewar
 import { driveController } from "./driveController.js"
 
 const router: IRouter = Router()
-const upload = multer({ storage: multer.memoryStorage() })
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
 
 router.get("/status", requireAuth, driveController.status)
 router.post("/setup", requireAuth, driveController.setup)

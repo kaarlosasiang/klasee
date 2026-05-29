@@ -4,11 +4,10 @@ import * as React from "react"
 import {
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   type ColumnDef,
   type SortingState,
+  type PaginationState,
 } from "@tanstack/react-table"
 import { Search, ClipboardList } from "lucide-react"
 import { Input } from "@workspace/ui/components/input"
@@ -21,6 +20,7 @@ import type { AssignmentGroup } from "@/lib/services/assignment-groups"
 
 interface GradebookDataTableProps {
   gradebook: CourseGradebook
+  onPaginationChange: (page: number, limit: number) => void
 }
 
 function ScoreCell({ earned, possible }: { earned: number | null; possible: number }) {
@@ -37,9 +37,13 @@ function PctCell({ value }: { value: number | null }) {
   return <span className="text-xs font-semibold tabular-nums">{Math.round(value)}%</span>
 }
 
-export function GradebookDataTable({ gradebook }: GradebookDataTableProps) {
+export function GradebookDataTable({ gradebook, onPaginationChange }: GradebookDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: gradebook.page - 1,
+    pageSize: gradebook.limit,
+  })
 
   const { assessments, groups, students } = gradebook
   const ungrouped = assessments.filter((a) => !a.groupId)
@@ -173,20 +177,24 @@ export function GradebookDataTable({ gradebook }: GradebookDataTableProps) {
   const table = useReactTable({
     data: students,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater(pagination) : updater
+      setPagination(next)
+      onPaginationChange(next.pageIndex + 1, next.pageSize)
+    },
     globalFilterFn: (row, _columnId, filterValue) => {
       const name = row.original.student.name.toLowerCase()
       const email = row.original.student.email.toLowerCase()
       const search = (filterValue as string).toLowerCase()
       return name.includes(search) || email.includes(search)
     },
+    pageCount: Math.ceil(gradebook.total / pagination.pageSize),
+    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    initialState: { pagination: { pageSize: 20 } },
   })
 
   if (students.length === 0) {

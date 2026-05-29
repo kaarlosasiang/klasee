@@ -70,7 +70,6 @@ import {
 } from "@/lib/services/due-date-overrides"
 import { getSectionsByCourse, type Section } from "@/lib/services/sections"
 import { getEnrollmentsByCourse, type Enrollment } from "@/lib/services/enrollments"
-import { getItemBanks, type ItemBank } from "@/lib/services/item-banks"
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   quiz: FileText,
@@ -128,13 +127,6 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
   const [addingOverride, setAddingOverride] = React.useState(false)
   const [overrideSaving, setOverrideSaving] = React.useState(false)
 
-  // Question groups state (for quiz/exam)
-  const [questionGroups, setQuestionGroups] = React.useState<{ bankId: string; count: number }[]>([])
-  const [itemBanks, setItemBanks] = React.useState<ItemBank[]>([])
-  const [addingGroup, setAddingGroup] = React.useState(false)
-  const [groupBankId, setGroupBankId] = React.useState("")
-  const [groupCount, setGroupCount] = React.useState("")
-
   const fetchAssessments = React.useCallback(async () => {
     setLoading(true)
     setError(false)
@@ -161,10 +153,6 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
     setDeductionType("percent")
     setDeductionPerDay("")
     setMaxDeduction("")
-    setQuestionGroups([])
-    setAddingGroup(false)
-    setGroupBankId("")
-    setGroupCount("")
   }
 
   function buildLatePolicy(): LatePolicy | undefined {
@@ -195,7 +183,6 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
         totalPoints: points,
         dueDate: dueDate || undefined,
         latePolicy: buildLatePolicy(),
-        questionGroups: questionGroups.length > 0 ? questionGroups : [],
       })
       setEditingId(null)
       resetForm()
@@ -251,21 +238,14 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
     setOverrideTargetId("")
     setOverrideDueDate("")
 
-    setQuestionGroups(assessment.questionGroups ?? [])
-    setAddingGroup(false)
-    setGroupBankId("")
-    setGroupCount("")
-
     Promise.all([
       getOverrides(assessment._id),
       getSectionsByCourse(courseId),
       getEnrollmentsByCourse(courseId),
-      getItemBanks(courseId),
-    ]).then(([ovrs, secs, enrs, banks]) => {
+    ]).then(([ovrs, secs, enrs]) => {
       setOverrides(ovrs)
       setSections(secs)
       setEnrollments(enrs)
-      setItemBanks(banks)
     }).catch(() => {})
   }
 
@@ -492,97 +472,6 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
                           </div>
                         )}
                       </div>
-
-                      {/* Question groups (quiz/exam only) */}
-                      {(type === "quiz" || type === "exam") && (
-                        <div className="mt-3 border-t border-border pt-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-medium text-muted-foreground">Question groups (random draw)</p>
-                            <button
-                              type="button"
-                              onClick={() => setAddingGroup((v) => !v)}
-                              className="flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <Plus className="size-3" />
-                              Add group
-                            </button>
-                          </div>
-
-                          {questionGroups.length > 0 && (
-                            <div className="mt-2 space-y-1.5">
-                              {questionGroups.map((g, i) => {
-                                const bank = itemBanks.find((b) => b._id === g.bankId)
-                                return (
-                                  <div key={i} className="flex items-center justify-between rounded-md bg-muted/30 px-2 py-1.5 text-xs">
-                                    <span>
-                                      <span className="font-medium">{bank?.name ?? g.bankId}</span>
-                                      <span className="mx-1.5 text-muted-foreground">—</span>
-                                      draw {g.count}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => setQuestionGroups((prev) => prev.filter((_, j) => j !== i))}
-                                      className="ml-2 text-muted-foreground hover:text-destructive"
-                                    >
-                                      <Trash2 className="size-3" />
-                                    </button>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-
-                          {questionGroups.length === 0 && !addingGroup && (
-                            <p className="mt-1.5 text-[10px] text-muted-foreground">
-                              No groups — questions are fixed per assessment
-                            </p>
-                          )}
-
-                          {addingGroup && itemBanks.length > 0 && (
-                            <div className="mt-2 flex items-center gap-2">
-                              <Select value={groupBankId} onValueChange={setGroupBankId}>
-                                <SelectTrigger className="h-7 flex-1 text-xs">
-                                  <SelectValue placeholder="Pick bank" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {itemBanks.map((b) => (
-                                    <SelectItem key={b._id} value={b._id}>{b.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={groupCount}
-                                onChange={(e) => setGroupCount(e.target.value)}
-                                placeholder="Count"
-                                className="h-7 w-16 text-xs"
-                              />
-                              <Button
-                                size="sm"
-                                className="h-7 shrink-0 text-xs"
-                                onClick={() => {
-                                  if (!groupBankId || !groupCount) return
-                                  setQuestionGroups((prev) => [...prev, { bankId: groupBankId, count: Number(groupCount) }])
-                                  setGroupBankId("")
-                                  setGroupCount("")
-                                  setAddingGroup(false)
-                                }}
-                              >
-                                Add
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAddingGroup(false)}>
-                                Cancel
-                              </Button>
-                            </div>
-                          )}
-                          {addingGroup && itemBanks.length === 0 && (
-                            <p className="mt-1.5 text-[10px] text-muted-foreground">
-                              No question banks yet — create one in the Question Banks tab first
-                            </p>
-                          )}
-                        </div>
-                      )}
 
                       {/* Due date overrides */}
                       <div className="mt-3 border-t border-border pt-3">

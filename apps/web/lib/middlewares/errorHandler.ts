@@ -36,7 +36,7 @@ export const normalizeError = (error: any): ApiError => {
   if (status === 401) {
     return {
       code: "UNAUTHORIZED",
-      message: "Authentication required",
+      message: message === "An error occurred" ? "Authentication required" : message,
       statusCode: 401,
       type: "auth",
     }
