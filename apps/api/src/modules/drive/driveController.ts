@@ -10,6 +10,7 @@ import {
   moveToRootSchema,
   ensureCourseFoldersSchema,
 } from "@workspace/validators"
+import { verifyCourseOwnership } from "../../shared/utils/ownership.js"
 
 function getUserId(req: Request): string {
   return String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
@@ -96,6 +97,9 @@ export const driveController = {
       }
 
       const { courseId, parentFolderId, folder, parentFileId } = parsed.data
+      const owned = await verifyCourseOwnership(courseId, userId)
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
+
       const result = await driveService.uploadFile(
         userId,
         courseId,
@@ -231,6 +235,9 @@ export const driveController = {
       if (!courseId) {
         return res.status(400).json({ message: "courseId is required" })
       }
+      const owned = await verifyCourseOwnership(courseId, userId)
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
+
       const result = await driveService.uploadLessonFile(
         userId,
         courseId,

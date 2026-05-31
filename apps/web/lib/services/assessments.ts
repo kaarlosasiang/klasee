@@ -103,6 +103,7 @@ export const deleteAssessment = async (id: string): Promise<void> => {
 export const getScores = async (params: {
   assessmentId?: string
   studentId?: string
+  courseId?: string
 }): Promise<AssessmentScore[]> => {
   const response = await client.get("/assessments/scores", { params })
   return response.data
@@ -123,5 +124,15 @@ export const updateScore = async (
   data: Partial<{ score: number; feedback: string }>
 ): Promise<AssessmentScore> => {
   const response = await client.put(`/assessments/scores/${id}`, data)
+  return response.data
+}
+
+export const upsertScore = async (data: {
+  assessmentId: string
+  studentId: string
+  score: number
+  feedback?: string
+}): Promise<AssessmentScore> => {
+  const response = await client.put("/assessments/scores/upsert", data)
   return response.data
 }

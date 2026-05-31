@@ -23,6 +23,12 @@ import { NewContentDialog } from "@/components/common/new-content-dialog"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
 import { UploadDialog } from "@/components/common/upload-dialog"
 import { SearchDialog } from "@/components/common/search-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { toast } from "sonner"
 import { getCourses, type Course } from "@/lib/services/courses"
 
@@ -71,14 +77,26 @@ export default function InstructorLayout({
             <SearchDialog />
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex gap-0">
-              <Button variant={"ghost"}>
-                <Bell />
-              </Button>
-              <Button variant={"ghost"}>
-                <Mail />
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex gap-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant={"ghost"}>
+                      <Bell />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Coming soon</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant={"ghost"}>
+                      <Mail />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Coming soon</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
             <UploadDialog>
               <Button className="border-0 border-b-4 border-l-3 border-gray-300 bg-gray-100 font-semibold text-black dark:border-gray-800 dark:bg-gray-700 dark:text-white">
                 <Upload />

@@ -198,29 +198,39 @@ export default function NewAssessmentPage() {
       })
 
       if (questions.length > 0) {
-        await Promise.all(
-          questions.map((q, i) =>
-            createQuestion({
-              assessmentId: assessment._id,
-              type: q.type,
-              question: q.question || "Untitled question",
-              points: q.points,
-              options: q.options
-                ?.filter((o) => o.text.trim())
-                .map((o) => ({ text: o.text.trim(), isCorrect: o.isCorrect })),
-              correctAnswer: q.correctAnswer,
-              required: q.required,
-              multipleAnswers: q.multipleAnswers,
-              randomizeOrder: q.randomizeOrder,
-              estimationTime: q.estimationTime,
-              order: i,
-            })
+        try {
+          await Promise.all(
+            questions.map((q, i) =>
+              createQuestion({
+                assessmentId: assessment._id,
+                type: q.type,
+                question: q.question || "Untitled question",
+                points: q.points,
+                options: q.options
+                  ?.filter((o) => o.text.trim())
+                  .map((o) => ({ text: o.text.trim(), isCorrect: o.isCorrect })),
+                correctAnswer: q.correctAnswer,
+                required: q.required,
+                multipleAnswers: q.multipleAnswers,
+                randomizeOrder: q.randomizeOrder,
+                estimationTime: q.estimationTime,
+                order: i,
+              })
+            )
           )
-        )
+          toast.success("Assessment created")
+        } catch {
+          toast.warning("Assessment created. Some questions could not be saved — please re-add them.")
+        }
+      } else {
+        toast.success("Assessment created")
       }
 
-      toast.success("Assessment created")
-      router.push(`/courses/${courseId}?tab=assessments`)
+      if (isQuizOrExam) {
+        router.push(`/courses/${courseId}/assessments/${assessment._id}/questions`)
+      } else {
+        router.push(`/courses/${courseId}?tab=assessments`)
+      }
     } catch {
       toast.error("Failed to create assessment")
       setCreating(false)

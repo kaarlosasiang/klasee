@@ -125,16 +125,17 @@ export function StudentsDataTable({ data, onRowClick }: StudentsDataTableProps) 
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const student = row.original.studentId?.name?.toLowerCase() ?? ""
+      const name = row.original.studentId?.name?.toLowerCase() ?? ""
+      const email = row.original.studentId?.email?.toLowerCase() ?? ""
       const section = row.original.sectionId?.name?.toLowerCase() ?? ""
       const search = (filterValue as string).toLowerCase()
-      return student.includes(search) || section.includes(search)
+      return name.includes(search) || email.includes(search) || section.includes(search)
     },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: { pagination: { pageSize: 25 } },
   })
 
   if (data.length === 0) {

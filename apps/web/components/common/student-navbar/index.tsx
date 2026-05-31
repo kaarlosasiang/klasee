@@ -134,11 +134,11 @@ export function StudentNavbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/my-dashboard")}>
+                <DropdownMenuItem onClick={() => router.push("/my-profile")}>
                   <User className="mr-2 size-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/my-settings")}>
                   <Settings className="mr-2 size-4" />
                   Settings
                 </DropdownMenuItem>

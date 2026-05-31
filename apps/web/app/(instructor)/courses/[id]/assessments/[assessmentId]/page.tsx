@@ -16,7 +16,7 @@ import {
   getEnrollmentsByCourse,
   type Enrollment,
 } from "@/lib/services/enrollments"
-import { getCourseFiles, type CourseFile } from "@/lib/services/drive"
+import { getAssignmentSubmissions, type AssignmentSubmission } from "@/lib/services/assignment-submissions"
 import { getQuizAttempts, type QuizAttempt } from "@/lib/services/quiz-attempts"
 import { getQuestions, type Question } from "@/lib/services/questions"
 import { GradingPanel } from "@/components/assessments-manager/grading-panel"
@@ -38,7 +38,7 @@ export default function GradeAssessmentPage() {
   const [assessment, setAssessment] = React.useState<Assessment | null>(null)
   const [students, setStudents] = React.useState<EnrolledStudent[]>([])
   const [existingScores, setExistingScores] = React.useState<Map<string, { _id: string; score: number; feedback?: string }>>(new Map())
-  const [submissionFiles, setSubmissionFiles] = React.useState<CourseFile[]>([])
+  const [submissions, setSubmissions] = React.useState<AssignmentSubmission[]>([])
   const [courseAssessments, setCourseAssessments] = React.useState<Assessment[]>([])
   const [allCourseScores, setAllCourseScores] = React.useState<AssessmentScore[]>([])
   const [quizAttempts, setQuizAttempts] = React.useState<QuizAttempt[]>([])
@@ -48,12 +48,13 @@ export default function GradeAssessmentPage() {
     setLoading(true)
     setError(false)
     try {
-      const [assessmentData, enrollmentsData, scoresData, filesData, assessmentsData, attemptsData, questionsData] = await Promise.all([
+      const [assessmentData, enrollmentsData, scoresData, submissionsData, assessmentsData, allCourseScoresData, attemptsData, questionsData] = await Promise.all([
         getAssessmentById(assessmentId),
         getEnrollmentsByCourse(courseId),
         getScores({ assessmentId }),
-        getCourseFiles(courseId, "submissions"),
+        getAssignmentSubmissions(assessmentId).catch(() => [] as AssignmentSubmission[]),
         getAssessments(courseId),
+        getScores({ courseId }).catch(() => [] as AssessmentScore[]),
         getQuizAttempts(assessmentId).catch(() => [] as QuizAttempt[]),
         getQuestions(assessmentId).catch(() => [] as Question[]),
       ])
@@ -79,17 +80,9 @@ export default function GradeAssessmentPage() {
         )
       }
       setExistingScores(scoreMap)
-      setSubmissionFiles(filesData)
+      setSubmissions(submissionsData)
       setCourseAssessments(assessmentsData)
-
-      if (assessmentsData.length > 0) {
-        const allScoresResults = await Promise.all(
-          assessmentsData.map((a: Assessment) =>
-            getScores({ assessmentId: a._id }).catch(() => [] as AssessmentScore[])
-          )
-        )
-        setAllCourseScores(allScoresResults.flat())
-      }
+      setAllCourseScores(allCourseScoresData)
     } catch {
       setError(true)
       toast.error("Failed to load grading data")
@@ -140,7 +133,7 @@ export default function GradeAssessmentPage() {
       assessment={assessment}
       enrolledStudents={students}
       existingScores={existingScores}
-      submissionFiles={submissionFiles}
+      submissions={submissions}
       allCourseAssessments={courseAssessments}
       allCourseScores={allCourseScores}
       quizAttempts={quizAttempts}

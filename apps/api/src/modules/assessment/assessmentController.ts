@@ -107,9 +107,15 @@ export const assessmentController = {
   async listScores(req: Request, res: Response, next: NextFunction) {
     try {
       const role = (req.authUser as any)?.role
-      const { assessmentId, studentId } = req.query
+      const { assessmentId, studentId, courseId } = req.query
       const filter: Record<string, unknown> = {}
-      if (assessmentId) filter.assessmentId = assessmentId
+
+      if (courseId) {
+        const ids = await Assessment.find({ courseId }).select("_id").lean()
+        filter.assessmentId = { $in: ids.map((a) => a._id) }
+      } else if (assessmentId) {
+        filter.assessmentId = assessmentId
+      }
 
       if (role === "student") {
         filter.studentId = getUserId(req)
@@ -145,6 +151,19 @@ export const assessmentController = {
       if (!owned) return res.status(403).json({ message: "Forbidden" })
       const score = await assessmentService.updateScore(req.params['id'] as string, req.body)
       if (!score) return res.status(404).json({ message: "Score not found" })
+      res.json(score)
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async upsertScore(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { assessmentId } = req.body as { assessmentId?: string }
+      if (!assessmentId) return res.status(400).json({ message: "assessmentId is required" })
+      const owned = await verifyAssessmentOwnership(assessmentId, getUserId(req))
+      if (!owned) return res.status(403).json({ message: "Forbidden" })
+      const score = await assessmentService.upsertScore(req.body)
       res.json(score)
     } catch (err) {
       next(err)

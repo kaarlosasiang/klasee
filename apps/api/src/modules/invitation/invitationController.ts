@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express"
 import { invitationService } from "./invitationService.js"
+import { Course } from "../../models/courseModel.js"
+import { Invitation } from "../../models/invitationModel.js"
 
 function getUserId(req: Request): string {
   return String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
@@ -30,9 +32,15 @@ export const invitationController = {
 
   async list(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = getUserId(req)
       const { courseId } = req.query as { courseId?: string }
       if (!courseId) {
         res.status(400).json({ message: "courseId is required" })
+        return
+      }
+      const course = await Course.findById(courseId).select("instructorId").lean()
+      if (!course || String(course.instructorId) !== userId) {
+        res.status(403).json({ message: "Forbidden" })
         return
       }
       const invitations = await invitationService.findByCourse(courseId)
@@ -44,9 +52,20 @@ export const invitationController = {
 
   async revoke(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = getUserId(req)
       const { id } = req.params as { id: string }
-      const invitation = await invitationService.revoke(id)
-      res.json(invitation)
+      const invitation = await Invitation.findById(id).select("courseId").lean()
+      if (!invitation) {
+        res.status(404).json({ message: "Invitation not found" })
+        return
+      }
+      const course = await Course.findById(invitation.courseId).select("instructorId").lean()
+      if (!course || String(course.instructorId) !== userId) {
+        res.status(403).json({ message: "Forbidden" })
+        return
+      }
+      const revoked = await invitationService.revoke(id)
+      res.json(revoked)
     } catch (err) {
       next(err)
     }

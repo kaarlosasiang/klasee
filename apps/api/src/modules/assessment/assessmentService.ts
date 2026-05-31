@@ -94,4 +94,17 @@ export const assessmentService = {
   async updateScore(id: string, data: Partial<{ score: number; feedback: string }>) {
     return AssessmentScore.findByIdAndUpdate(id, data, { new: true }).lean()
   },
+
+  async upsertScore(data: {
+    assessmentId: string
+    studentId: string
+    score: number
+    feedback?: string
+  }) {
+    return AssessmentScore.findOneAndUpdate(
+      { assessmentId: data.assessmentId, studentId: data.studentId },
+      { $set: { score: data.score, feedback: data.feedback } },
+      { upsert: true, new: true }
+    ).lean()
+  },
 }

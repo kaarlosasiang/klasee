@@ -766,11 +766,12 @@ export function NewCourseDialog({
       onOpenChange(false)
       onCreated?.()
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
-      )
+      const status = (err as any)?.response?.status
+      if (status === 409) {
+        setError("Course code is already in use. Please choose a different code.")
+      } else {
+        setError("Something went wrong. Please try again.")
+      }
     } finally {
       setIsSubmitting(false)
     }

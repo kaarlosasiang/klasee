@@ -27,13 +27,14 @@ import {
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
-import { getStreamUrl, type CourseFile } from "@/lib/services/drive"
+import { getStreamUrl } from "@/lib/services/drive"
 import {
   createScore,
   updateScore,
   type Assessment,
   type AssessmentScore,
 } from "@/lib/services/assessments"
+import { type AssignmentSubmission, type SubmissionFile } from "@/lib/services/assignment-submissions"
 import { type QuizAttempt } from "@/lib/services/quiz-attempts"
 import { type Question } from "@/lib/services/questions"
 import { cn } from "@workspace/ui/lib/utils"
@@ -49,7 +50,7 @@ interface GradingPanelProps {
   assessment: Assessment
   enrolledStudents: EnrolledStudent[]
   existingScores: Map<string, { _id: string; score: number; feedback?: string }>
-  submissionFiles: CourseFile[]
+  submissions?: AssignmentSubmission[]
   allCourseAssessments: Assessment[]
   allCourseScores: AssessmentScore[]
   quizAttempts?: QuizAttempt[]
@@ -85,7 +86,7 @@ export function GradingPanel({
   assessment,
   enrolledStudents,
   existingScores,
-  submissionFiles,
+  submissions = [],
   allCourseAssessments,
   allCourseScores,
   quizAttempts = [],
@@ -96,9 +97,7 @@ export function GradingPanel({
   const [scoreInput, setScoreInput] = React.useState("")
   const [feedbackInput, setFeedbackInput] = React.useState("")
   const [saving, setSaving] = React.useState(false)
-  const [selectedFile, setSelectedFile] = React.useState<CourseFile | null>(
-    null
-  )
+  const [selectedFile, setSelectedFile] = React.useState<SubmissionFile | null>(null)
 
   const currentStudent = enrolledStudents[currentIndex]
   const currentScore = currentStudent
@@ -116,12 +115,14 @@ export function GradingPanel({
     setSelectedFile(null)
   }, [currentIndex, currentScore])
 
+  const currentSubmission = React.useMemo(
+    () => submissions.find((s) => s.userId._id === currentStudent?._id),
+    [submissions, currentStudent]
+  )
+
   const studentFiles = React.useMemo(
-    () =>
-      submissionFiles.filter(
-        (f) => !f.isFolder && f.uploadedBy?._id === currentStudent?._id
-      ),
-    [submissionFiles, currentStudent]
+    () => currentSubmission?.files ?? [],
+    [currentSubmission]
   )
 
   const currentAttempt = React.useMemo(
@@ -207,8 +208,9 @@ export function GradingPanel({
 
   const previewContent = React.useMemo(() => {
     if (!selectedFile) return null
-    const url = getStreamUrl(selectedFile.driveFileId ?? selectedFile._id)
-    if (selectedFile.mimeType.startsWith("image/")) {
+    const url = getStreamUrl(selectedFile.driveFileId ?? selectedFile.fileId ?? "")
+    const mime = selectedFile.mimeType ?? ""
+    if (mime.startsWith("image/")) {
       return (
         <img
           src={url}
@@ -220,7 +222,7 @@ export function GradingPanel({
         />
       )
     }
-    if (selectedFile.mimeType.includes("pdf")) {
+    if (mime.includes("pdf")) {
       return (
         <iframe
           src={url}
@@ -229,16 +231,16 @@ export function GradingPanel({
         />
       )
     }
-    if (selectedFile.mimeType.startsWith("video/")) {
+    if (mime.startsWith("video/")) {
       return (
         <video controls className="max-h-full max-w-full rounded-lg" key={url}>
-          <source src={url} type={selectedFile.mimeType} />
+          <source src={url} type={mime} />
         </video>
       )
     }
     return (
       <div className="flex flex-col items-center gap-3 py-12">
-        {fileTypeIcon(selectedFile.mimeType, "lg")}
+        {fileTypeIcon(mime, "lg")}
         <p className="text-sm font-medium">{selectedFile.name}</p>
         <a
           href={url}
@@ -359,47 +361,57 @@ export function GradingPanel({
             </div>
           ) : (
             <>
+              {currentSubmission?.content && (
+                <div className="shrink-0 border-b border-border p-4">
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Written response</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{currentSubmission.content}</p>
+                </div>
+              )}
               <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
                 {selectedFile ? (
                   previewContent
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <File className="size-10" />
-                    <p className="text-sm">Select a file to preview</p>
+                    <p className="text-sm">
+                      {currentSubmission ? "Select a file to preview" : "No submission yet"}
+                    </p>
+                    {currentSubmission && (
+                      <p className="text-xs text-muted-foreground/60">
+                        Submitted {timeAgo(currentSubmission.submittedAt)}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
               {studentFiles.length > 0 && (
                 <div className="border-t border-border p-3">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">
-                    Submissions ({studentFiles.length})
+                    Files ({studentFiles.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {studentFiles.map((file) => (
+                    {studentFiles.map((file, i) => (
                       <button
-                        key={file._id}
+                        key={file.fileId ?? file.driveFileId ?? i}
                         type="button"
                         onClick={() => setSelectedFile(file)}
                         className={cn(
                           "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors",
-                          selectedFile?._id === file._id
+                          (selectedFile?.fileId ?? selectedFile?.driveFileId) === (file.fileId ?? file.driveFileId)
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border text-muted-foreground hover:bg-muted"
                         )}
                       >
-                        {fileTypeIcon(file.mimeType)}
-                        <span className="max-w-[120px] truncate">{file.name}</span>
-                        <span className="shrink-0 text-[10px] text-muted-foreground/60">
-                          {timeAgo(file.createdAt)}
-                        </span>
+                        {fileTypeIcon(file.mimeType ?? "")}
+                        <span className="max-w-[120px] truncate">{file.name ?? "File"}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
-              {studentFiles.length === 0 && (
+              {!currentSubmission && (
                 <div className="border-t border-border p-3 text-center text-xs text-muted-foreground">
-                  No submissions yet
+                  No submission yet
                 </div>
               )}
             </>

@@ -104,7 +104,11 @@ export default function GradesPage() {
           ))}
         </div>
       ) : gradebook ? (
-        <GradebookDataTable gradebook={gradebook} onPaginationChange={handlePaginationChange} />
+        <GradebookDataTable
+          gradebook={gradebook}
+          onPaginationChange={handlePaginationChange}
+          onScoreSaved={() => fetchGradebook(courseId, page, limit)}
+        />
       ) : null}
     </div>
   )

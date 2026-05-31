@@ -155,8 +155,13 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
 
       toast.success("Course updated")
       onUpdated()
-    } catch {
-      toast.error("Failed to update course")
+    } catch (err: unknown) {
+      const status = (err as any)?.response?.status
+      if (status === 409) {
+        toast.error("Course code is already in use. Please choose a different code.")
+      } else {
+        toast.error("Failed to update course")
+      }
     } finally {
       setSaving(false)
     }

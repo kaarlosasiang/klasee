@@ -1,4 +1,6 @@
 import { Module } from "../../models/moduleModel.js"
+import { Lesson } from "../../models/lessonModel.js"
+import { CourseFile } from "../../models/courseFileModel.js"
 
 export const moduleService = {
   async findByCourse(courseId: string, filter: Record<string, unknown> = {}) {
@@ -27,6 +29,12 @@ export const moduleService = {
   },
 
   async delete(id: string) {
+    const lessons = await Lesson.find({ moduleId: id }).select("fileId").lean()
+    const fileIds = lessons.map((l) => l.fileId).filter(Boolean)
+    if (fileIds.length > 0) {
+      await CourseFile.deleteMany({ _id: { $in: fileIds } })
+    }
+    await Lesson.deleteMany({ moduleId: id })
     return Module.findByIdAndDelete(id)
   },
 

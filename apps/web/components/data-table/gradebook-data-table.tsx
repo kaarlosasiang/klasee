@@ -11,24 +11,95 @@ import {
 } from "@tanstack/react-table"
 import { Search, ClipboardList } from "lucide-react"
 import { Input } from "@workspace/ui/components/input"
-import { Badge } from "@workspace/ui/components/badge"
 import { DataTable } from "@workspace/ui/components/data-table/data-table"
 import { DataTableColumnHeader } from "@workspace/ui/components/data-table/data-table-column-header"
 import { DataTableViewOptions } from "@workspace/ui/components/data-table/data-table-view-options"
+import { toast } from "sonner"
 import type { CourseGradebook, GradebookStudent } from "@/lib/services/gradebook"
 import type { AssignmentGroup } from "@/lib/services/assignment-groups"
+import { upsertScore } from "@/lib/services/assessments"
 
 interface GradebookDataTableProps {
   gradebook: CourseGradebook
   onPaginationChange: (page: number, limit: number) => void
+  onScoreSaved?: () => void
 }
 
-function ScoreCell({ earned, possible }: { earned: number | null; possible: number }) {
-  if (earned === null) return <span className="text-muted-foreground/40">—</span>
+function EditableScoreCell({
+  earned,
+  possible,
+  assessmentId,
+  studentId,
+  onSaved,
+}: {
+  earned: number | null
+  possible: number
+  assessmentId: string
+  studentId: string
+  onSaved?: () => void
+}) {
+  const [editing, setEditing] = React.useState(false)
+  const [value, setValue] = React.useState(earned !== null ? String(earned) : "")
+  const [saving, setSaving] = React.useState(false)
+
+  React.useEffect(() => {
+    setValue(earned !== null ? String(earned) : "")
+  }, [earned])
+
+  async function save() {
+    const num = Number(value)
+    if (value === "" || isNaN(num) || num < 0 || num > possible) {
+      setValue(earned !== null ? String(earned) : "")
+      setEditing(false)
+      return
+    }
+    if (num === earned) {
+      setEditing(false)
+      return
+    }
+    setSaving(true)
+    try {
+      await upsertScore({ assessmentId, studentId, score: num })
+      toast.success("Score saved")
+      onSaved?.()
+    } catch {
+      toast.error("Failed to save score")
+      setValue(earned !== null ? String(earned) : "")
+    } finally {
+      setSaving(false)
+      setEditing(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="number"
+        min={0}
+        max={possible}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save()
+          if (e.key === "Escape") { setValue(earned !== null ? String(earned) : ""); setEditing(false) }
+        }}
+        className="h-7 w-16 rounded-md border border-input bg-background px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+    )
+  }
+
   return (
-    <Badge variant="secondary" className="font-mono text-xs">
-      {earned}/{possible}
-    </Badge>
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      disabled={saving}
+      className="rounded px-2 py-0.5 text-xs tabular-nums hover:bg-muted focus:outline-none"
+      title="Click to edit"
+    >
+      {earned !== null ? `${earned}/${possible}` : <span className="text-muted-foreground/40">—/{possible}</span>}
+    </button>
   )
 }
 
@@ -37,7 +108,7 @@ function PctCell({ value }: { value: number | null }) {
   return <span className="text-xs font-semibold tabular-nums">{Math.round(value)}%</span>
 }
 
-export function GradebookDataTable({ gradebook, onPaginationChange }: GradebookDataTableProps) {
+export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved }: GradebookDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -87,7 +158,13 @@ export function GradebookDataTable({ gradebook, onPaginationChange }: GradebookD
             const score = row.original.assessmentScores.find((s) => s.assessmentId === a._id)
             return (
               <div className="flex justify-center">
-                <ScoreCell earned={score?.earned ?? null} possible={a.totalPoints} />
+                <EditableScoreCell
+                  earned={score?.earned ?? null}
+                  possible={a.totalPoints}
+                  assessmentId={a._id}
+                  studentId={row.original.student._id}
+                  onSaved={onScoreSaved}
+                />
               </div>
             )
           },
@@ -140,7 +217,13 @@ export function GradebookDataTable({ gradebook, onPaginationChange }: GradebookD
           const score = row.original.assessmentScores.find((s) => s.assessmentId === a._id)
           return (
             <div className="flex justify-center">
-              <ScoreCell earned={score?.earned ?? null} possible={a.totalPoints} />
+              <EditableScoreCell
+                earned={score?.earned ?? null}
+                possible={a.totalPoints}
+                assessmentId={a._id}
+                studentId={row.original.student._id}
+                onSaved={onScoreSaved}
+              />
             </div>
           )
         },

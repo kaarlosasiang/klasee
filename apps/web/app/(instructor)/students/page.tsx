@@ -72,7 +72,7 @@ export default function StudentsPage() {
         enrollment={selectedEnrollment}
         enrollments={enrollments}
         onNavigate={setSelectedEnrollment}
-        onDrop={(id) => setEnrollments((prev) => prev.filter((e) => e._id !== id))}
+        onDrop={() => fetchEnrollments()}
       />
     </div>
   )
