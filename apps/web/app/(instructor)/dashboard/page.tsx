@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { GraduationCap, Users, BookOpen, ClipboardList } from "lucide-react"
+import { GraduationCap, Users, BookOpen, ClipboardList, LayoutGrid, type LucideIcon } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { getCourses, type Course } from "@/lib/services/courses"
 import { CourseCard } from "@/components/common/course-card"
@@ -9,6 +9,28 @@ import { NewCourseDialog } from "@/components/common/new-course-dialog"
 import Link from "next/link"
 import { LmsTipCard } from "@/components/lms-tip-card"
 import { useSession } from "@/lib/config/auth-client"
+
+interface StatCardProps {
+  icon: LucideIcon
+  value: number
+  label: string
+  iconClass: string
+  iconBgClass: string
+}
+
+function StatCard({ icon: Icon, value, label, iconClass, iconBgClass }: StatCardProps) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5">
+      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${iconBgClass}`}>
+        <Icon className={`size-5 ${iconClass}`} />
+      </div>
+      <div>
+        <p className="text-2xl font-bold tabular-nums leading-none">{value}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  )
+}
 
 export default function InstructorDashboardPage() {
   const [courses, setCourses] = React.useState<Course[]>([])
@@ -60,9 +82,9 @@ export default function InstructorDashboardPage() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-24 w-full rounded-xl" />
-        <div className="grid grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
         </div>
         <Skeleton className="h-8 w-32" />
@@ -91,35 +113,42 @@ export default function InstructorDashboardPage() {
       </div>
 
       {courses.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
-            <Users className="size-5 text-muted-foreground" />
-            <div>
-              <p className="text-lg font-bold tabular-nums">{totalStudents}</p>
-              <p className="text-xs text-muted-foreground">Students</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
-            <BookOpen className="size-5 text-muted-foreground" />
-            <div>
-              <p className="text-lg font-bold tabular-nums">{totalSections}</p>
-              <p className="text-xs text-muted-foreground">Sections</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
-            <ClipboardList className="size-5 text-muted-foreground" />
-            <div>
-              <p className="text-lg font-bold tabular-nums">{totalAssessments}</p>
-              <p className="text-xs text-muted-foreground">Assessments</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard
+            icon={Users}
+            value={totalStudents}
+            label="Students"
+            iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+            iconClass="text-blue-600 dark:text-blue-400"
+          />
+          <StatCard
+            icon={BookOpen}
+            value={courses.length}
+            label="Courses"
+            iconBgClass="bg-purple-50 dark:bg-purple-950/40"
+            iconClass="text-purple-600 dark:text-purple-400"
+          />
+          <StatCard
+            icon={LayoutGrid}
+            value={totalSections}
+            label="Sections"
+            iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+            iconClass="text-emerald-600 dark:text-emerald-400"
+          />
+          <StatCard
+            icon={ClipboardList}
+            value={totalAssessments}
+            label="Assessments"
+            iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+            iconClass="text-amber-600 dark:text-amber-400"
+          />
         </div>
       )}
 
       <div>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Recent Courses</h2>
-          {courses.length > 9 && (
+          {courses.length > 0 && (
             <Link
               href="/courses"
               className="text-sm font-medium text-primary hover:underline"
