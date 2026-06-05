@@ -124,6 +124,7 @@ export const courseService = {
       cover: string
       icon: string
       syllabus: string
+      gradeBase: "50" | "75"
     }>
   ) {
     return Course.findByIdAndUpdate(id, data, { new: true }).lean()

@@ -6,6 +6,7 @@ const router: IRouter = Router()
 
 // Must be registered before /:anything routes — "my" would otherwise match an id param
 router.get("/my", requireAuth, gradebookController.getMy)
+router.get("/export", requireAuth, requireRole("instructor", "admin"), gradebookController.exportCsv)
 router.get("/", requireAuth, requireRole("instructor", "admin"), gradebookController.getCourse)
 
 export default router

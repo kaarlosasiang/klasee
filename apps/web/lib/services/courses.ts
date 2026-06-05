@@ -11,6 +11,7 @@ export interface Course {
   cover?: string
   icon?: string
   syllabus?: string
+  gradeBase?: "50" | "75"
   sectionCount: number
   enrolledCount: number
   assessmentCount: number
@@ -38,6 +39,7 @@ export interface UpdateCourseInput {
   cover?: string
   icon?: string
   syllabus?: string
+  gradeBase?: "50" | "75"
 }
 
 export const getCourses = async (): Promise<Course[]> => {

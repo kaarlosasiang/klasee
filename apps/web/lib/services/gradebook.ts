@@ -1,6 +1,11 @@
 import client from "../config/axios"
 import type { AssignmentGroup } from "./assignment-groups"
 
+export interface GradeEntry {
+  grade: string
+  remark: string
+}
+
 export interface AssessmentScoreEntry {
   assessmentId: string
   groupId: string | null
@@ -33,6 +38,8 @@ export interface GradebookStudent {
   groupSummaries: GroupSummary[]
   currentScore: number | null
   finalScore: number | null
+  gradeEntry: GradeEntry | null
+  currentGradeEntry: GradeEntry | null
 }
 
 export interface CourseGradebook {
@@ -55,6 +62,8 @@ export interface StudentGradebook {
   groups: GroupSummary[]
   currentScore: number | null
   finalScore: number | null
+  gradeEntry: GradeEntry | null
+  currentGradeEntry: GradeEntry | null
 }
 
 export const getCourseGradebook = async (
@@ -68,5 +77,13 @@ export const getCourseGradebook = async (
 
 export const getMyGradebook = async (courseId: string): Promise<StudentGradebook> => {
   const response = await client.get("/gradebook/my", { params: { courseId } })
+  return response.data
+}
+
+export const exportGradebook = async (courseId: string): Promise<Blob> => {
+  const response = await client.get("/gradebook/export", {
+    params: { courseId },
+    responseType: "blob",
+  })
   return response.data
 }

@@ -18,7 +18,7 @@ import {
   Users,
 } from "lucide-react"
 
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { NavMain } from "@/components/common/instructor-sidebar/nav-main"
 import { NavFavoritesProjects } from "@/components/common/instructor-sidebar/nav-projects"
 import { useSession } from "@/lib/config/auth-client"
@@ -89,11 +89,13 @@ function IconRailBtn({
   label,
   active,
   href,
+  comingSoon,
 }: {
   icon: React.ElementType
   label: string
   active?: boolean
   href?: string
+  comingSoon?: boolean
 }) {
   const Comp = href ? Link : "button"
 
@@ -104,16 +106,19 @@ function IconRailBtn({
           href={href as string}
           className={cn(
             "flex size-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
+            comingSoon && "cursor-default opacity-40",
             active
               ? "bg-primary dark:bg-primary/50 text-white dark:text-accent-foreground"
-              : "hover:bg-primary/90 hover:text-white dark:hover:text-foreground"
+              : !comingSoon && "hover:bg-primary/90 hover:text-white dark:hover:text-foreground"
           )}
         >
           <Icon className="size-5" />
           <span className="sr-only">{label}</span>
         </Comp>
       </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
+      <TooltipContent side="right">
+        {comingSoon ? `${label} — Coming soon` : label}
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -121,6 +126,7 @@ function IconRailBtn({
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { logout } = useAuth()
   const { state } = useSidebar()
+  const pathname = usePathname()
 
   const { data: session } = useSession()
   const user = session?.user
@@ -167,7 +173,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border py-3">
           {/* Logo */}
           <Link
-            href="#"
+            href="/dashboard"
             className="mb-3 flex size-9 items-center justify-center rounded-xl bg-primary text-white"
           >
             <Image
@@ -179,21 +185,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             />
           </Link>
 
-          <IconRailBtn icon={Home} label="Dashboard" active />
+          <IconRailBtn icon={Home} label="Dashboard" href="/dashboard" active={pathname === "/dashboard"} />
           <IconRailBtn icon={Search} label="Search" />
-          <IconRailBtn icon={ChartNoAxesCombined} label="Analytics" />
-          <IconRailBtn icon={CalendarDays} label="Calender" />
+          <IconRailBtn icon={ChartNoAxesCombined} label="Analytics" comingSoon />
+          <IconRailBtn icon={CalendarDays} label="Calendar" comingSoon />
 
           <div className="my-1.5 w-6 border-t border-border" />
 
-          <IconRailBtn icon={Clock} label="Recents" />
-          <IconRailBtn icon={Archive} label="Archived" />
+          <IconRailBtn icon={Clock} label="Recents" comingSoon />
+          <IconRailBtn icon={Archive} label="Archived" comingSoon />
 
           <div className="flex-1" />
 
           {/* Bottom action buttons */}
           <div className="flex flex-col items-center gap-2 pb-1">
-            <IconRailBtn icon={BarChart2} label="Reports" />
+            <IconRailBtn icon={BarChart2} label="Reports" comingSoon />
             <IconRailBtn icon={Settings} label="Settings" href="/settings" />
 
             <DropdownMenu>
@@ -261,23 +267,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="#">
+                  <Link href="/dashboard">
                     <div className="grid flex-1 text-left text-lg leading-tight">
                       <span className="truncate font-bold text-accent-foreground">
                         Klasee LMS
                       </span>
                     </div>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
             <NavMain items={navMain} />
-            <NavFavoritesProjects
-              favorites={favorites}
-              projects={[]}
-            />
+            <NavFavoritesProjects favorites={favorites} />
           </SidebarContent>
         </div>
       </div>

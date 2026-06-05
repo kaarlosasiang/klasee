@@ -9,6 +9,7 @@ import {
   BookOpen,
   ClipboardList,
   CalendarCheck,
+  BarChart2,
   Menu,
   LogOut,
   User,
@@ -42,6 +43,7 @@ const NAV_LINKS = [
   { label: "Courses", href: "/my-courses", icon: BookOpen },
   { label: "Quizzes & Assignments", href: "/my-assessments", icon: ClipboardList },
   { label: "Attendance", href: "/my-attendance", icon: CalendarCheck },
+  { label: "Grades", href: "/my-grades", icon: BarChart2 },
 ]
 
 export function StudentNavbar() {

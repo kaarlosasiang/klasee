@@ -9,20 +9,86 @@ import {
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table"
-import { Search, ClipboardList } from "lucide-react"
+import { Search, ClipboardList, Download, Loader2 } from "lucide-react"
 import { Input } from "@workspace/ui/components/input"
+import { Button } from "@workspace/ui/components/button"
 import { DataTable } from "@workspace/ui/components/data-table/data-table"
 import { DataTableColumnHeader } from "@workspace/ui/components/data-table/data-table-column-header"
 import { DataTableViewOptions } from "@workspace/ui/components/data-table/data-table-view-options"
 import { toast } from "sonner"
-import type { CourseGradebook, GradebookStudent } from "@/lib/services/gradebook"
-import type { AssignmentGroup } from "@/lib/services/assignment-groups"
+import type { CourseGradebook, GradebookStudent, GradeEntry } from "@/lib/services/gradebook"
+import { exportGradebook } from "@/lib/services/gradebook"
 import { upsertScore } from "@/lib/services/assessments"
 
 interface GradebookDataTableProps {
+  courseId: string
   gradebook: CourseGradebook
   onPaginationChange: (page: number, limit: number) => void
   onScoreSaved?: () => void
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+// Hue based on first char so each student gets a consistent but varied color
+const AVATAR_COLORS = [
+  "bg-violet-500/15 text-violet-700 dark:text-violet-400",
+  "bg-sky-500/15 text-sky-700 dark:text-sky-400",
+  "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  "bg-rose-500/15 text-rose-700 dark:text-rose-400",
+  "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400",
+  "bg-teal-500/15 text-teal-700 dark:text-teal-400",
+  "bg-orange-500/15 text-orange-700 dark:text-orange-400",
+]
+
+function StudentAvatar({ name }: { name: string }) {
+  const colorClass = AVATAR_COLORS[(name.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
+  return (
+    <div
+      className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${colorClass}`}
+    >
+      {getInitials(name)}
+    </div>
+  )
+}
+
+function gradeColor(grade: string) {
+  const n = parseFloat(grade)
+  if (n <= 1.25) return "border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
+  if (n <= 1.75) return "border-green-200 bg-green-500/10 text-green-700 dark:border-green-800 dark:text-green-400"
+  if (n <= 2.25) return "border-sky-200 bg-sky-500/10 text-sky-700 dark:border-sky-800 dark:text-sky-400"
+  if (n <= 2.75) return "border-blue-200 bg-blue-500/10 text-blue-700 dark:border-blue-800 dark:text-blue-400"
+  if (n <= 3.0)  return "border-amber-200 bg-amber-500/10 text-amber-700 dark:border-amber-800 dark:text-amber-400"
+  if (n <= 4.0)  return "border-orange-200 bg-orange-500/10 text-orange-700 dark:border-orange-800 dark:text-orange-400"
+  return "border-red-200 bg-red-500/10 text-red-700 dark:border-red-800 dark:text-red-400"
+}
+
+function GradeBadge({ entry }: { entry: GradeEntry | null }) {
+  if (!entry) return <span className="text-muted-foreground/40">—</span>
+  return (
+    <div
+      className={`inline-flex flex-col items-center rounded-lg border px-2.5 py-1 ${gradeColor(entry.grade)}`}
+    >
+      <span className="text-sm font-bold tabular-nums leading-none">{entry.grade}</span>
+      <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide leading-none">
+        {entry.remark}
+      </span>
+    </div>
+  )
+}
+
+function finalScoreColor(score: number | null) {
+  if (score === null) return "text-muted-foreground/40"
+  if (score >= 80) return "text-emerald-700 dark:text-emerald-400"
+  if (score >= 60) return "text-amber-700 dark:text-amber-400"
+  return "text-red-700 dark:text-red-400"
 }
 
 function EditableScoreCell({
@@ -83,7 +149,10 @@ function EditableScoreCell({
         onBlur={save}
         onKeyDown={(e) => {
           if (e.key === "Enter") save()
-          if (e.key === "Escape") { setValue(earned !== null ? String(earned) : ""); setEditing(false) }
+          if (e.key === "Escape") {
+            setValue(earned !== null ? String(earned) : "")
+            setEditing(false)
+          }
         }}
         className="h-7 w-16 rounded-md border border-input bg-background px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-ring"
       />
@@ -98,7 +167,11 @@ function EditableScoreCell({
       className="rounded px-2 py-0.5 text-xs tabular-nums hover:bg-muted focus:outline-none"
       title="Click to edit"
     >
-      {earned !== null ? `${earned}/${possible}` : <span className="text-muted-foreground/40">—/{possible}</span>}
+      {earned !== null ? (
+        `${earned}/${possible}`
+      ) : (
+        <span className="text-muted-foreground/40">—/{possible}</span>
+      )}
     </button>
   )
 }
@@ -108,13 +181,37 @@ function PctCell({ value }: { value: number | null }) {
   return <span className="text-xs font-semibold tabular-nums">{Math.round(value)}%</span>
 }
 
-export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved }: GradebookDataTableProps) {
+export function GradebookDataTable({
+  courseId,
+  gradebook,
+  onPaginationChange,
+  onScoreSaved,
+}: GradebookDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
+  const [exporting, setExporting] = React.useState(false)
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: gradebook.page - 1,
     pageSize: gradebook.limit,
   })
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const blob = await exportGradebook(courseId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "gradebook.csv"
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Gradebook exported")
+    } catch {
+      toast.error("Failed to export gradebook")
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const { assessments, groups, students } = gradebook
   const ungrouped = assessments.filter((a) => !a.groupId)
@@ -126,11 +223,16 @@ export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved
         accessorFn: (row) => row.student.name,
         header: ({ column }) => <DataTableColumnHeader column={column} label="Student" />,
         cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="whitespace-nowrap font-medium">{row.original.student.name}</span>
-            <span className="whitespace-nowrap text-xs text-muted-foreground">
-              {row.original.student.email}
-            </span>
+          <div className="flex items-center gap-3">
+            <StudentAvatar name={row.original.student.name} />
+            <div className="flex flex-col">
+              <span className="whitespace-nowrap font-medium">
+                {row.original.student.name}
+              </span>
+              <span className="whitespace-nowrap text-xs text-muted-foreground">
+                {row.original.student.email}
+              </span>
+            </div>
           </div>
         ),
         enableSorting: true,
@@ -138,7 +240,6 @@ export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved
       },
     ]
 
-    // One column group per assignment group
     for (const group of groups) {
       const groupAssessments = assessments.filter((a) => a.groupId === group._id)
       if (groupAssessments.length === 0) continue
@@ -201,7 +302,6 @@ export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved
       } as ColumnDef<GradebookStudent>)
     }
 
-    // Ungrouped assessments (no parent header)
     for (const a of ungrouped) {
       cols.push({
         id: `a-${a._id}`,
@@ -231,22 +331,51 @@ export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved
       })
     }
 
-    // Final grade column
+    // Final %
     cols.push({
       id: "finalScore",
       accessorFn: (row) => row.finalScore,
-      header: ({ column }) => <DataTableColumnHeader column={column} label="Final" />,
+      header: ({ column }) => (
+        <div className="flex justify-center">
+          <DataTableColumnHeader column={column} label="Final" />
+        </div>
+      ),
       cell: ({ row }) => {
         const { finalScore, currentScore } = row.original
         return (
-          <div className="text-right">
-            <div className="font-semibold tabular-nums">
+          <div className="flex flex-col items-center">
+            <div className={`font-semibold tabular-nums ${finalScoreColor(finalScore)}`}>
               {finalScore !== null ? `${Math.round(finalScore)}%` : "—"}
             </div>
             {currentScore !== null && currentScore !== finalScore && (
               <div className="text-[10px] text-muted-foreground tabular-nums">
                 now {Math.round(currentScore)}%
               </div>
+            )}
+          </div>
+        )
+      },
+      enableSorting: true,
+    })
+
+    // Grade badge
+    cols.push({
+      id: "gradeEntry",
+      accessorFn: (row) => row.gradeEntry?.grade ?? null,
+      header: ({ column }) => (
+        <div className="flex justify-center">
+          <DataTableColumnHeader column={column} label="Grade" />
+        </div>
+      ),
+      cell: ({ row }) => {
+        const { gradeEntry, currentGradeEntry } = row.original
+        return (
+          <div className="flex flex-col items-center gap-1">
+            <GradeBadge entry={gradeEntry} />
+            {currentGradeEntry && currentGradeEntry.grade !== gradeEntry?.grade && (
+              <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                now {currentGradeEntry.grade}
+              </span>
             )}
           </div>
         )
@@ -301,7 +430,17 @@ export function GradebookDataTable({ gradebook, onPaginationChange, onScoreSaved
             className="h-9 w-60 pl-8"
           />
         </div>
-        <DataTableViewOptions table={table} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 size-4" />
+            )}
+            Export CSV
+          </Button>
+          <DataTableViewOptions table={table} />
+        </div>
       </div>
     </DataTable>
   )

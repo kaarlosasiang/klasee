@@ -16,6 +16,7 @@ const courseSchema = new mongoose.Schema(
     icon: { type: String },
     syllabus: { type: String },
     isArchived: { type: Boolean, default: false, index: true },
+    gradeBase: { type: String, enum: ["50", "75"], default: "50" },
   },
   { timestamps: true }
 )

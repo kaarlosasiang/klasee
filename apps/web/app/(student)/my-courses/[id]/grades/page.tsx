@@ -120,20 +120,44 @@ export default function StudentGradesPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-xs text-muted-foreground">Current grade</p>
-              <p className="mt-0.5 text-2xl font-bold">
-                {gradebook.currentScore !== null
-                  ? `${Math.round(gradebook.currentScore)}%`
-                  : "—"}
-              </p>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <p className="text-2xl font-bold">
+                  {gradebook.currentScore !== null
+                    ? `${Math.round(gradebook.currentScore)}%`
+                    : "—"}
+                </p>
+                {gradebook.currentGradeEntry && (
+                  <span className="text-lg font-semibold tabular-nums text-muted-foreground">
+                    {gradebook.currentGradeEntry.grade}
+                  </span>
+                )}
+              </div>
+              {gradebook.currentGradeEntry && (
+                <p className="mt-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                  {gradebook.currentGradeEntry.remark.toLowerCase()}
+                </p>
+              )}
               <p className="text-[10px] text-muted-foreground">Based on graded work only</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-xs text-muted-foreground">Final grade</p>
-              <p className="mt-0.5 text-2xl font-bold">
-                {gradebook.finalScore !== null
-                  ? `${Math.round(gradebook.finalScore)}%`
-                  : "—"}
-              </p>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <p className="text-2xl font-bold">
+                  {gradebook.finalScore !== null
+                    ? `${Math.round(gradebook.finalScore)}%`
+                    : "—"}
+                </p>
+                {gradebook.gradeEntry && (
+                  <span className="text-lg font-semibold tabular-nums text-muted-foreground">
+                    {gradebook.gradeEntry.grade}
+                  </span>
+                )}
+              </div>
+              {gradebook.gradeEntry && (
+                <p className="mt-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                  {gradebook.gradeEntry.remark.toLowerCase()}
+                </p>
+              )}
               <p className="text-[10px] text-muted-foreground">Unsubmitted counted as 0</p>
             </div>
           </div>

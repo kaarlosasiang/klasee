@@ -17,6 +17,10 @@ import {
   Check,
   Link,
   UserPlus,
+  Plus,
+  X,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -58,6 +62,13 @@ import {
   type Section,
 } from "@/lib/services/sections"
 import { createInvitation, type Invitation } from "@/lib/services/invitations"
+import {
+  getAssignmentGroups,
+  createAssignmentGroup,
+  updateAssignmentGroup,
+  deleteAssignmentGroup,
+  type AssignmentGroup,
+} from "@/lib/services/assignment-groups"
 
 interface CourseSettingsProps {
   course: Course
@@ -88,6 +99,104 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
   const [archiving, setArchiving] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
 
+  const [gradeBase, setGradeBase] = React.useState<"50" | "75">(course.gradeBase ?? "50")
+
+  // Grading system (assignment groups)
+  type GroupRow = {
+    _id?: string
+    name: string
+    weight: number | ""
+    dropLowest: number
+    saving: boolean
+    dirty: boolean
+  }
+  const [groupRows, setGroupRows] = React.useState<GroupRow[]>([])
+  const [groupsLoading, setGroupsLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    getAssignmentGroups(course._id)
+      .then((groups) =>
+        setGroupRows(
+          groups.map((g) => ({
+            _id: g._id,
+            name: g.name,
+            weight: g.weight,
+            dropLowest: g.dropLowest,
+            saving: false,
+            dirty: false,
+          }))
+        )
+      )
+      .catch(() => {})
+      .finally(() => setGroupsLoading(false))
+  }, [course._id])
+
+  const totalWeight = groupRows.reduce((sum, r) => sum + (Number(r.weight) || 0), 0)
+
+  function addGroupRow() {
+    setGroupRows((prev) => [
+      ...prev,
+      { name: "", weight: "", dropLowest: 0, saving: false, dirty: true },
+    ])
+  }
+
+  function updateGroupRow(i: number, patch: Partial<GroupRow>) {
+    setGroupRows((prev) =>
+      prev.map((r, idx) => (idx === i ? { ...r, ...patch, dirty: true } : r))
+    )
+  }
+
+  async function saveGroupRow(i: number) {
+    const row = groupRows[i]
+    if (!row || !row.name.trim() || row.weight === "" || Number(row.weight) < 0) return
+    setGroupRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, saving: true } : r)))
+    try {
+      if (row._id) {
+        await updateAssignmentGroup(row._id, {
+          name: row.name.trim(),
+          weight: Number(row.weight),
+          dropLowest: row.dropLowest,
+        })
+      } else {
+        const created = await createAssignmentGroup({
+          courseId: course._id,
+          name: row.name.trim(),
+          weight: Number(row.weight),
+          dropLowest: row.dropLowest,
+          order: i,
+        })
+        setGroupRows((prev) =>
+          prev.map((r, idx) => (idx === i ? { ...r, _id: created._id } : r))
+        )
+      }
+      setGroupRows((prev) =>
+        prev.map((r, idx) => (idx === i ? { ...r, saving: false, dirty: false } : r))
+      )
+      toast.success("Component saved")
+    } catch {
+      toast.error("Failed to save component")
+      setGroupRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, saving: false } : r)))
+    }
+  }
+
+  async function deleteGroupRow(i: number) {
+    const row = groupRows[i]
+    if (!row) return
+    if (!row._id) {
+      setGroupRows((prev) => prev.filter((_, idx) => idx !== i))
+      return
+    }
+    setGroupRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, saving: true } : r)))
+    try {
+      await deleteAssignmentGroup(row._id)
+      setGroupRows((prev) => prev.filter((_, idx) => idx !== i))
+      toast.success("Component removed")
+    } catch {
+      toast.error("Failed to remove component")
+      setGroupRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, saving: false } : r)))
+    }
+  }
+
   // Student access
   const [sections, setSections] = React.useState<Section[]>([])
   const [sectionsLoading, setSectionsLoading] = React.useState(true)
@@ -117,7 +226,8 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
     description !== (course.description ?? "") ||
     !!coverFile ||
     !!iconFile ||
-    !!syllabusFile
+    !!syllabusFile ||
+    gradeBase !== (course.gradeBase ?? "50")
 
   async function handleSave() {
     const parsed = updateCourseSchema.safeParse({
@@ -151,6 +261,7 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
         ...(coverUrl ? { cover: coverUrl } : {}),
         ...(iconUrl ? { icon: iconUrl } : {}),
         ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),
+        ...(gradeBase !== (course.gradeBase ?? "50") ? { gradeBase } : {}),
       })
 
       toast.success("Course updated")
@@ -464,6 +575,172 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
             <span className="text-muted-foreground">Status</span>
             <span>{course.isArchived ? "Archived" : "Active"}</span>
           </div>
+        </div>
+      </section>
+
+      {/* Grading System */}
+      <section>
+        <h2 className="mb-4 text-sm font-semibold">Grading System</h2>
+        <div className="space-y-3 rounded-xl border border-border p-5">
+          <p className="text-xs text-muted-foreground">
+            Choose the passing base used by this course. This determines the numeric grade (1.00–5.00) and remark for each student's score.
+          </p>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              Passing Base
+            </label>
+            <Select value={gradeBase} onValueChange={(v) => setGradeBase(v as "50" | "75")}>
+              <SelectTrigger className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="50">50-based (passing ≥ 50%)</SelectItem>
+                <SelectItem value="75">75-based (passing ≥ 75%)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-lg bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+            <div className="grid grid-cols-3 gap-x-4 gap-y-1 font-mono">
+              {(gradeBase === "50"
+                ? [
+                    ["0–44%", "5.00", "Failed"],
+                    ["45–49%", "4.00", "Cond. Failure"],
+                    ["50–61%", "3.00", "Passing"],
+                    ["62–71%", "2.75–2.50", "Satisfactory"],
+                    ["72–81%", "2.25–2.00", "Good"],
+                    ["82–91%", "1.75–1.50", "Very Good"],
+                    ["92–100%", "1.25–1.00", "Excellent"],
+                  ]
+                : [
+                    ["0–71%", "5.00", "Failed"],
+                    ["72–74%", "4.00", "Cond. Failure"],
+                    ["75–77%", "3.00", "Passing"],
+                    ["78–83%", "2.75–2.50", "Satisfactory"],
+                    ["84–89%", "2.25–2.00", "Good"],
+                    ["90–95%", "1.75–1.50", "Very Good"],
+                    ["96–100%", "1.25–1.00", "Excellent"],
+                  ]
+              ).map(([range, grade, remark]) => (
+                <React.Fragment key={range}>
+                  <span>{range}</span>
+                  <span>{grade}</span>
+                  <span className="not-italic">{remark}</span>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Grade Components */}
+      <section>
+        <h2 className="mb-4 text-sm font-semibold">Grading System</h2>
+        <div className="space-y-4 rounded-xl border border-border p-5">
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-xs text-muted-foreground">
+              Define how the final grade is calculated for this course. Each component maps to a group of assessments in the gradebook.
+            </p>
+            <div
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                totalWeight === 100
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+              }`}
+            >
+              {totalWeight === 100 ? (
+                <CheckCircle2 className="size-3.5" />
+              ) : (
+                <AlertCircle className="size-3.5" />
+              )}
+              {totalWeight}% / 100%
+            </div>
+          </div>
+
+          {groupsLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {groupRows.length > 0 && (
+                <div className="grid grid-cols-[1fr_80px_72px] items-center gap-2 px-1">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Component</span>
+                  <span className="text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Weight</span>
+                  <span />
+                </div>
+              )}
+
+              {groupRows.map((row, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-[1fr_80px_72px] items-center gap-2"
+                >
+                  <Input
+                    value={row.name}
+                    onChange={(e) => updateGroupRow(i, { name: e.target.value })}
+                    onKeyDown={(e) => e.key === "Enter" && saveGroupRow(i)}
+                    placeholder="e.g. Final Exam"
+                    className="h-9"
+                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={row.weight}
+                      onChange={(e) =>
+                        updateGroupRow(i, {
+                          weight: e.target.value === "" ? "" : Number(e.target.value),
+                        })
+                      }
+                      onKeyDown={(e) => e.key === "Enter" && saveGroupRow(i)}
+                      className="h-9 pr-5 text-center"
+                    />
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      %
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+                      disabled={row.saving || !row.dirty}
+                      onClick={() => saveGroupRow(i)}
+                      title="Save"
+                    >
+                      {row.saving ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Check className={`size-4 ${row.dirty ? "text-emerald-600" : ""}`} />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 shrink-0 text-muted-foreground hover:text-destructive"
+                      disabled={row.saving}
+                      onClick={() => deleteGroupRow(i)}
+                      title="Remove"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addGroupRow}
+                className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                <Plus className="size-3.5" />
+                Add component
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

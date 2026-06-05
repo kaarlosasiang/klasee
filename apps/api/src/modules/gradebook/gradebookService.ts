@@ -1,6 +1,7 @@
 import mongoose from "mongoose"
 import { Assessment } from "../../models/assessmentModel.js"
 import { AssignmentGroup } from "../../models/assignmentGroupModel.js"
+import { Course } from "../../models/courseModel.js"
 import { Enrollment } from "../../models/enrollmentModel.js"
 import { QuizAttempt } from "../../models/quizAttemptModel.js"
 import { AssignmentSubmission } from "../../models/assignmentSubmissionModel.js"
@@ -13,6 +14,44 @@ interface RawScore {
 
 function toId(v: unknown): string {
   return String(v instanceof mongoose.Types.ObjectId ? v : (v as any)._id ?? v)
+}
+
+interface GradeEntry { grade: string; remark: string }
+
+const GRADE_RANGES_50: Array<{ from: number; to: number } & GradeEntry> = [
+  { from: 0,  to: 44,  grade: "5.00", remark: "FAILED" },
+  { from: 45, to: 49,  grade: "4.00", remark: "CONDITIONAL FAILURE" },
+  { from: 50, to: 61,  grade: "3.00", remark: "PASSING" },
+  { from: 62, to: 66,  grade: "2.75", remark: "SATISFACTORY" },
+  { from: 67, to: 71,  grade: "2.50", remark: "SATISFACTORY" },
+  { from: 72, to: 76,  grade: "2.25", remark: "GOOD" },
+  { from: 77, to: 81,  grade: "2.00", remark: "GOOD" },
+  { from: 82, to: 86,  grade: "1.75", remark: "VERY GOOD" },
+  { from: 87, to: 91,  grade: "1.50", remark: "VERY GOOD" },
+  { from: 92, to: 97,  grade: "1.25", remark: "EXCELLENT" },
+  { from: 98, to: 100, grade: "1.00", remark: "EXCELLENT" },
+]
+
+const GRADE_RANGES_75: Array<{ from: number; to: number } & GradeEntry> = [
+  { from: 0,  to: 71,  grade: "5.00", remark: "FAILED" },
+  { from: 72, to: 74,  grade: "4.00", remark: "CONDITIONAL FAILURE" },
+  { from: 75, to: 77,  grade: "3.00", remark: "PASSING" },
+  { from: 78, to: 80,  grade: "2.75", remark: "SATISFACTORY" },
+  { from: 81, to: 83,  grade: "2.50", remark: "SATISFACTORY" },
+  { from: 84, to: 86,  grade: "2.25", remark: "GOOD" },
+  { from: 87, to: 89,  grade: "2.00", remark: "GOOD" },
+  { from: 90, to: 92,  grade: "1.75", remark: "VERY GOOD" },
+  { from: 93, to: 95,  grade: "1.50", remark: "VERY GOOD" },
+  { from: 96, to: 97,  grade: "1.25", remark: "EXCELLENT" },
+  { from: 98, to: 100, grade: "1.00", remark: "EXCELLENT" },
+]
+
+function toGradeEntry(pct: number | null, base: "50" | "75"): GradeEntry | null {
+  if (pct === null) return null
+  const rounded = Math.round(pct)
+  const ranges = base === "75" ? GRADE_RANGES_75 : GRADE_RANGES_50
+  const match = ranges.find((r) => rounded >= r.from && rounded <= r.to)
+  return match ? { grade: match.grade, remark: match.remark } : null
 }
 
 function calcGroupScores(
@@ -50,13 +89,15 @@ function calcGroupScores(
 
 export const gradebookService = {
   async getCourseGradebook(courseId: string, page = 1, limit = 20) {
-    const [assessments, groups, allEnrollments] = await Promise.all([
+    const [assessments, groups, allEnrollments, course] = await Promise.all([
       Assessment.find({ courseId }).lean(),
       AssignmentGroup.find({ courseId }).sort({ order: 1 }).lean(),
       Enrollment.find({ courseId, status: "active" })
         .populate("studentId", "name email")
         .lean(),
+      Course.findById(courseId).select("gradeBase").lean(),
     ])
+    const base: "50" | "75" = (course as any)?.gradeBase ?? "50"
 
     const skip = (page - 1) * limit
     const total = allEnrollments.length
@@ -173,6 +214,8 @@ export const gradebookService = {
         groupSummaries,
         currentScore,
         finalScore,
+        gradeEntry: toGradeEntry(finalScore, base),
+        currentGradeEntry: toGradeEntry(currentScore, base),
       }
     })
 
@@ -180,10 +223,12 @@ export const gradebookService = {
   },
 
   async getStudentGradebook(courseId: string, studentId: string) {
-    const [assessments, groups] = await Promise.all([
+    const [assessments, groups, course] = await Promise.all([
       Assessment.find({ courseId, isPublished: true }).lean(),
       AssignmentGroup.find({ courseId }).sort({ order: 1 }).lean(),
+      Course.findById(courseId).select("gradeBase").lean(),
     ])
+    const base: "50" | "75" = (course as any)?.gradeBase ?? "50"
 
     const assessmentIds = assessments.map((a) => a._id)
 
@@ -276,6 +321,13 @@ export const gradebookService = {
         ? gradedGroups.reduce((s, g) => s + (g.currentPct! * g.weight) / gradedWeight, 0)
         : null
 
-    return { assessments: assessmentScores, groups: groupSummaries, currentScore, finalScore }
+    return {
+      assessments: assessmentScores,
+      groups: groupSummaries,
+      currentScore,
+      finalScore,
+      gradeEntry: toGradeEntry(finalScore, base),
+      currentGradeEntry: toGradeEntry(currentScore, base),
+    }
   },
 }
