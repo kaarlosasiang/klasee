@@ -1,5 +1,5 @@
 import client from "../config/axios"
-import { ApiError } from "../middlewares/errorHandler"
+import type { ApiError } from "../middlewares/errorHandler"
 
 export interface Course {
   _id: string
@@ -42,8 +42,28 @@ export interface UpdateCourseInput {
   gradeBase?: "50" | "75"
 }
 
-export const getCourses = async (): Promise<Course[]> => {
-  const response = await client.get("/courses")
+export interface CourseQueryParams {
+  search?: string
+  sort?: "name-asc" | "name-desc" | "newest" | "oldest" | "semester"
+  page?: number
+  limit?: number
+  semester?: string
+}
+
+export interface PaginatedCourses {
+  courses: Course[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+export const getCourses = async (
+  params?: CourseQueryParams
+): Promise<PaginatedCourses> => {
+  const response = await client.get("/courses", { params })
   return response.data
 }
 
@@ -89,5 +109,34 @@ export const unarchiveCourse = async (id: string): Promise<Course> => {
 
 export const duplicateCourse = async (id: string): Promise<Course> => {
   const response = await client.post(`/courses/${id}/duplicate`)
+  return response.data
+}
+
+export const bulkArchiveCourses = async (courseIds: string[]): Promise<{ archived: number }> => {
+  const response = await client.post("/courses/bulk-archive", { courseIds })
+  return response.data
+}
+
+export const bulkDeleteCourses = async (courseIds: string[]): Promise<{ deleted: number }> => {
+  const response = await client.post("/courses/bulk-delete", { courseIds })
+  return response.data
+}
+
+export const bulkDuplicateCourses = async (courseIds: string[]): Promise<Course[]> => {
+  const response = await client.post("/courses/bulk-duplicate", { courseIds })
+  return response.data
+}
+
+export interface AuditLogEntry {
+  _id: string
+  courseId: string
+  userId: { _id: string; name: string; email: string }
+  action: "created" | "updated" | "deleted" | "archived" | "unarchived" | "duplicated"
+  changes?: Record<string, { old: unknown; new: unknown }>
+  createdAt: string
+}
+
+export const getCourseAuditLogs = async (courseId: string): Promise<AuditLogEntry[]> => {
+  const response = await client.get(`/courses/${courseId}/audit`)
   return response.data
 }

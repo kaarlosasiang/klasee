@@ -1,9 +1,23 @@
 import mongoose from "mongoose"
 import { Course } from "../../models/courseModel.js"
+import { CourseAudit } from "../../models/courseAuditModel.js"
 import "../../models/userModel.js" // ensure User schema is registered for populate
 
+interface CourseQueryParams {
+  search?: string
+  sort?: "name-asc" | "name-desc" | "newest" | "oldest" | "semester"
+  page?: number
+  limit?: number
+  semester?: string
+}
+
 export const courseService = {
-  async findAll(filter: Record<string, unknown> = {}) {
+  async findAll(
+    filter: Record<string, unknown> = {},
+    query: CourseQueryParams = {}
+  ) {
+    const { search, sort, page = 1, limit = 20, semester } = query
+
     const matchFilter: Record<string, unknown> = {
       ...Object.fromEntries(
         Object.entries(filter).map(([key, value]) => [
@@ -15,9 +29,31 @@ export const courseService = {
       ),
       isArchived: { $ne: true },
     }
-    return Course.aggregate([
+
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      matchFilter.$or = [
+        { name: { $regex: escaped, $options: "i" } },
+        { code: { $regex: escaped, $options: "i" } },
+      ]
+    }
+
+    if (semester) {
+      matchFilter.semester = semester
+    }
+
+    const sortStage: Record<string, 1 | -1> = (
+      sort === "name-asc" ? { name: 1 }
+      : sort === "name-desc" ? { name: -1 }
+      : sort === "oldest" ? { createdAt: 1 }
+      : sort === "semester" ? { semester: 1 }
+      : { createdAt: -1 }
+    ) as Record<string, 1 | -1>
+
+    const skip = (page - 1) * limit
+
+    const [result] = await Course.aggregate([
       { $match: matchFilter },
-      // Match archived courses too if filter explicitly asks
       {
         $lookup: {
           from: "sections",
@@ -55,8 +91,26 @@ export const courseService = {
         },
       },
       { $project: { sections: 0, enrollments: 0, assessments: 0 } },
-      { $sort: { createdAt: -1 } },
+      { $sort: sortStage },
+      {
+        $facet: {
+          courses: [{ $skip: skip }, { $limit: limit }],
+          metadata: [{ $count: "total" }],
+        },
+      },
     ])
+
+    const total = result.metadata[0]?.total ?? 0
+
+    return {
+      courses: result.courses,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    }
   },
 
   async findById(id: string) {
@@ -111,7 +165,13 @@ export const courseService = {
     semester: string
     syllabus?: string
   }) {
-    return Course.create(data)
+    const course = await Course.create(data)
+    logAudit({
+      courseId: String(course._id),
+      userId: data.instructorId,
+      action: "created",
+    })
+    return course
   },
 
   async update(
@@ -125,12 +185,30 @@ export const courseService = {
       icon: string
       syllabus: string
       gradeBase: "50" | "75"
-    }>
+    }>,
+    userId: string
   ) {
-    return Course.findByIdAndUpdate(id, data, { new: true }).lean()
+    const old = await Course.findById(id).lean()
+    const updated = await Course.findByIdAndUpdate(id, data, { new: true }).lean()
+
+    if (old && updated) {
+      const changes: Record<string, { old: unknown; new: unknown }> = {}
+      for (const key of Object.keys(data) as (keyof typeof data)[]) {
+        if (data[key] !== undefined && old[key] !== updated[key]) {
+          changes[key] = { old: old[key], new: updated[key] }
+        }
+      }
+      if (Object.keys(changes).length > 0) {
+        logAudit({ courseId: id, userId, action: "updated", changes })
+      }
+    }
+
+    return updated
   },
 
-  async delete(id: string) {
+  async delete(id: string, userId: string) {
+    logAudit({ courseId: id, userId, action: "deleted" })
+
     const { Section } = await import("../../models/sectionModel.js")
     const { Module } = await import("../../models/moduleModel.js")
     const { Lesson } = await import("../../models/lessonModel.js")
@@ -173,22 +251,30 @@ export const courseService = {
       .sort({ updatedAt: -1 })
       .lean()
   },
-  async archive(id: string) {
-    return Course.findByIdAndUpdate(
+  async archive(id: string, userId: string) {
+    const course = await Course.findByIdAndUpdate(
       id,
       { isArchived: true },
       { new: true }
     ).lean()
+    if (course) {
+      logAudit({ courseId: id, userId, action: "archived" })
+    }
+    return course
   },
-  async unarchive(id: string) {
-    return Course.findByIdAndUpdate(
+  async unarchive(id: string, userId: string) {
+    const course = await Course.findByIdAndUpdate(
       id,
       { isArchived: false },
       { new: true }
     ).lean()
+    if (course) {
+      logAudit({ courseId: id, userId, action: "unarchived" })
+    }
+    return course
   },
 
-  async duplicate(id: string) {
+  async duplicate(id: string, userId: string) {
     const source = await Course.findById(id).lean()
     if (!source) return null
 
@@ -291,6 +377,75 @@ export const courseService = {
       }
     }
 
+    logAudit({ courseId: String(newCourse._id), userId, action: "duplicated" })
     return newCourse
   },
+
+  async getAuditLogs(courseId: string) {
+    return CourseAudit.find({ courseId })
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 })
+      .lean()
+  },
+
+  async bulkArchive(courseIds: string[], instructorId: string) {
+    const result = await Course.updateMany(
+      { _id: { $in: courseIds }, instructorId },
+      { isArchived: true }
+    )
+    for (const id of courseIds) {
+      logAudit({ courseId: id, userId: instructorId, action: "archived" })
+    }
+    return result.modifiedCount
+  },
+
+  async bulkDelete(courseIds: string[], instructorId: string) {
+    const owned = await Course.find(
+      { _id: { $in: courseIds }, instructorId },
+      "_id"
+    ).lean()
+    const ownedIds = owned.map((c) => String(c._id))
+
+    let deleted = 0
+    for (const id of ownedIds) {
+      try {
+        await this.delete(id, instructorId)
+        deleted++
+      } catch {
+        // continue with next
+      }
+    }
+
+    return deleted
+  },
+
+  async bulkDuplicate(courseIds: string[], instructorId: string) {
+    const owned = await Course.find(
+      { _id: { $in: courseIds }, instructorId },
+      "_id"
+    ).lean()
+
+    const results = []
+    for (const course of owned) {
+      try {
+        const duped = await this.duplicate(String(course._id), instructorId)
+        if (duped) results.push(duped)
+      } catch {
+        // continue with next
+      }
+    }
+
+    return results
+  },
+}
+
+function logAudit(entry: {
+  courseId: string
+  userId: string
+  action: string
+  changes?: Record<string, unknown>
+}) {
+  CourseAudit.create(entry).catch(() => {
+    // audit failure should never break the main flow
+  })
 }

@@ -13,7 +13,6 @@ import {
   Clock,
   Home,
   Layers,
-  Search,
   Settings,
   Users,
 } from "lucide-react"
@@ -186,7 +185,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </Link>
 
           <IconRailBtn icon={Home} label="Dashboard" href="/dashboard" active={pathname === "/dashboard"} />
-          <IconRailBtn icon={Search} label="Search" />
           <IconRailBtn icon={ChartNoAxesCombined} label="Analytics" comingSoon />
           <IconRailBtn icon={CalendarDays} label="Calendar" comingSoon />
 

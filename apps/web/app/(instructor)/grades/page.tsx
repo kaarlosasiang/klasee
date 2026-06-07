@@ -49,7 +49,7 @@ export default function GradesPage() {
 
   React.useEffect(() => {
     getCourses()
-      .then(setCourses)
+      .then((data) => setCourses(data.courses))
       .catch(() => toast.error("Failed to load courses"))
       .finally(() => setLoading(false))
   }, [])

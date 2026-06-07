@@ -40,7 +40,7 @@ export default function InstructorDashboardPage() {
   async function loadCourses() {
     try {
       const data = await getCourses()
-      setCourses(data)
+      setCourses(data.courses)
     } catch {
       // handled by error boundary
     } finally {

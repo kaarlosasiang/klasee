@@ -38,8 +38,8 @@ export default function MyGradesPage() {
   React.useEffect(() => {
     async function load() {
       try {
-        const courses = await getCourses()
-        const active = courses.filter((c) => !c.isArchived)
+        const result = await getCourses()
+        const active = result.courses.filter((c) => !c.isArchived)
         const results = await Promise.allSettled(
           active.map((course) => getMyGradebook(course._id))
         )

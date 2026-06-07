@@ -13,6 +13,18 @@ export const createCourseSchema = z.object({
 
 export const updateCourseSchema = createCourseSchema.partial()
 
+export const courseQuerySchema = z.object({
+  search: z.string().optional(),
+  sort: z.enum(["name-asc", "name-desc", "newest", "oldest", "semester"]).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  semester: z.enum(["1st", "2nd", "summer"]).optional(),
+})
+
+export const bulkCourseActionSchema = z.object({
+  courseIds: z.array(z.string().min(1)).min(1, "At least one course ID is required"),
+})
+
 export const createSectionSchema = z.object({
   courseId: z.string().min(1, "courseId is required"),
   name: z.string().min(1, "Section name is required").max(100),

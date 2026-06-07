@@ -50,7 +50,7 @@ export default function InstructorLayout({
     setCoursesLoading(true)
     getCourses()
       .then((data) => {
-        setCourses(data)
+        setCourses(data.courses)
         setSelectingCourse({ open: true, target })
       })
       .catch(() => toast.error("Failed to load courses"))

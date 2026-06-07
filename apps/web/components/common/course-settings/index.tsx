@@ -48,7 +48,7 @@ import {
   AlertDialogTrigger,
 } from "@workspace/ui/components/alert-dialog"
 import { toast } from "sonner"
-import { updateCourse, archiveCourse, deleteCourse, type Course } from "@/lib/services/courses"
+import { updateCourse, archiveCourse, deleteCourse, getCourseAuditLogs, type Course, type AuditLogEntry } from "@/lib/services/courses"
 import { updateCourseSchema } from "@workspace/validators"
 import {
   uploadToCloudinary,
@@ -214,6 +214,28 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
       .catch(() => {})
       .finally(() => setSectionsLoading(false))
   }, [course._id])
+
+  const [auditLogs, setAuditLogs] = React.useState<AuditLogEntry[]>([])
+  const [auditLoading, setAuditLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    getCourseAuditLogs(course._id)
+      .then(setAuditLogs)
+      .catch(() => {})
+      .finally(() => setAuditLoading(false))
+  }, [course._id])
+
+  const actionLabel = React.useMemo<Record<string, string>>(
+    () => ({
+      created: "Created this course",
+      updated: "Updated settings",
+      deleted: "Deleted this course",
+      archived: "Archived this course",
+      unarchived: "Unarchived this course",
+      duplicated: "Duplicated this course",
+    }),
+    []
+  )
 
   const coverInputRef = React.useRef<HTMLInputElement>(null)
   const iconInputRef = React.useRef<HTMLInputElement>(null)
@@ -914,6 +936,50 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Activity Log */}
+      <section>
+        <h2 className="mb-4 text-sm font-semibold text-foreground">Activity Log</h2>
+        <div className="rounded-xl border p-5">
+          {auditLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No activity recorded yet.
+            </p>
+          ) : (
+            <div className="divide-y">
+              {auditLogs.map((entry) => (
+                <div key={entry._id} className="flex items-center gap-3 py-2.5">
+                  <div className="flex size-7 items-center justify-center rounded-full bg-muted text-[10px]">
+                    {(entry.userId as any)?.name?.[0] ?? "?"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs">
+                      <span className="font-medium">
+                        {(entry.userId as any)?.name ?? "Unknown"}
+                      </span>{" "}
+                      {actionLabel[entry.action] ?? entry.action}
+                      {entry.changes && (
+                        <span className="ml-1 text-muted-foreground">
+                          ({Object.keys(entry.changes).join(", ")})
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {timeAgo(entry.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

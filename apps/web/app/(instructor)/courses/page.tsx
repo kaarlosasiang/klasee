@@ -3,15 +3,25 @@
 import * as React from "react"
 import { AlertCircle, RefreshCw } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationNext,
+} from "@workspace/ui/components/pagination"
 import { toast } from "sonner"
 import {
   getCourses,
   getArchivedCourses,
-  archiveCourse,
   unarchiveCourse,
   deleteCourse,
   duplicateCourse,
+  bulkArchiveCourses,
+  bulkDeleteCourses,
   type Course,
+  type PaginatedCourses,
 } from "@/lib/services/courses"
 import { CourseCard } from "@/components/common/course-card"
 import { CoursesDataTable } from "@/components/data-table/courses-data-table"
@@ -25,11 +35,14 @@ import { NewCourseDialog } from "@/components/common/new-course-dialog"
 
 export default function CoursesPage() {
   const [courses, setCourses] = React.useState<Course[]>([])
+  const [pagination, setPagination] = React.useState<PaginatedCourses["pagination"] | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState(false)
   const [view, setView] = React.useState<"grid" | "table">("grid")
   const [search, setSearch] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [sort, setSort] = React.useState<SortOption>("newest")
+  const [page, setPage] = React.useState(1)
   const [showArchived, setShowArchived] = React.useState(false)
   const [courseDialogOpen, setCourseDialogOpen] = React.useState(false)
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null)
@@ -38,10 +51,15 @@ export default function CoursesPage() {
     setLoading(true)
     setError(false)
     try {
-      const data = showArchived
-        ? await getArchivedCourses()
-        : await getCourses()
-      setCourses(data)
+      if (showArchived) {
+        const data = await getArchivedCourses()
+        setCourses(data)
+        setPagination(null)
+      } else {
+        const data = await getCourses({ search: debouncedSearch, sort, page, limit: 12 })
+        setCourses(data.courses)
+        setPagination(data.pagination)
+      }
     } catch {
       setError(true)
     } finally {
@@ -53,40 +71,29 @@ export default function CoursesPage() {
     fetchCourses()
   }, [showArchived])
 
-  const filtered = React.useMemo(() => {
-    let result = courses
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
 
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
-      )
+  React.useEffect(() => {
+    if (!showArchived) {
+      void (async () => {
+        try {
+          const data = await getCourses({ search: debouncedSearch, sort, page, limit: 12 })
+          setCourses(data.courses)
+          setPagination(data.pagination)
+        } catch {
+          toast.error("Failed to load courses")
+        }
+      })()
     }
+  }, [debouncedSearch, sort, page])
 
-    result = [...result].sort((a, b) => {
-      switch (sort) {
-        case "name-asc":
-          return a.name.localeCompare(b.name)
-        case "name-desc":
-          return b.name.localeCompare(a.name)
-        case "newest":
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-        case "oldest":
-          return (
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          )
-        case "semester":
-          return (a.semester || "").localeCompare(b.semester || "")
-        default:
-          return 0
-      }
-    })
-
-    return result
-  }, [courses, search, sort])
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || (pagination && newPage > pagination.totalPages)) return
+    setPage(newPage)
+  }
 
   async function handleDelete(course: Course) {
     try {
@@ -100,11 +107,11 @@ export default function CoursesPage() {
 
   async function handleBulkArchive(courseIds: string[]) {
     try {
-      await Promise.all(courseIds.map((id) => archiveCourse(id)))
-      toast.success(`${courseIds.length} courses archived`)
+      const result = await bulkArchiveCourses(courseIds)
+      toast.success(`${result.archived} courses archived`)
       fetchCourses()
     } catch {
-      toast.error("Failed to archive some courses")
+      toast.error("Failed to archive courses")
     }
   }
 
@@ -120,11 +127,11 @@ export default function CoursesPage() {
 
   async function handleBulkDelete(courseIds: string[]) {
     try {
-      await Promise.all(courseIds.map((id) => deleteCourse(id)))
-      toast.success(`${courseIds.length} courses deleted`)
+      const result = await bulkDeleteCourses(courseIds)
+      toast.success(`${result.deleted} courses deleted`)
       fetchCourses()
     } catch {
-      toast.error("Failed to delete some courses")
+      toast.error("Failed to delete courses")
     }
   }
 
@@ -163,7 +170,7 @@ export default function CoursesPage() {
     setEditingCourse(null)
   }
 
-  if (loading) {
+  if (loading && courses.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Loading courses...</p>
@@ -171,7 +178,7 @@ export default function CoursesPage() {
     )
   }
 
-  if (error) {
+  if (error && courses.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-20">
         <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
@@ -200,36 +207,64 @@ export default function CoursesPage() {
         )}
       </div>
 
-      {courses.length > 0 && (
-        <CourseSearch
-          search={search}
-          onSearchChange={setSearch}
-          sort={sort}
-          onSortChange={setSort}
-          showArchived={showArchived}
-          onToggleArchived={setShowArchived}
-        />
-      )}
+      <CourseSearch
+        search={search}
+        onSearchChange={(v) => { setSearch(v); setPage(1) }}
+        sort={sort}
+        onSortChange={(v) => { setSort(v); setPage(1) }}
+        showArchived={showArchived}
+        onToggleArchived={(v) => { setShowArchived(v); setPage(1) }}
+      />
 
-      {filtered.length === 0 && !loading ? (
+      {courses.length === 0 && !loading ? (
         <CourseEmpty onCreateCourse={() => setCourseDialogOpen(true)} />
       ) : view === "grid" ? (
-        <div className="3xl:grid-cols-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((course) => (
-            <CourseCard
-              key={course._id}
-              course={course}
-              onEdit={handleEdit}
-              showArchived={showArchived}
-              onUnarchive={handleUnarchive}
-              onDelete={handleDelete}
-              onDuplicate={handleDuplicate}
-            />
-          ))}
-        </div>
+        <>
+          <div className="3xl:grid-cols-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {courses.map((course) => (
+              <CourseCard
+                key={course._id}
+                course={course}
+                onEdit={handleEdit}
+                showArchived={showArchived}
+                onUnarchive={handleUnarchive}
+                onDelete={handleDelete}
+                onDuplicate={handleDuplicate}
+              />
+            ))}
+          </div>
+          {pagination && pagination.totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(page - 1)}
+                    aria-disabled={page <= 1}
+                  />
+                </PaginationItem>
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                  <PaginationItem key={p}>
+                    <PaginationLink
+                      isActive={p === page}
+                      onClick={() => handlePageChange(p)}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(page + 1)}
+                    aria-disabled={page >= pagination.totalPages}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       ) : (
         <CoursesDataTable
-          data={filtered}
+          data={courses}
           onEdit={handleEdit}
           showArchived={showArchived}
           onUnarchive={handleUnarchive}
@@ -247,7 +282,6 @@ export default function CoursesPage() {
         course={editingCourse ?? undefined}
         onCreated={handleCreated}
       />
-
     </div>
   )
 }
