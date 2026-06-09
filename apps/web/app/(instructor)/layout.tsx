@@ -116,7 +116,7 @@ export default function InstructorLayout({
             </NewContentDialog>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 py-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4 py-4 ">
           {children}
         </div>
         </div>

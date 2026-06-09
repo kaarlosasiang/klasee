@@ -126,7 +126,7 @@ export default function CourseDetailPage() {
   return (
     <div className="relative -ml-4 flex gap-4">
       {/* Sidebar */}
-      <nav className="sticky top-16 flex h-[calc(100svh-4rem)] w-48 shrink-0 flex-col space-y-1 self-start border-r border-border">
+      <nav className="sticky top-16 flex h-[calc(100svh-4rem)] w-48 shrink-0 flex-col space-y-1 self-start border-r border-border -mt-4">
         {[
           { id: "announcements", label: "Announcements", icon: Megaphone },
           { id: "sections", label: "Sections", icon: BookOpen },
