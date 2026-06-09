@@ -14,6 +14,7 @@ interface Step1State {
   semester: string
   code: string
   description: string
+  gradeBase: "50" | "75"
   coverFile: File | null
   iconFile: File | null
   coverPreview: string | null
@@ -38,6 +39,7 @@ const defaultStep1: Step1State = {
   semester: "",
   code: "",
   description: "",
+  gradeBase: "50",
   coverFile: null,
   iconFile: null,
   coverPreview: null,

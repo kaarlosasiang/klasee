@@ -29,6 +29,7 @@ export interface CreateCourseInput {
   cover?: string
   icon?: string
   syllabus?: string
+  gradeBase?: "50" | "75"
 }
 
 export interface UpdateCourseInput {
@@ -107,11 +108,6 @@ export const unarchiveCourse = async (id: string): Promise<Course> => {
   return response.data
 }
 
-export const duplicateCourse = async (id: string): Promise<Course> => {
-  const response = await client.post(`/courses/${id}/duplicate`)
-  return response.data
-}
-
 export const bulkArchiveCourses = async (courseIds: string[]): Promise<{ archived: number }> => {
   const response = await client.post("/courses/bulk-archive", { courseIds })
   return response.data
@@ -122,21 +118,16 @@ export const bulkDeleteCourses = async (courseIds: string[]): Promise<{ deleted:
   return response.data
 }
 
-export const bulkDuplicateCourses = async (courseIds: string[]): Promise<Course[]> => {
-  const response = await client.post("/courses/bulk-duplicate", { courseIds })
-  return response.data
-}
-
 export interface AuditLogEntry {
   _id: string
   courseId: string
   userId: { _id: string; name: string; email: string }
-  action: "created" | "updated" | "deleted" | "archived" | "unarchived" | "duplicated"
+  action: "created" | "updated" | "deleted" | "archived" | "unarchived"
   changes?: Record<string, { old: unknown; new: unknown }>
   createdAt: string
 }
 
-export const getCourseAuditLogs = async (courseId: string): Promise<AuditLogEntry[]> => {
-  const response = await client.get(`/courses/${courseId}/audit`)
+export const getCourseAuditLogs = async (courseId: string, limit?: number): Promise<AuditLogEntry[]> => {
+  const response = await client.get(`/courses/${courseId}/audit`, { params: limit ? { limit } : {} })
   return response.data
 }

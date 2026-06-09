@@ -217,13 +217,19 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
 
   const [auditLogs, setAuditLogs] = React.useState<AuditLogEntry[]>([])
   const [auditLoading, setAuditLoading] = React.useState(true)
+  const [auditLimit, setAuditLimit] = React.useState(20)
+  const [auditHasMore, setAuditHasMore] = React.useState(false)
 
   React.useEffect(() => {
-    getCourseAuditLogs(course._id)
-      .then(setAuditLogs)
+    setAuditLoading(true)
+    getCourseAuditLogs(course._id, auditLimit)
+      .then((logs) => {
+        setAuditLogs(logs)
+        setAuditHasMore(logs.length === auditLimit)
+      })
       .catch(() => {})
       .finally(() => setAuditLoading(false))
-  }, [course._id])
+  }, [course._id, auditLimit])
 
   const actionLabel = React.useMemo<Record<string, string>>(
     () => ({
@@ -978,6 +984,17 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
                   </div>
                 </div>
               ))}
+              {auditHasMore && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAuditLimit((prev) => prev + 20)}
+                  className="mt-3 w-full border-dashed text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                >
+                  Load more
+                </Button>
+              )}
             </div>
           )}
         </div>

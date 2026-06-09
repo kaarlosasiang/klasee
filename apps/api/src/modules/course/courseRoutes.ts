@@ -15,9 +15,7 @@ router.put("/:id", requireAuth, requireRole("instructor", "admin"), requireCours
 router.delete("/:id", requireAuth, requireRole("instructor", "admin"), requireCourseOwner, courseController.remove)
 router.patch("/:id/archive", requireAuth, requireRole("instructor", "admin"), requireCourseOwner, courseController.archive)
 router.patch("/:id/unarchive", requireAuth, requireRole("instructor", "admin"), requireCourseOwner, courseController.unarchive)
-router.post("/:id/duplicate", requireAuth, requireRole("instructor", "admin"), requireCourseOwner, courseController.duplicate)
 router.post("/bulk-archive", requireAuth, requireRole("instructor", "admin"), courseController.bulkArchive)
 router.post("/bulk-delete", requireAuth, requireRole("instructor", "admin"), courseController.bulkDelete)
-router.post("/bulk-duplicate", requireAuth, requireRole("instructor", "admin"), courseController.bulkDuplicate)
 
 export default router

@@ -108,16 +108,6 @@ export const courseController = {
     }
   },
 
-  async duplicate(req: Request, res: Response, next: NextFunction) {
-    try {
-      const course = await courseService.duplicate(req.params["id"] as string, (req.authUser as any)?.id as string)
-      if (!course) return res.status(404).json({ message: "Course not found" })
-      res.status(201).json(course)
-    } catch (err) {
-      next(err)
-    }
-  },
-
   async unarchive(req: Request, res: Response, next: NextFunction) {
     try {
       const course = await courseService.unarchive(req.params["id"] as string, (req.authUser as any)?.id as string)
@@ -129,7 +119,9 @@ export const courseController = {
 
   async getAuditLogs(req: Request, res: Response, next: NextFunction) {
     try {
-      const logs = await courseService.getAuditLogs(req.params["id"] as string)
+      const rawLimit = req.query["limit"]
+      const limit = rawLimit ? parseInt(rawLimit as string, 10) : 20
+      const logs = await courseService.getAuditLogs(req.params["id"] as string, isNaN(limit) ? 20 : limit)
       res.json(logs)
     } catch (err) {
       next(err)
@@ -174,22 +166,4 @@ export const courseController = {
     }
   },
 
-  async bulkDuplicate(req: Request, res: Response, next: NextFunction) {
-    try {
-      const parsed = bulkCourseActionSchema.safeParse(req.body)
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "Validation failed",
-          errors: parsed.error.flatten().fieldErrors,
-        })
-      }
-      const courses = await courseService.bulkDuplicate(
-        parsed.data.courseIds,
-        (req.authUser as any)?.id as string
-      )
-      res.status(201).json(courses)
-    } catch (err) {
-      next(err)
-    }
-  },
 }

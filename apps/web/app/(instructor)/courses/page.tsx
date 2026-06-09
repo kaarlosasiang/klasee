@@ -17,7 +17,6 @@ import {
   getArchivedCourses,
   unarchiveCourse,
   deleteCourse,
-  duplicateCourse,
   bulkArchiveCourses,
   bulkDeleteCourses,
   type Course,
@@ -135,16 +134,6 @@ export default function CoursesPage() {
     }
   }
 
-  async function handleDuplicate(course: Course) {
-    try {
-      await duplicateCourse(course._id)
-      toast.success(`${course.name} duplicated`)
-      fetchCourses()
-    } catch {
-      toast.error("Failed to duplicate course")
-    }
-  }
-
   async function handleUnarchive(course: Course) {
     try {
       await unarchiveCourse(course._id)
@@ -229,7 +218,6 @@ export default function CoursesPage() {
                 showArchived={showArchived}
                 onUnarchive={handleUnarchive}
                 onDelete={handleDelete}
-                onDuplicate={handleDuplicate}
               />
             ))}
           </div>
@@ -269,7 +257,6 @@ export default function CoursesPage() {
           showArchived={showArchived}
           onUnarchive={handleUnarchive}
           onDelete={handleDelete}
-          onDuplicate={handleDuplicate}
           onBulkArchive={handleBulkArchive}
           onBulkUnarchive={handleBulkUnarchive}
           onBulkDelete={handleBulkDelete}

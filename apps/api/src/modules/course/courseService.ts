@@ -274,117 +274,11 @@ export const courseService = {
     return course
   },
 
-  async duplicate(id: string, userId: string) {
-    const source = await Course.findById(id).lean()
-    if (!source) return null
-
-    const { Section } = await import("../../models/sectionModel.js")
-    const { Module } = await import("../../models/moduleModel.js")
-    const { Lesson } = await import("../../models/lessonModel.js")
-    const { Assessment } = await import("../../models/assessmentModel.js")
-    const { Question } = await import("../../models/questionModel.js")
-
-    const newCourse = await Course.create({
-      instructorId: source.instructorId,
-      name: `${source.name} (Copy)`,
-      code: `${source.code}-copy`,
-      description: source.description,
-      semester: source.semester,
-      cover: source.cover,
-      icon: source.icon,
-      syllabus: source.syllabus,
-    })
-
-    const newCourseId = newCourse._id
-
-    const [sourceSections, sourceModules, sourceAssessments] = await Promise.all([
-      Section.find({ courseId: id }).lean(),
-      Module.find({ courseId: id }).lean(),
-      Assessment.find({ courseId: id }).lean(),
-    ])
-
-    // Clone sections (without join codes or enrollments)
-    if (sourceSections.length > 0) {
-      await Section.insertMany(
-        sourceSections.map((s) => ({
-          courseId: newCourseId,
-          instructorId: s.instructorId,
-          name: s.name,
-          schedule: s.schedule,
-          room: s.room,
-          maxStudents: s.maxStudents,
-        }))
-      )
-    }
-
-    // Clone modules + their lessons
-    if (sourceModules.length > 0) {
-      for (const mod of sourceModules) {
-        const newMod = await Module.create({
-          courseId: newCourseId,
-          title: mod.title,
-          description: mod.description,
-          order: mod.order,
-          isPublished: false,
-        })
-        const lessons = await Lesson.find({ moduleId: mod._id }).lean()
-        if (lessons.length > 0) {
-          await Lesson.insertMany(
-            lessons.map((l) => ({
-              moduleId: newMod._id,
-              title: l.title,
-              content: l.content,
-              type: l.type,
-              order: l.order,
-              fileId: l.fileId,
-              isPublished: false,
-            }))
-          )
-        }
-      }
-    }
-
-    // Clone assessments + their questions
-    if (sourceAssessments.length > 0) {
-      for (const assessment of sourceAssessments) {
-        const newAssessment = await Assessment.create({
-          courseId: newCourseId,
-          title: assessment.title,
-          type: assessment.type,
-          totalPoints: assessment.totalPoints,
-          dueDate: assessment.dueDate,
-          isPublished: false,
-          timeLimit: assessment.timeLimit,
-          randomizeQuestions: assessment.randomizeQuestions,
-          instructions: assessment.instructions,
-          allowedFileTypes: assessment.allowedFileTypes,
-          maxFiles: assessment.maxFiles,
-        })
-        const questions = await Question.find({ assessmentId: assessment._id }).lean()
-        if (questions.length > 0) {
-          await Question.insertMany(
-            questions.map((q) => ({
-              assessmentId: newAssessment._id,
-              type: q.type,
-              question: q.question,
-              points: q.points,
-              order: q.order,
-              options: q.options,
-              correctAnswer: q.correctAnswer,
-            }))
-          )
-        }
-      }
-    }
-
-    logAudit({ courseId: String(newCourse._id), userId, action: "duplicated" })
-    return newCourse
-  },
-
-  async getAuditLogs(courseId: string) {
+  async getAuditLogs(courseId: string, limit = 20) {
     return CourseAudit.find({ courseId })
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
+      .limit(limit)
       .lean()
   },
 
@@ -419,24 +313,6 @@ export const courseService = {
     return deleted
   },
 
-  async bulkDuplicate(courseIds: string[], instructorId: string) {
-    const owned = await Course.find(
-      { _id: { $in: courseIds }, instructorId },
-      "_id"
-    ).lean()
-
-    const results = []
-    for (const course of owned) {
-      try {
-        const duped = await this.duplicate(String(course._id), instructorId)
-        if (duped) results.push(duped)
-      } catch {
-        // continue with next
-      }
-    }
-
-    return results
-  },
 }
 
 function logAudit(entry: {

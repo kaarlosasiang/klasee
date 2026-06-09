@@ -229,6 +229,26 @@ function Step1Content({
             <p className="text-xs text-destructive">{errors.code}</p>
           </div>
         )}
+
+        {/* Passing Base */}
+        <div className="flex items-center gap-4 py-3">
+          <div className="flex w-40 shrink-0 items-center gap-2 text-sm text-muted-foreground">
+            <GraduationCap className="size-4" />
+            <span>Passing Base</span>
+          </div>
+          <Select
+            value={step1.gradeBase}
+            onValueChange={(v) => setStep1({ gradeBase: v as "50" | "75" })}
+          >
+            <SelectTrigger className="h-auto w-auto border-0 bg-transparent p-0 text-sm shadow-none focus:ring-0 focus-visible:ring-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="50">50-based (passing ≥ 50%)</SelectItem>
+              <SelectItem value="75">75-based (passing ≥ 75%)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Separator className="mt-1" />
@@ -489,6 +509,10 @@ function Step3Content({ error }: { error: string | null }) {
                 {SEMESTER_LABELS[step1.semester] ?? step1.semester}
               </span>
             )}
+            <span>
+              <span className="font-medium text-foreground">Passing Base:</span>{" "}
+              {step1.gradeBase === "50" ? "50-based" : "75-based"}
+            </span>
           </div>
           {step1.description && (
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -606,6 +630,7 @@ interface CourseData {
   cover?: string
   icon?: string
   syllabus?: string
+  gradeBase?: "50" | "75"
 }
 
 interface NewCourseDialogProps {
@@ -638,6 +663,7 @@ export function NewCourseDialog({
         code: course.code,
         description: course.description ?? "",
         semester: course.semester,
+        gradeBase: course.gradeBase ?? "50",
         coverFile: null,
         iconFile: null,
         coverPreview: course.cover ?? null,
@@ -711,6 +737,7 @@ export function NewCourseDialog({
       code: step1.code,
       semester: step1.semester,
       description: step1.description || undefined,
+      gradeBase: step1.gradeBase,
     })
 
     if (!parsed.success) {
@@ -736,6 +763,7 @@ export function NewCourseDialog({
         code: parsed.data.code,
         semester: parsed.data.semester,
         description: parsed.data.description,
+        gradeBase: step1.gradeBase,
         ...(coverUrl ? { cover: coverUrl } : {}),
         ...(iconUrl ? { icon: iconUrl } : {}),
         ...(syllabusUrl ? { syllabus: syllabusUrl } : {}),

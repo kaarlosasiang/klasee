@@ -12,7 +12,7 @@ import {
   type SortingState,
   type RowSelectionState,
 } from "@tanstack/react-table"
-import { EllipsisVertical, GraduationCap, RotateCcw, Copy, Trash2, Archive, Check } from "lucide-react"
+import { EllipsisVertical, GraduationCap, RotateCcw, Trash2, Archive, Check } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -34,13 +34,12 @@ interface CoursesDataTableProps {
   showArchived?: boolean
   onUnarchive?: (course: Course) => void
   onDelete?: (course: Course) => void
-  onDuplicate?: (course: Course) => void
   onBulkArchive?: (courseIds: string[]) => void
   onBulkUnarchive?: (courseIds: string[]) => void
   onBulkDelete?: (courseIds: string[]) => void
 }
 
-export function CoursesDataTable({ data, onEdit, showArchived, onUnarchive, onDelete, onDuplicate, onBulkArchive, onBulkUnarchive, onBulkDelete }: CoursesDataTableProps) {
+export function CoursesDataTable({ data, onEdit, showArchived, onUnarchive, onDelete, onBulkArchive, onBulkUnarchive, onBulkDelete }: CoursesDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "createdAt", desc: true }])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
@@ -169,10 +168,6 @@ export function CoursesDataTable({ data, onEdit, showArchived, onUnarchive, onDe
                 ) : (
                   <DropdownMenuItem onClick={() => onEdit(course)}>Edit</DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => onDuplicate?.(course)}>
-                  <Copy className="mr-2 size-4" />
-                  Duplicate
-                </DropdownMenuItem>
                 {showArchived && (
                   <DropdownMenuItem
                     onClick={() => onDelete?.(course)}
@@ -188,7 +183,7 @@ export function CoursesDataTable({ data, onEdit, showArchived, onUnarchive, onDe
         },
       },
     ],
-    [onEdit, showArchived, onUnarchive, onDelete, onDuplicate]
+    [onEdit, showArchived, onUnarchive, onDelete]
   )
 
   const table = useReactTable({

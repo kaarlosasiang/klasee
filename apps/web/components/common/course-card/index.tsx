@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { BookOpen, EllipsisVertical, GraduationCap, Users, FileText, Archive, RotateCcw, Copy, Trash2, AlertTriangle } from "lucide-react"
+import { BookOpen, EllipsisVertical, GraduationCap, Users, FileText, Archive, RotateCcw, Trash2, AlertTriangle } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,10 +32,9 @@ interface CourseCardProps {
   showArchived?: boolean
   onUnarchive?: (course: Course) => void
   onDelete?: (course: Course) => void
-  onDuplicate?: (course: Course) => void
 }
 
-export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete, onDuplicate }: CourseCardProps) {
+export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete }: CourseCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:shadow-md">
@@ -84,10 +83,6 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
                   Edit
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => onDuplicate?.(course)}>
-                <Copy className="mr-2 size-4" />
-                Duplicate
-              </DropdownMenuItem>
               {showArchived && (
                 <DropdownMenuItem
                   onClick={() => setDeleteDialogOpen(true)}
@@ -100,6 +95,12 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {course.description && (
+          <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+            {course.description}
+          </p>
+        )}
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{course.code}</span>
