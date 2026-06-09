@@ -97,6 +97,16 @@ export const checkVerificationOtp = (input: {
 
 export const useSession = authClient.useSession
 
+export const updateUser = (
+  data: {
+    name?: string
+    firstName?: string
+    lastName?: string
+    phoneNumber?: string
+  },
+  options?: AuthCallbackOptions
+) => authClient.updateUser(data, options)
+
 export const linkGoogleDrive = (
   callbackURL?: string
 ) =>
