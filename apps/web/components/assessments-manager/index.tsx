@@ -116,6 +116,8 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
   const [deductionPerDay, setDeductionPerDay] = React.useState("")
   const [maxDeduction, setMaxDeduction] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
+  const [titleError, setTitleError] = React.useState("")
+  const [pointsError, setPointsError] = React.useState("")
 
   // Due date overrides state
   const [overrides, setOverrides] = React.useState<DueDateOverride[]>([])
@@ -153,6 +155,8 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
     setDeductionType("percent")
     setDeductionPerDay("")
     setMaxDeduction("")
+    setTitleError("")
+    setPointsError("")
   }
 
   function buildLatePolicy(): LatePolicy | undefined {
@@ -166,15 +170,21 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
   }
 
   async function handleUpdate(assessment: Assessment) {
+    let hasError = false
     if (!title.trim()) {
-      toast.error("Assessment title is required")
-      return
+      setTitleError("Assessment title is required")
+      hasError = true
+    } else {
+      setTitleError("")
     }
     const points = Number(totalPoints)
     if (!totalPoints || points <= 0) {
-      toast.error("Total points must be a positive number")
-      return
+      setPointsError("Must be a positive number")
+      hasError = true
+    } else {
+      setPointsError("")
     }
+    if (hasError) return
     setSubmitting(true)
     try {
       await updateAssessment(assessment._id, {
@@ -368,10 +378,11 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
                     <div className="p-4">
                       <Input
                         value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        onChange={(e) => { setTitle(e.target.value); setTitleError("") }}
                         placeholder="Assessment title"
-                        className="mb-3 border-0 bg-transparent px-0 text-base font-semibold placeholder:text-muted-foreground/50 focus-visible:ring-0"
+                        className={`mb-1 border-0 bg-transparent px-0 text-base font-semibold placeholder:text-muted-foreground/50 focus-visible:ring-0 ${titleError ? "border-b border-destructive" : ""}`}
                       />
+                      {titleError && <p className="mb-2 text-xs text-destructive">{titleError}</p>}
                       <div className="mb-3 grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
                           <Label className="text-xs font-medium text-muted-foreground">
@@ -399,9 +410,11 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
                             type="number"
                             min="1"
                             value={totalPoints}
-                            onChange={(e) => setTotalPoints(e.target.value)}
+                            onChange={(e) => { setTotalPoints(e.target.value); setPointsError("") }}
                             placeholder="100"
+                            className={pointsError ? "border-destructive" : ""}
                           />
+                          {pointsError && <p className="text-xs text-destructive">{pointsError}</p>}
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-medium text-muted-foreground">
