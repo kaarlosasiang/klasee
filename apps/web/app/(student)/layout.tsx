@@ -1,13 +1,24 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { StudentNavbar } from "@/components/common/student-navbar"
+import { useSession } from "@/lib/config/auth-client"
 
 export default function StudentLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const router = useRouter()
+  const { data: session, isPending } = useSession()
+
+  React.useEffect(() => {
+    if (!isPending && session && !(session.user as any)?.onboardingCompleted) {
+      router.replace("/onboarding")
+    }
+  }, [isPending, session, router])
+
   return (
     <div className="flex min-h-screen flex-col">
       <StudentNavbar />

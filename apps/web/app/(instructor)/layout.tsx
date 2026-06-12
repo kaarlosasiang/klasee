@@ -31,6 +31,7 @@ import {
 } from "@workspace/ui/components/tooltip"
 import { toast } from "sonner"
 import { getCourses, type Course } from "@/lib/services/courses"
+import { useSession } from "@/lib/config/auth-client"
 
 export default function InstructorLayout({
   children,
@@ -38,6 +39,7 @@ export default function InstructorLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const { data: session, isPending } = useSession()
   const [courseDialogOpen, setCourseDialogOpen] = React.useState(false)
   const [selectingCourse, setSelectingCourse] = React.useState<{
     open: boolean
@@ -45,6 +47,12 @@ export default function InstructorLayout({
   }>({ open: false, target: null })
   const [courses, setCourses] = React.useState<Course[]>([])
   const [coursesLoading, setCoursesLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isPending && session && !(session.user as any)?.onboardingCompleted) {
+      router.replace("/onboarding")
+    }
+  }, [isPending, session, router])
 
   function openCourseSelection(target: "quiz" | "assignment") {
     setCoursesLoading(true)
