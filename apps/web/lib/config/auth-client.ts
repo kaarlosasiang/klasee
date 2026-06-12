@@ -103,6 +103,7 @@ export const updateUser = (
     firstName?: string
     lastName?: string
     phoneNumber?: string
+    onboardingCompleted?: boolean
   },
   options?: AuthCallbackOptions
 ) => authClient.updateUser(data, options)

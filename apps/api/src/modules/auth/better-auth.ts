@@ -69,6 +69,7 @@ export const auth = betterAuth({
               firstName: user.firstName || user.name?.split(" ")[0] || "",
               lastName:
                 user.lastName || user.name?.split(" ").slice(1).join(" ") || "",
+              onboardingCompleted: user.onboardingCompleted ?? false,
             },
           }
         },

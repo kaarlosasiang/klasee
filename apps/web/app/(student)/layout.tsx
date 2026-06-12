@@ -14,7 +14,7 @@ export default function StudentLayout({
   const { data: session, isPending } = useSession()
 
   React.useEffect(() => {
-    if (!isPending && session && !(session.user as any)?.onboardingCompleted) {
+    if (!isPending && session && (session.user as any)?.onboardingCompleted === false) {
       router.replace("/onboarding")
     }
   }, [isPending, session, router])

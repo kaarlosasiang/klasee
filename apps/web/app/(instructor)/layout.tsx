@@ -49,7 +49,7 @@ export default function InstructorLayout({
   const [coursesLoading, setCoursesLoading] = React.useState(false)
 
   React.useEffect(() => {
-    if (!isPending && session && !(session.user as any)?.onboardingCompleted) {
+    if (!isPending && session && (session.user as any)?.onboardingCompleted === false) {
       router.replace("/onboarding")
     }
   }, [isPending, session, router])

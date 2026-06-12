@@ -7,8 +7,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { toast } from "sonner"
-import { useSession } from "@/lib/config/auth-client"
-import { completeOnboarding } from "@/lib/services/users"
+import { useSession, updateUser } from "@/lib/config/auth-client"
 
 type Step = 1 | 2
 
@@ -53,11 +52,13 @@ export default function OnboardingPage() {
   async function handleFinish() {
     setSubmitting(true)
     try {
-      await completeOnboarding({
+      const result = await updateUser({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim() || undefined,
+        onboardingCompleted: true,
       })
+      if (result.error) throw result.error
       toast.success("Welcome to Klasee!")
       const role = (user as any)?.role
       router.replace(role === "instructor" ? "/dashboard" : "/my-dashboard")
