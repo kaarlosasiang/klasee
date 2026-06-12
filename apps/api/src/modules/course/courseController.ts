@@ -92,7 +92,11 @@ export const courseController = {
       if (role !== "instructor") {
         return res.status(403).json({ message: "Forbidden" })
       }
-      const courses = await courseService.findArchived(userId)
+      const { search, sort } = req.query as {
+        search?: string
+        sort?: "name-asc" | "name-desc" | "newest" | "oldest"
+      }
+      const courses = await courseService.findArchived(userId, { search, sort })
       res.json(courses)
     } catch (err) {
       next(err)

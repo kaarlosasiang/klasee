@@ -246,10 +246,25 @@ export const courseService = {
     return Course.findByIdAndDelete(id)
   },
 
-  async findArchived(instructorId: string) {
-    return Course.find({ instructorId, isArchived: true })
-      .sort({ updatedAt: -1 })
-      .lean()
+  async findArchived(
+    instructorId: string,
+    query: { search?: string; sort?: "name-asc" | "name-desc" | "newest" | "oldest" } = {}
+  ) {
+    const { search, sort } = query
+    const filter: Record<string, unknown> = { instructorId, isArchived: true }
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      filter.$or = [
+        { name: { $regex: escaped, $options: "i" } },
+        { code: { $regex: escaped, $options: "i" } },
+      ]
+    }
+    const sortField: Record<string, 1 | -1> =
+      sort === "name-asc" ? { name: 1 }
+      : sort === "name-desc" ? { name: -1 }
+      : sort === "oldest" ? { updatedAt: 1 }
+      : { updatedAt: -1 }
+    return Course.find(filter).sort(sortField).lean()
   },
   async archive(id: string, userId: string) {
     const course = await Course.findByIdAndUpdate(

@@ -51,7 +51,8 @@ export default function CoursesPage() {
     setError(false)
     try {
       if (showArchived) {
-        const data = await getArchivedCourses()
+        const archivedSort = sort === "semester" ? undefined : sort
+        const data = await getArchivedCourses({ search: debouncedSearch, sort: archivedSort })
         setCourses(data)
         setPagination(null)
       } else {
@@ -76,17 +77,25 @@ export default function CoursesPage() {
   }, [search])
 
   React.useEffect(() => {
-    if (!showArchived) {
-      void (async () => {
-        try {
+    void (async () => {
+      setLoading(true)
+      try {
+        if (showArchived) {
+          const archivedSort = sort === "semester" ? undefined : sort
+        const data = await getArchivedCourses({ search: debouncedSearch, sort: archivedSort })
+          setCourses(data)
+          setPagination(null)
+        } else {
           const data = await getCourses({ search: debouncedSearch, sort, page, limit: 12 })
           setCourses(data.courses)
           setPagination(data.pagination)
-        } catch {
-          toast.error("Failed to load courses")
         }
-      })()
-    }
+      } catch {
+        toast.error("Failed to load courses")
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [debouncedSearch, sort, page])
 
   const handlePageChange = (newPage: number) => {

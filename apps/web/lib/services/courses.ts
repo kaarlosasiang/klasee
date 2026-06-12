@@ -93,8 +93,13 @@ export const deleteCourse = async (id: string): Promise<void> => {
   await client.delete(`/courses/${id}`)
 }
 
-export const getArchivedCourses = async (): Promise<Course[]> => {
-  const response = await client.get("/courses/archived")
+export interface ArchivedCourseParams {
+  search?: string
+  sort?: "name-asc" | "name-desc" | "newest" | "oldest"
+}
+
+export const getArchivedCourses = async (params?: ArchivedCourseParams): Promise<Course[]> => {
+  const response = await client.get("/courses/archived", { params })
   return response.data
 }
 
