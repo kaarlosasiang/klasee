@@ -269,7 +269,7 @@ export function CourseSettings({ course, onUpdated }: CourseSettingsProps) {
     })
 
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message ?? "Invalid input")
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid input")
       return
     }
 

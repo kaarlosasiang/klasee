@@ -741,7 +741,7 @@ export function NewCourseDialog({
     })
 
     if (!parsed.success) {
-      setError(parsed.error.errors[0]?.message ?? "Please fill in required fields.")
+      setError(parsed.error.issues[0]?.message ?? "Please fill in required fields.")
       return
     }
 
