@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express"
 import { requireAuth, requireRole } from "../../shared/middleware/auth.middleware.js"
+import { validate } from "../../shared/middleware/validate.middleware.js"
+import { createAssessmentSchema, updateAssessmentSchema } from "@workspace/validators"
 import { assessmentController } from "./assessmentController.js"
 
 const router: IRouter = Router()
@@ -13,8 +15,8 @@ router.put("/scores/:id", requireAuth, requireRole("instructor", "admin"), asses
 // Assessments
 router.get("/", requireAuth, assessmentController.list)
 router.get("/:id", requireAuth, assessmentController.getById)
-router.post("/", requireAuth, requireRole("instructor", "admin"), assessmentController.create)
-router.put("/:id", requireAuth, requireRole("instructor", "admin"), assessmentController.update)
+router.post("/", requireAuth, requireRole("instructor", "admin"), validate(createAssessmentSchema), assessmentController.create)
+router.put("/:id", requireAuth, requireRole("instructor", "admin"), validate(updateAssessmentSchema), assessmentController.update)
 router.delete("/:id", requireAuth, requireRole("instructor", "admin"), assessmentController.remove)
 
 export default router

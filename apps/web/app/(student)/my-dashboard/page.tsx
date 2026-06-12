@@ -8,41 +8,55 @@ import {
   CalendarCheck,
   ArrowRight,
   Pin,
-  ClipboardList,
-  GraduationCap,
 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
 import { useSession } from "@/lib/config/auth-client"
+import { getEnrollmentsByStudent } from "@/lib/services/enrollments"
+import { getAssessments } from "@/lib/services/assessments"
+import { getAnnouncements } from "@/lib/services/announcements"
+import { getMyAttendance } from "@/lib/services/attendance"
+import { timeAgo } from "@/lib/utils/time"
 
 // ---------------------------------------------------------------------------
-// Mock data — replace with real API calls in Phase 2
+// Types
 // ---------------------------------------------------------------------------
 
-const MOCK_COURSES = [
-  { id: "1", name: "Introduction to Programming", code: "CS101", section: "Section A", schedule: "MWF 9:00–10:00 AM" },
-  { id: "2", name: "Data Structures & Algorithms", code: "CS201", section: "Section B", schedule: "TTh 1:00–2:30 PM" },
-  { id: "3", name: "Web Development", code: "CS301", section: "Section A", schedule: "MWF 2:00–3:00 PM" },
-]
+interface CourseItem {
+  courseId: string
+  courseName: string
+  courseCode: string
+  sectionName: string
+  schedule?: string
+}
 
-const MOCK_ASSESSMENTS = [
-  { id: "1", title: "Midterm Quiz: Arrays & Loops", type: "quiz" as const, course: "Introduction to Programming", daysUntil: 1 },
-  { id: "2", title: "Assignment 3: Binary Search Tree", type: "assignment" as const, course: "Data Structures & Algorithms", daysUntil: 3 },
-  { id: "3", title: "Lab Report: REST APIs", type: "assignment" as const, course: "Web Development", daysUntil: 5 },
-  { id: "4", title: "Final Exam", type: "exam" as const, course: "Introduction to Programming", daysUntil: 14 },
-  { id: "5", title: "Quiz 4: React Hooks", type: "quiz" as const, course: "Web Development", daysUntil: 7 },
-  { id: "6", title: "Project 2: Sorting Visualizer", type: "assignment" as const, course: "Data Structures & Algorithms", daysUntil: 10 },
-]
+interface AssessmentItem {
+  id: string
+  title: string
+  type: "quiz" | "exam" | "assignment"
+  courseName: string
+  courseId: string
+  daysUntil: number
+}
 
-const MOCK_ANNOUNCEMENTS = [
-  { id: "1", title: "Midterm schedule has been updated", course: "Introduction to Programming", time: "2h ago", isPinned: true },
-  { id: "2", title: "Lab session moved to Room 204", course: "Web Development", time: "5h ago", isPinned: false },
-  { id: "3", title: "Assignment 3 deadline extended", course: "Data Structures & Algorithms", time: "Yesterday", isPinned: false },
-  { id: "4", title: "Guest lecture this Friday", course: "Introduction to Programming", time: "2 days ago", isPinned: false },
-]
+interface AnnouncementItem {
+  id: string
+  title: string
+  courseName: string
+  time: string
+  isPinned: boolean
+  courseId: string
+}
 
-const MOCK_STATS = { courses: 3, dueThisWeek: 2, attendanceRate: 87, present: 26, total: 30 }
+interface Stats {
+  courses: number
+  dueThisWeek: number
+  attendanceRate: number
+  present: number
+  total: number
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,6 +74,10 @@ function dueDateLabel(daysUntil: number) {
   if (daysUntil === 0) return "Due today"
   if (daysUntil === 1) return "Due tomorrow"
   return `Due in ${daysUntil} days`
+}
+
+function computeDaysUntil(dueDate: string): number {
+  return Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -145,6 +163,38 @@ function AttendanceRing({ rate, present, total }: { rate: number; present: numbe
   )
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="flex gap-6">
+      <main className="min-w-0 flex-1 space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-14 w-32 rounded-xl" />
+            <Skeleton className="h-14 w-32 rounded-xl" />
+            <Skeleton className="h-14 w-32 rounded-xl" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+        </div>
+      </main>
+      <aside className="hidden w-72 shrink-0 space-y-4 lg:block">
+        <Skeleton className="h-20 rounded-xl" />
+        <Skeleton className="h-20 rounded-xl" />
+        <Skeleton className="h-36 rounded-xl" />
+        <Skeleton className="h-48 rounded-xl" />
+      </aside>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -153,8 +203,121 @@ export default function MyDashboard() {
   const { data: session } = useSession()
   const rawUser = session?.user as Record<string, unknown> | undefined
   const firstName = (rawUser?.firstName as string) || session?.user?.name?.split(" ")[0] || "Student"
+  const userId = session?.user?.id
 
-  const pinnedAnnouncement = MOCK_ANNOUNCEMENTS.find((a) => a.isPinned)
+  const [loading, setLoading] = React.useState(true)
+  const [courses, setCourses] = React.useState<CourseItem[]>([])
+  const [assessments, setAssessments] = React.useState<AssessmentItem[]>([])
+  const [announcements, setAnnouncements] = React.useState<AnnouncementItem[]>([])
+  const [stats, setStats] = React.useState<Stats>({ courses: 0, dueThisWeek: 0, attendanceRate: 0, present: 0, total: 0 })
+
+  React.useEffect(() => {
+    if (!userId) return
+
+    async function load() {
+      setLoading(true)
+      try {
+        const enrollments = await getEnrollmentsByStudent(userId!)
+        const active = enrollments.filter((e) => e.status === "active")
+
+        const courseItems: CourseItem[] = active.map((e) => ({
+          courseId: e.courseId._id,
+          courseName: e.courseId.name,
+          courseCode: e.courseId.code,
+          sectionName: e.sectionId.name,
+          schedule: e.sectionId.schedule,
+        }))
+        setCourses(courseItems)
+
+        const uniqueCourses = Array.from(
+          new Map(active.map((e) => [e.courseId._id, e.courseId])).values()
+        )
+
+        const now = Date.now()
+        const weekMs = 7 * 24 * 60 * 60 * 1000
+
+        const [assessmentResults, announcementResults, attendanceRecords] = await Promise.all([
+          Promise.all(
+            uniqueCourses.map((c) =>
+              getAssessments(c._id).catch(() => [])
+            )
+          ),
+          Promise.all(
+            uniqueCourses.map((c) =>
+              getAnnouncements(c._id)
+                .then((anns) => anns.map((a) => ({ ...a, courseName: c.name, courseId: c._id })))
+                .catch(() => [])
+            )
+          ),
+          getMyAttendance({}).catch(() => []),
+        ])
+
+        const allAssessments: AssessmentItem[] = assessmentResults
+          .flatMap((list, i) =>
+            list
+              .filter((a) => a.isPublished)
+              .map((a) => ({
+                id: a._id,
+                title: a.title,
+                type: a.type,
+                courseName: uniqueCourses[i]!.name,
+                courseId: uniqueCourses[i]!._id,
+                daysUntil: a.dueDate ? computeDaysUntil(a.dueDate) : 999,
+              }))
+          )
+          .filter((a) => a.daysUntil >= 0)
+          .sort((a, b) => a.daysUntil - b.daysUntil)
+
+        setAssessments(allAssessments)
+
+        const allAnnouncements: AnnouncementItem[] = announcementResults
+          .flat()
+          .sort((a, b) => {
+            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          })
+          .map((a) => ({
+            id: a._id,
+            title: a.title,
+            courseName: (a as typeof a & { courseName: string }).courseName,
+            time: timeAgo(a.createdAt),
+            isPinned: a.isPinned,
+            courseId: (a as typeof a & { courseId: string }).courseId,
+          }))
+
+        setAnnouncements(allAnnouncements)
+
+        const presentCount = attendanceRecords.filter((r) => r.status === "present").length
+        const total = attendanceRecords.length
+        const attendanceRate = total > 0 ? Math.round((presentCount / total) * 100) : 0
+
+        const dueThisWeek = allAssessments.filter((a) => {
+          const ms = a.daysUntil * 24 * 60 * 60 * 1000
+          return ms <= weekMs
+        }).length
+
+        setStats({
+          courses: active.length,
+          dueThisWeek,
+          attendanceRate,
+          present: presentCount,
+          total,
+        })
+      } catch {
+        // silently fail — partial data already set
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+  }, [userId])
+
+  if (loading) return <DashboardSkeleton />
+
+  const pinnedAnnouncement = announcements.find((a) => a.isPinned)
+  const displayedCourses = courses.slice(0, 3)
+  const displayedAssessments = assessments.slice(0, 6)
 
   return (
     <div className="flex gap-6">
@@ -168,25 +331,25 @@ export default function MyDashboard() {
               {getGreeting()}, {firstName} 👋
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Here's what's happening in your classes.
+              Here&apos;s what&apos;s happening in your classes.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <StatChip
               icon={BookOpen}
-              value={MOCK_STATS.courses}
+              value={stats.courses}
               label="Courses"
               colorClass="bg-blue-100 text-blue-600"
             />
             <StatChip
               icon={Clock}
-              value={MOCK_STATS.dueThisWeek}
+              value={stats.dueThisWeek}
               label="Due this week"
               colorClass="bg-amber-100 text-amber-600"
             />
             <StatChip
               icon={CalendarCheck}
-              value={`${MOCK_STATS.attendanceRate}%`}
+              value={`${stats.attendanceRate}%`}
               label="Attendance"
               colorClass="bg-emerald-100 text-emerald-600"
             />
@@ -199,10 +362,10 @@ export default function MyDashboard() {
             <Badge className="shrink-0 bg-emerald-500 text-white hover:bg-emerald-500">New</Badge>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">{pinnedAnnouncement.title}</p>
-              <p className="mt-0.5 text-xs text-emerald-700">{pinnedAnnouncement.course}</p>
+              <p className="mt-0.5 text-xs text-emerald-700">{pinnedAnnouncement.courseName}</p>
             </div>
             <Link
-              href="/my-courses"
+              href={`/my-courses/${pinnedAnnouncement.courseId}`}
               className="shrink-0 text-xs font-medium text-emerald-700 hover:underline whitespace-nowrap"
             >
               Go to course →
@@ -223,35 +386,42 @@ export default function MyDashboard() {
               View all
             </Link>
           </div>
-          <div className="space-y-2">
-            {MOCK_COURSES.map((course, i) => (
-              <div
-                key={course.id}
-                className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
-              >
+          {displayedCourses.length === 0 ? (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              No active courses yet.{" "}
+              <Link href="/my-courses" className="text-primary hover:underline">Browse courses</Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {displayedCourses.map((course, i) => (
                 <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
-                    COURSE_BG_COLORS[i % COURSE_BG_COLORS.length]
-                  )}
+                  key={course.courseId}
+                  className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
                 >
-                  {course.code.slice(0, 2)}
+                  <div
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+                      COURSE_BG_COLORS[i % COURSE_BG_COLORS.length]
+                    )}
+                  >
+                    {course.courseCode.slice(0, 2)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{course.courseName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {course.sectionName}
+                      {course.schedule ? ` — ${course.schedule}` : ""}
+                    </p>
+                  </div>
+                  <Link href={`/my-courses/${course.courseId}`}>
+                    <Button size="sm" variant="outline" className="shrink-0">
+                      Continue
+                    </Button>
+                  </Link>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{course.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {course.section}
-                    {course.schedule ? ` — ${course.schedule}` : ""}
-                  </p>
-                </div>
-                <Link href={`/my-courses/${course.id}`}>
-                  <Button size="sm" variant="outline" className="shrink-0">
-                    Continue
-                  </Button>
-                </Link>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Upcoming Assessments */}
@@ -267,50 +437,56 @@ export default function MyDashboard() {
               View all
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {MOCK_ASSESSMENTS.map((a) => (
-              <div
-                key={a.id}
-                className="flex flex-col gap-3 rounded-xl border bg-card p-4"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium capitalize",
-                      TYPE_COLORS[a.type]
+          {displayedAssessments.length === 0 ? (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              No upcoming assessments.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {displayedAssessments.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex flex-col gap-3 rounded-xl border bg-card p-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium capitalize",
+                        TYPE_COLORS[a.type]
+                      )}
+                    >
+                      {a.type}
+                    </span>
+                    {a.daysUntil <= 1 && (
+                      <span className="text-[10px] font-semibold text-destructive">Due soon</span>
                     )}
-                  >
-                    {a.type}
-                  </span>
-                  {a.daysUntil <= 1 && (
-                    <span className="text-[10px] font-semibold text-destructive">Due soon</span>
-                  )}
+                  </div>
+                  <p className="line-clamp-2 text-sm font-semibold leading-snug">{a.title}</p>
+                  <p className="text-xs text-muted-foreground">{a.courseName}</p>
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 text-xs",
+                        a.daysUntil < 0
+                          ? "text-destructive"
+                          : a.daysUntil <= 2
+                            ? "text-amber-600"
+                            : "text-muted-foreground"
+                      )}
+                    >
+                      <Clock className="size-3" />
+                      {dueDateLabel(a.daysUntil)}
+                    </span>
+                    <Link href={`/my-courses/${a.courseId}/${a.type === "assignment" ? "assignments" : "quizzes"}/${a.id}`}>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        Open
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <p className="line-clamp-2 text-sm font-semibold leading-snug">{a.title}</p>
-                <p className="text-xs text-muted-foreground">{a.course}</p>
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "flex items-center gap-1 text-xs",
-                      a.daysUntil < 0
-                        ? "text-destructive"
-                        : a.daysUntil <= 2
-                          ? "text-amber-600"
-                          : "text-muted-foreground"
-                    )}
-                  >
-                    <Clock className="size-3" />
-                    {dueDateLabel(a.daysUntil)}
-                  </span>
-                  <Link href="/my-assessments">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs">
-                      Open
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </main>
 
@@ -323,8 +499,8 @@ export default function MyDashboard() {
           className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
         >
           <div>
-            <p className="text-2xl font-bold">{MOCK_ASSESSMENTS.length}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Total assessments</p>
+            <p className="text-2xl font-bold">{assessments.length}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Upcoming assessments</p>
           </div>
           <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
         </Link>
@@ -334,7 +510,7 @@ export default function MyDashboard() {
           className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
         >
           <div>
-            <p className="text-2xl font-bold">{MOCK_STATS.dueThisWeek}</p>
+            <p className="text-2xl font-bold">{stats.dueThisWeek}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Due this week</p>
           </div>
           <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
@@ -344,34 +520,36 @@ export default function MyDashboard() {
         <div className="rounded-xl border bg-card p-4">
           <p className="mb-4 text-sm font-semibold">Attendance</p>
           <AttendanceRing
-            rate={MOCK_STATS.attendanceRate}
-            present={MOCK_STATS.present}
-            total={MOCK_STATS.total}
+            rate={stats.attendanceRate}
+            present={stats.present}
+            total={stats.total}
           />
         </div>
 
         {/* Recent announcements */}
-        <div className="rounded-xl border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold">Announcements</p>
-            <Link href="/my-courses" className="text-xs text-primary hover:underline">
-              View all
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {MOCK_ANNOUNCEMENTS.map((a) => (
-              <Link key={a.id} href="/my-courses" className="group block space-y-0.5">
-                <p className="flex items-start gap-1 text-xs font-medium leading-snug group-hover:text-primary">
-                  {a.isPinned && <Pin className="mt-0.5 size-3 shrink-0 text-amber-500" />}
-                  <span className="line-clamp-2">{a.title}</span>
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {a.course} · {a.time}
-                </p>
+        {announcements.length > 0 && (
+          <div className="rounded-xl border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold">Announcements</p>
+              <Link href="/my-courses" className="text-xs text-primary hover:underline">
+                View all
               </Link>
-            ))}
+            </div>
+            <div className="space-y-3">
+              {announcements.slice(0, 4).map((a) => (
+                <Link key={a.id} href={`/my-courses/${a.courseId}`} className="group block space-y-0.5">
+                  <p className="flex items-start gap-1 text-xs font-medium leading-snug group-hover:text-primary">
+                    {a.isPinned && <Pin className="mt-0.5 size-3 shrink-0 text-amber-500" />}
+                    <span className="line-clamp-2">{a.title}</span>
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {a.courseName} · {a.time}
+                  </p>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </aside>
     </div>

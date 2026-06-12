@@ -31,8 +31,8 @@ type SignInEmailInput = {
 }
 
 const authClient = createAuthClient({
-  baseURL: "http://localhost:3000", // API origin (no path)
-  basePath: "/api/auth", // Auth route prefix
+  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  basePath: "/api/auth",
   plugins: [
     inferAdditionalFields({
       user: {

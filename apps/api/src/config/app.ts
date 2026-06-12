@@ -3,6 +3,7 @@ import cors from "cors"
 import express, { Application, Request, Response } from "express"
 import helmet from "helmet"
 import morgan from "morgan"
+import rateLimit from "express-rate-limit"
 
 import registerRoutes from "../routes/index.js"
 import apiKeyMiddleware from "../shared/middleware/apiKey.middleware.js"
@@ -29,12 +30,38 @@ export default (app: Application): Application => {
     })
   )
 
-  // CORS configuration
+  // Rate limiting — global
+  app.use(
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 200,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skip: (req) => req.path === "/health" || req.path === "/" || req.path === "/status",
+    })
+  )
+
+  // Stricter rate limit for auth endpoints
+  app.use(
+    ["/api/auth/sign-in", "/api/auth/sign-up", "/api/auth/forgot-password"],
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: "Too many attempts, please try again later." },
+    })
+  )
+
+  // CORS configuration — env-driven origin list
+  const allowedOrigins = [
+    "http://localhost:3000",
+    ...(constants.corsOrigin !== "http://localhost:3000" ? [constants.corsOrigin] : []),
+  ].filter(Boolean)
+
   app.use(
     cors({
       origin: (origin, callback) => {
-        const allowedOrigins = ["http://localhost:3000"]
-        // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true)
         } else {
