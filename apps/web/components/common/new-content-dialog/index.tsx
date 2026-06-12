@@ -20,6 +20,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { cn } from "@workspace/ui/lib/utils"
 import { Separator } from "@workspace/ui/components/separator"
+import { toast } from "sonner"
 
 type ContentTypeItem = {
   id: string
@@ -157,22 +158,30 @@ export function NewContentDialog({
   onCreateCourse,
   onCreateQuiz,
   onCreateAssignment,
+  onCreateWiki,
 }: {
   children: React.ReactNode
   onCreateCourse?: () => void
   onCreateQuiz?: () => void
   onCreateAssignment?: () => void
+  onCreateWiki?: () => void
 }) {
   const [open, setOpen] = React.useState(false)
 
   function handleClick(id: string) {
     setOpen(false)
-    if (id === "course" && onCreateCourse) {
-      onCreateCourse()
-    } else if (id === "quiz" && onCreateQuiz) {
-      onCreateQuiz()
-    } else if (id === "assignment" && onCreateAssignment) {
-      onCreateAssignment()
+    if (id === "course") {
+      onCreateCourse?.()
+    } else if (id === "quiz") {
+      onCreateQuiz?.()
+    } else if (id === "assignment") {
+      onCreateAssignment?.()
+    } else if (id === "wiki") {
+      onCreateWiki?.()
+    } else if (id === "page") {
+      toast("Page creation is coming soon")
+    } else if (id === "learning-path") {
+      toast("Learning Path is coming soon")
     }
   }
 

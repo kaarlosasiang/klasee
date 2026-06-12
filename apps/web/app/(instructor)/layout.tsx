@@ -18,7 +18,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 
-import { Bell, Mail, Plus, Upload, HelpCircle, ClipboardCheck } from "lucide-react"
+import { Bell, Mail, Plus, Upload, HelpCircle, ClipboardCheck, BookMarked } from "lucide-react"
 import { NewContentDialog } from "@/components/common/new-content-dialog"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
 import { UploadDialog } from "@/components/common/upload-dialog"
@@ -43,7 +43,7 @@ export default function InstructorLayout({
   const [courseDialogOpen, setCourseDialogOpen] = React.useState(false)
   const [selectingCourse, setSelectingCourse] = React.useState<{
     open: boolean
-    target: "quiz" | "assignment" | null
+    target: "quiz" | "assignment" | "wiki" | null
   }>({ open: false, target: null })
   const [courses, setCourses] = React.useState<Course[]>([])
   const [coursesLoading, setCoursesLoading] = React.useState(false)
@@ -54,7 +54,7 @@ export default function InstructorLayout({
     }
   }, [isPending, session, router])
 
-  function openCourseSelection(target: "quiz" | "assignment") {
+  function openCourseSelection(target: "quiz" | "assignment" | "wiki") {
     setCoursesLoading(true)
     getCourses()
       .then((data) => {
@@ -116,6 +116,7 @@ export default function InstructorLayout({
               onCreateCourse={() => setCourseDialogOpen(true)}
               onCreateQuiz={() => openCourseSelection("quiz")}
               onCreateAssignment={() => openCourseSelection("assignment")}
+              onCreateWiki={() => openCourseSelection("wiki")}
             >
               <Button className="border-0 border-b-4 border-l-3 border-[#0B4193] font-semibold">
                 <Plus />
@@ -165,7 +166,9 @@ export default function InstructorLayout({
                   onClick={() => {
                     const target = selectingCourse.target
                     setSelectingCourse({ open: false, target: null })
-                    if (target) {
+                    if (target === "wiki") {
+                      router.push(`/courses/${course._id}?tab=wiki`)
+                    } else if (target) {
                       router.push(`/courses/${course._id}/assessments/new`)
                     }
                   }}
@@ -174,6 +177,8 @@ export default function InstructorLayout({
                   <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     {selectingCourse.target === "quiz" ? (
                       <HelpCircle className="size-4" />
+                    ) : selectingCourse.target === "wiki" ? (
+                      <BookMarked className="size-4" />
                     ) : (
                       <ClipboardCheck className="size-4" />
                     )}
