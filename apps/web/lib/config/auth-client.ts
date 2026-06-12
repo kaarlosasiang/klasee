@@ -107,6 +107,11 @@ export const updateUser = (
   options?: AuthCallbackOptions
 ) => authClient.updateUser(data, options)
 
+export const changePassword = (
+  data: { currentPassword: string; newPassword: string; revokeOtherSessions?: boolean },
+  options?: AuthCallbackOptions
+) => authClient.changePassword(data, options)
+
 export const linkGoogleDrive = (
   callbackURL?: string
 ) =>

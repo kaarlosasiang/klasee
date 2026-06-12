@@ -37,6 +37,7 @@ import { Announcements } from "@/components/common/announcements"
 import { ModulesManager } from "@/components/modules-manager"
 import { AssessmentsManager } from "@/components/assessments-manager"
 import { CourseSettings } from "@/components/common/course-settings"
+import { WikiEditor } from "@/components/common/wiki-editor"
 
 export default function CourseDetailPage() {
   const params = useParams()
@@ -284,7 +285,7 @@ export default function CourseDetailPage() {
             <AssessmentsManager courseId={course._id} />
           )}
           {activeTab === "wiki" && (
-            <p className="text-sm text-muted-foreground">Wiki coming soon.</p>
+            <WikiEditor courseId={course._id} />
           )}
           {activeTab === "settings" && (
             <CourseSettings course={course} onUpdated={refreshCourse} />

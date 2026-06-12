@@ -98,6 +98,7 @@ export function GradingPanel({
   const [feedbackInput, setFeedbackInput] = React.useState("")
   const [saving, setSaving] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<SubmissionFile | null>(null)
+  const [essayScores, setEssayScores] = React.useState<Record<string, string>>({})
 
   const currentStudent = enrolledStudents[currentIndex]
   const currentScore = currentStudent
@@ -113,6 +114,7 @@ export function GradingPanel({
       setFeedbackInput("")
     }
     setSelectedFile(null)
+    setEssayScores({})
   }, [currentIndex, currentScore])
 
   const currentSubmission = React.useMemo(
@@ -136,6 +138,31 @@ export function GradingPanel({
   )
 
   const isQuizType = assessment.type === "quiz" || assessment.type === "exam"
+
+  const essayQuestions = React.useMemo(
+    () => questions.filter((q) => q.type === "essay"),
+    [questions]
+  )
+
+  const autoGradedPoints = React.useMemo(() => {
+    if (!currentAttempt) return 0
+    return currentAttempt.answers.reduce((sum, ans) => {
+      if (ans.isCorrect !== null) return sum + (ans.pointsEarned ?? 0)
+      return sum
+    }, 0)
+  }, [currentAttempt])
+
+  const essayTotal = React.useMemo(
+    () =>
+      Object.values(essayScores).reduce((sum, v) => {
+        const n = Number(v)
+        return sum + (isNaN(n) ? 0 : n)
+      }, 0),
+    [essayScores]
+  )
+
+  const suggestedTotal = autoGradedPoints + essayTotal
+  const hasEssayQuestions = essayQuestions.length > 0
 
   const assessmentMap = React.useMemo(
     () => new Map(allCourseAssessments.map((a) => [a._id, a])),
@@ -340,8 +367,30 @@ export function GradingPanel({
                         </div>
                         <p className="mb-2 text-xs font-medium text-foreground">{q.question}</p>
                         {q.type === "essay" ? (
-                          <div className="rounded-md border-l-2 border-primary/30 bg-background pl-3 py-2 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
-                            {answerText || <span className="text-muted-foreground italic">No answer provided</span>}
+                          <div className="space-y-2">
+                            <div className="rounded-md border-l-2 border-primary/30 bg-background pl-3 py-2 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
+                              {answerText || <span className="text-muted-foreground italic">No answer provided</span>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                Essay pts:
+                              </label>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={q.points}
+                                value={essayScores[q._id] ?? ""}
+                                onChange={(e) =>
+                                  setEssayScores((prev) => ({
+                                    ...prev,
+                                    [q._id]: e.target.value,
+                                  }))
+                                }
+                                placeholder={`0–${q.points}`}
+                                className="h-7 w-20 text-xs"
+                              />
+                              <span className="text-[11px] text-muted-foreground">/ {q.points}</span>
+                            </div>
                           </div>
                         ) : (
                           <p className="rounded-md bg-background px-2 py-1.5 text-xs text-foreground">
@@ -488,6 +537,21 @@ export function GradingPanel({
           {/* Score Form */}
           <div className="flex-1 rounded-xl border border-border bg-card p-4">
             <div className="space-y-4">
+              {isQuizType && hasEssayQuestions && currentAttempt && (
+                <div className="flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-950/30">
+                  <div className="text-[11px] text-amber-700 dark:text-amber-400">
+                    <span className="font-medium">Suggested:</span>{" "}
+                    {autoGradedPoints} auto + {essayTotal} essay = {suggestedTotal} pts
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[11px] font-medium text-amber-700 underline hover:no-underline dark:text-amber-400"
+                    onClick={() => setScoreInput(String(suggestedTotal))}
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
                   Score{" "}

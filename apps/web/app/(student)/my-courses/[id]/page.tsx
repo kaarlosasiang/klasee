@@ -36,6 +36,7 @@ import {
 } from "@/lib/services/drive"
 import { Announcements } from "@/components/common/announcements"
 import { getAssessments, type Assessment } from "@/lib/services/assessments"
+import { WikiEditor } from "@/components/common/wiki-editor"
 import Link from "next/link"
 
 const FILE_ICONS: Record<string, React.ElementType> = {
@@ -388,6 +389,8 @@ export default function StudentCourseDetailPage() {
           </div>
         </div>
       )}
+
+      <WikiEditor courseId={params.id as string} readOnly />
     </div>
   )
 }
