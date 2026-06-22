@@ -164,6 +164,7 @@ export const courseService = {
     description?: string
     semester: string
     syllabus?: string
+    isPublished?: boolean
   }) {
     const course = await Course.create(data)
     logAudit({

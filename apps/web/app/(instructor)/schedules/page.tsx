@@ -1,184 +1,121 @@
 "use client"
 
 import * as React from "react"
-import { CalendarDays, Printer, Save, BookOpen } from "lucide-react"
+import { CalendarDays, Printer, Table2 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { Input } from "@workspace/ui/components/input"
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@workspace/ui/components/toggle-group"
 import { toast } from "sonner"
+import { useSidebar } from "@workspace/ui/components/sidebar"
 import { getCourses, type Course } from "@/lib/services/courses"
-import { getSectionsByCourse, updateSection, type Section } from "@/lib/services/sections"
-import { SchedulePicker } from "@/components/common/schedule-picker"
+import { getSectionsByCourse, type Section } from "@/lib/services/sections"
+import { ScheduleCalendarView, type FlatSection } from "@/components/schedules/ScheduleCalendarView"
+import { ScheduleTableView } from "@/components/schedules/ScheduleTableView"
+import { ScheduleEditDialog } from "@/components/schedules/ScheduleEditDialog"
+import { AttendancePanel } from "@/components/schedules/AttendancePanel"
 import { ExportCourseOfferingDialog } from "@/components/common/export-course-offering-dialog"
 
-interface SectionDraft {
-  schedule: string
-  labSchedule: string
-  room: string
-}
-
-interface SectionRowProps {
-  section: Section
-}
-
-function SectionRow({ section }: SectionRowProps) {
-  const [draft, setDraft] = React.useState<SectionDraft>({
-    schedule: section.schedule ?? "",
-    labSchedule: section.labSchedule ?? "",
-    room: section.room ?? "",
-  })
-  const [saving, setSaving] = React.useState(false)
-
-  const isDirty =
-    draft.schedule !== (section.schedule ?? "") ||
-    draft.labSchedule !== (section.labSchedule ?? "") ||
-    draft.room !== (section.room ?? "")
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await updateSection(section._id, {
-        schedule: draft.schedule || undefined,
-        labSchedule: draft.labSchedule || undefined,
-        room: draft.room || undefined,
-      })
-      toast.success(`${section.name} schedule saved`)
-    } catch {
-      toast.error("Failed to save schedule")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="font-medium">{section.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {section.enrolledCount} student{section.enrolledCount !== 1 ? "s" : ""}
-            {section.room || draft.room
-              ? ` · Room ${draft.room || section.room}`
-              : ""}
-          </p>
-        </div>
-        {isDirty && (
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            <Save className="mr-1.5 size-3.5" />
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Lecture schedule</label>
-          <SchedulePicker
-            value={draft.schedule}
-            onChange={(v) => setDraft((d) => ({ ...d, schedule: v }))}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Lab schedule</label>
-          <SchedulePicker
-            value={draft.labSchedule}
-            onChange={(v) => setDraft((d) => ({ ...d, labSchedule: v }))}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Room</label>
-          <Input
-            value={draft.room}
-            onChange={(e) => setDraft((d) => ({ ...d, room: e.target.value }))}
-            placeholder="e.g. Room 301"
-            className="h-8 text-sm"
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface CourseGroupProps {
-  course: Course
-}
-
-function CourseGroup({ course }: CourseGroupProps) {
-  const [sections, setSections] = React.useState<Section[]>([])
-  const [loading, setLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    getSectionsByCourse(course._id)
-      .then(setSections)
-      .catch(() => toast.error(`Failed to load sections for ${course.name}`))
-      .finally(() => setLoading(false))
-  }, [course._id, course.name])
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <BookOpen className="size-4 text-muted-foreground" />
-        <h2 className="font-semibold">{course.name}</h2>
-        <span className="text-xs text-muted-foreground">
-          {course.code} &middot;{" "}
-          {course.semester === "1st"
-            ? "1st Sem"
-            : course.semester === "2nd"
-            ? "2nd Sem"
-            : "Summer"}
-        </span>
-      </div>
-
-      {loading ? (
-        <Skeleton className="h-32 w-full rounded-lg" />
-      ) : sections.length === 0 ? (
-        <p className="pl-6 text-xs text-muted-foreground">No sections yet</p>
-      ) : (
-        <div className="space-y-2 pl-6">
-          {sections.map((section) => (
-            <SectionRow key={section._id} section={section} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+const BG_CLASSES = [
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-rose-500",
+  "bg-violet-500",
+  "bg-cyan-500",
+  "bg-orange-500",
+  "bg-teal-500",
+]
 
 export default function SchedulesPage() {
+  const { setOpen } = useSidebar()
+  const [items, setItems] = React.useState<FlatSection[]>([])
   const [courses, setCourses] = React.useState<Course[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [view, setView] = React.useState<"calendar" | "table">("calendar")
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [editTarget, setEditTarget] = React.useState<{ section: Section; course: Course } | null>(null)
+  const [attendanceTarget, setAttendanceTarget] = React.useState<{
+    section: Section
+    course: Course
+    date: string
+  } | null>(null)
+  const [refreshKey, setRefreshKey] = React.useState(0)
 
   React.useEffect(() => {
+    setOpen(false)
+    return () => setOpen(true)
+  }, [setOpen])
+
+  React.useEffect(() => {
+    setLoading(true)
     getCourses()
-      .then((data) => setCourses(data.courses))
-      .catch(() => toast.error("Failed to load courses"))
+      .then(async ({ courses: loadedCourses }) => {
+        setCourses(loadedCourses)
+        const nested = await Promise.all(
+          loadedCourses.map((course, i) =>
+            getSectionsByCourse(course._id).then((sections) =>
+              sections.map((section) => ({
+                section,
+                course,
+                bgClass: BG_CLASSES[i % BG_CLASSES.length] ?? "bg-gray-500",
+              }))
+            )
+          )
+        )
+        setItems(nested.flat())
+      })
+      .catch(() => toast.error("Failed to load schedules"))
       .finally(() => setLoading(false))
-  }, [])
+  }, [refreshKey])
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-32 w-full rounded-xl" />
+      <div className="flex gap-4">
+        <div className="flex-1 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-[600px] w-full rounded-xl" />
+        </div>
+        <div className="hidden w-96 shrink-0 lg:block">
+          <Skeleton className="h-[600px] w-full rounded-xl" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Schedules</h1>
-        <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
-          <Printer className="mr-2 size-4" />
-          Export Course Offering
-        </Button>
+    <div className="space-y-4">
+      {/* Page header */}
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Attendance</h1>
+        <div className="flex items-center gap-2">
+          <ToggleGroup
+            type="single"
+            value={view}
+            onValueChange={(v) => v && setView(v as "calendar" | "table")}
+          >
+            <ToggleGroupItem value="calendar" aria-label="Calendar view">
+              <CalendarDays className="size-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="table" aria-label="Table view">
+              <Table2 className="size-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportDialogOpen(true)}
+          >
+            <Printer className="mr-2 size-4" />
+            Export Course Offering
+          </Button>
+        </div>
       </div>
 
-      {courses.length === 0 ? (
+      {/* Split layout: schedule left, attendance right */}
+      {items.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">
           <CalendarDays className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -186,12 +123,48 @@ export default function SchedulesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {courses.map((course) => (
-            <CourseGroup key={course._id} course={course} />
-          ))}
+        <div className="flex flex-col gap-4 lg:flex-row">
+          {/* Left: calendar or table */}
+          <div className="min-w-0 flex-1">
+            {view === "calendar" ? (
+              <ScheduleCalendarView
+                items={items}
+                onAttendance={(section, course, date) =>
+                  setAttendanceTarget({ section, course, date })
+                }
+                onEdit={(section, course) => setEditTarget({ section, course })}
+              />
+            ) : (
+              <ScheduleTableView
+                items={items}
+                onAttendance={(section, course, date) =>
+                  setAttendanceTarget({ section, course, date })
+                }
+                onEdit={(section, course) => setEditTarget({ section, course })}
+              />
+            )}
+          </div>
+
+          {/* Right: attendance panel — sticky on desktop */}
+          <div className="w-full lg:w-96 lg:shrink-0">
+            <div className="lg:sticky lg:top-4">
+              <AttendancePanel
+                section={attendanceTarget?.section ?? null}
+                course={attendanceTarget?.course ?? null}
+                date={attendanceTarget?.date ?? null}
+              />
+            </div>
+          </div>
         </div>
       )}
+
+      <ScheduleEditDialog
+        section={editTarget?.section ?? null}
+        course={editTarget?.course ?? null}
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
 
       <ExportCourseOfferingDialog
         open={exportDialogOpen}

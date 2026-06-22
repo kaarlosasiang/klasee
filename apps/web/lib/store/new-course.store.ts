@@ -2,6 +2,7 @@ import { create } from "zustand"
 
 export interface SectionDraft {
   id: string
+  serverId?: string
   name: string
   schedule: string
   labSchedule: string
@@ -28,6 +29,7 @@ interface NewCourseStore {
   sections: SectionDraft[]
 
   setStep1: (data: Partial<Step1State>) => void
+  setSections: (sections: SectionDraft[]) => void
   addSection: () => void
   updateSection: (id: string, data: Partial<Omit<SectionDraft, "id">>) => void
   removeSection: (id: string) => void
@@ -62,6 +64,8 @@ export const useNewCourseStore = create<NewCourseStore>((set) => ({
   sections: [defaultSection()],
 
   setStep1: (data) => set((state) => ({ step1: { ...state.step1, ...data } })),
+
+  setSections: (sections) => set({ sections }),
 
   addSection: () =>
     set((state) => ({ sections: [...state.sections, defaultSection()] })),

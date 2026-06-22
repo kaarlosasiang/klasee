@@ -12,6 +12,7 @@ export interface Course {
   icon?: string
   syllabus?: string
   gradeBase?: "50" | "75"
+  isPublished?: boolean
   sectionCount: number
   enrolledCount: number
   assessmentCount: number
@@ -30,6 +31,20 @@ export interface CreateCourseInput {
   icon?: string
   syllabus?: string
   gradeBase?: "50" | "75"
+  isPublished?: boolean
+}
+
+export interface ParsedSection {
+  name: string
+  schedule?: string
+  labSchedule?: string
+  room?: string
+  maxStudents: number
+}
+
+export interface ParsedCourse {
+  subject: string
+  sections: ParsedSection[]
 }
 
 export interface UpdateCourseInput {
@@ -121,6 +136,13 @@ export const bulkArchiveCourses = async (courseIds: string[]): Promise<{ archive
 export const bulkDeleteCourses = async (courseIds: string[]): Promise<{ deleted: number }> => {
   const response = await client.post("/courses/bulk-delete", { courseIds })
   return response.data
+}
+
+export const parseFacultyLoad = async (file: File): Promise<ParsedCourse[]> => {
+  const form = new FormData()
+  form.append("file", file)
+  const response = await client.post("/courses/parse-faculty-load", form)
+  return response.data.rows
 }
 
 export interface AuditLogEntry {

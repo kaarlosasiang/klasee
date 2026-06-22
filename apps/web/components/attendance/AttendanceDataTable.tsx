@@ -4,27 +4,32 @@ import * as React from "react"
 import {
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  flexRender,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
-import { FileText, Search } from "lucide-react"
+import { CheckCircle2, Circle, Clock, FileText, Search, XCircle } from "lucide-react"
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
-import { DataTable } from "@workspace/ui/components/data-table/data-table"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
 import { DataTableColumnHeader } from "@workspace/ui/components/data-table/data-table-column-header"
-import { DataTablePagination } from "@workspace/ui/components/data-table/data-table-pagination"
 import type { AttendanceStatus } from "@/lib/services/attendance"
 
 export interface AttendanceRow {
@@ -41,32 +46,35 @@ interface AttendanceDataTableProps {
   saving: string | null
   onStatusChange: (
     studentId: string,
-    status: AttendanceStatus,
+    status: AttendanceStatus | null,
     note?: string
   ) => void
   onOpenSheet?: (student: AttendanceRow) => void
 }
 
-const STATUS_OPTIONS: AttendanceStatus[] = [
-  "present",
-  "absent",
-  "late",
-  "excused",
-]
+const STATUS_CYCLE: (AttendanceStatus | null)[] = [null, "present", "late", "absent"]
 
-const STATUS_COLORS: Record<AttendanceStatus, string> = {
-  present:
-    "border-emerald-200 bg-emerald-500/10 text-emerald-600 dark:border-emerald-800",
-  absent: "border-red-200 bg-red-500/10 text-red-600 dark:border-red-800",
-  late: "border-amber-200 bg-amber-500/10 text-amber-600 dark:border-amber-800",
-  excused: "border-gray-200 bg-gray-500/10 text-gray-600 dark:border-gray-700",
+function nextStatus(current: AttendanceStatus | null): AttendanceStatus | null {
+  const idx = STATUS_CYCLE.indexOf(current)
+  return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length] ?? null
 }
 
-const STATUS_DOTS: Record<AttendanceStatus, string> = {
-  present: "bg-emerald-500",
-  absent: "bg-red-500",
-  late: "bg-amber-500",
-  excused: "bg-gray-400",
+const STATUS_ICON: Partial<Record<AttendanceStatus, React.ElementType>> = {
+  present: CheckCircle2,
+  late: Clock,
+  absent: XCircle,
+}
+
+const STATUS_ICON_CLASS: Partial<Record<AttendanceStatus, string>> = {
+  present: "text-emerald-500 hover:text-emerald-600",
+  late: "text-amber-500 hover:text-amber-600",
+  absent: "text-red-500 hover:text-red-600",
+}
+
+const NEXT_LABEL: Partial<Record<AttendanceStatus, string>> = {
+  present: "Mark late",
+  late: "Mark absent",
+  absent: "Clear",
 }
 
 function initials(name: string) {
@@ -106,15 +114,15 @@ export function AttendanceDataTable({
         cell: ({ row }) => {
           const { name, email, isPending } = row.original
           return (
-            <div className="flex items-center gap-3">
-              <Avatar className="size-8 shrink-0 rounded-full">
-                <AvatarFallback className="text-xs font-medium">
+            <div className="flex items-center gap-2">
+              <Avatar className="size-6 shrink-0 rounded-full">
+                <AvatarFallback className="text-[10px] font-medium">
                   {initials(name) || "??"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex min-w-0 flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-medium">{name}</span>
+                  <span className="truncate text-xs font-medium">{name}</span>
                   {isPending && (
                     <Badge
                       variant="outline"
@@ -124,7 +132,7 @@ export function AttendanceDataTable({
                     </Badge>
                   )}
                 </div>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="truncate text-[11px] text-muted-foreground">
                   {email}
                 </span>
               </div>
@@ -147,37 +155,37 @@ export function AttendanceDataTable({
         cell: ({ row }) => {
           const { studentId, status } = row.original
           const isSaving = savingRef.current === studentId
+          const Icon = (status && STATUS_ICON[status]) ?? Circle
+          const iconClass =
+            (status && STATUS_ICON_CLASS[status]) ??
+            "text-muted-foreground/30 hover:text-muted-foreground/60"
+          const tooltipLabel = (status && NEXT_LABEL[status]) ?? "Mark present"
+
           return (
-            <div className="flex items-center justify-end gap-1">
-              <Select
-                value={status ?? ""}
-                onValueChange={(v) =>
-                  onStatusChangeRef.current(
-                    studentId,
-                    v as AttendanceStatus,
-                    row.original.note
-                  )
-                }
-                disabled={isSaving}
-              >
-                <SelectTrigger
-                  className={`h-8 w-32 ${status ? STATUS_COLORS[status] : ""}`}
-                >
-                  <SelectValue placeholder="Mark…" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`size-2 rounded-full ${STATUS_DOTS[s]}`}
-                        />
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-end gap-0.5">
+              <TooltipProvider delayDuration={400}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={isSaving}
+                      className={iconClass}
+                      onClick={() =>
+                        onStatusChangeRef.current(
+                          studentId,
+                          nextStatus(status),
+                          row.original.note
+                        )
+                      }
+                    >
+                      <Icon className="size-5" />
+                      <span className="sr-only">{tooltipLabel}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">{tooltipLabel}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -209,29 +217,72 @@ export function AttendanceDataTable({
       )
     },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    initialState: { pagination: { pageSize: 20 } },
   })
 
+  const filteredRows = table.getRowModel().rows
+
   return (
-    <DataTable table={table}>
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-4">
         <div className="relative">
-          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search students..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="h-9 w-56 pl-8"
+            className="h-8 w-48 pl-8 text-xs"
           />
         </div>
         <span className="text-xs text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} student
-          {table.getFilteredRowModel().rows.length !== 1 ? "s" : ""}
+          {filteredRows.length} student
+          {filteredRows.length !== 1 ? "s" : ""}
         </span>
       </div>
-    </DataTable>
+
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {filteredRows.length ? (
+              filteredRows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-16 text-center text-xs text-muted-foreground"
+                >
+                  No students found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   )
 }

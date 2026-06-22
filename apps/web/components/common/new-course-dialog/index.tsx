@@ -42,6 +42,7 @@ import {
   uploadToCloudinary,
   uploadDocumentToCloudinary,
 } from "@/lib/utils/upload"
+import { getSectionsByCourse } from "@/lib/services/sections"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -567,7 +568,7 @@ function Step3Content({ error }: { error: string | null }) {
 // ─── Step indicator ───────────────────────────────────────────────────────────
 
 const CREATE_STEPS = ["Course Overview", "Add Sections", "Review & Publish"]
-const EDIT_STEPS = ["Course Overview", "Review & Save"]
+const EDIT_STEPS = ["Course Overview", "Sections", "Review & Save"]
 
 function StepIndicator({
   current,
@@ -647,13 +648,13 @@ export function NewCourseDialog({
   onCreated,
 }: NewCourseDialogProps) {
   const isEditMode = !!course
-  // In edit mode: logical steps are 1 (overview) and 3 (review) — we skip step 2
   const [step, setStep] = React.useState<1 | 2 | 3>(1)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [step1Errors, setStep1Errors] = React.useState<Step1Errors>({})
 
-  const { step1, sections, setStep1, reset } = useNewCourseStore()
+  const { step1, sections, setStep1, setSections, reset } = useNewCourseStore()
+  const originalSectionIdsRef = React.useRef<string[]>([])
 
   // Seed store when opening in edit mode
   React.useEffect(() => {
@@ -675,10 +676,28 @@ export function NewCourseDialog({
       })
       setStep(1)
       setError(null)
+
+      getSectionsByCourse(course._id)
+        .then((existing) => {
+          originalSectionIdsRef.current = existing.map((s) => s._id)
+          setSections(
+            existing.map((s) => ({
+              id: crypto.randomUUID(),
+              serverId: s._id,
+              name: s.name,
+              schedule: s.schedule ?? "",
+              labSchedule: s.labSchedule ?? "",
+              room: s.room ?? "",
+              maxStudents: s.maxStudents,
+            }))
+          )
+        })
+        .catch(() => {})
     }
     if (!open) {
       reset()
       setStep(1)
+      originalSectionIdsRef.current = []
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
@@ -694,16 +713,9 @@ export function NewCourseDialog({
   }, [])
 
   const steps = isEditMode ? EDIT_STEPS : CREATE_STEPS
-  // Map logical step numbers to step indicator position
-  // Edit mode: step 1 → indicator 1, step 3 → indicator 2
-  const indicatorStep = isEditMode ? (step === 1 ? 1 : 2) : step
+  const indicatorStep = step
 
   function handleNext() {
-    if (isEditMode) {
-      setStep(3)
-      return
-    }
-
     if (step === 1) {
       const newErrors: Step1Errors = {}
       if (!step1.title.trim()) newErrors.title = "Course title is required"
@@ -719,16 +731,12 @@ export function NewCourseDialog({
   function handleBack() {
     setError(null)
     setStep1Errors({})
-    if (isEditMode) {
-      setStep(1)
-    } else {
-      setStep((s) => (s - 1) as 1 | 2 | 3)
-    }
+    setStep((s) => (s - 1) as 1 | 2 | 3)
   }
 
   function backLabel() {
-    if (isEditMode) return "Course Overview"
-    return step === 2 ? "Course Overview" : "Add Sections"
+    if (step === 2) return "Course Overview"
+    return isEditMode ? "Sections" : "Add Sections"
   }
 
   async function handlePublish() {
@@ -771,6 +779,34 @@ export function NewCourseDialog({
 
       if (isEditMode && course) {
         await client.put(`/courses/${course._id}`, body)
+
+        const currentServerIds = new Set(
+          sections.filter((s) => s.serverId).map((s) => s.serverId!)
+        )
+        const deletedIds = originalSectionIdsRef.current.filter(
+          (id) => !currentServerIds.has(id)
+        )
+        await Promise.all(deletedIds.map((id) => client.delete(`/sections/${id}`)))
+        await Promise.all(
+          sections.map((sec) =>
+            sec.serverId
+              ? client.put(`/sections/${sec.serverId}`, {
+                  name: sec.name,
+                  schedule: sec.schedule || undefined,
+                  labSchedule: sec.labSchedule || undefined,
+                  room: sec.room || undefined,
+                  maxStudents: sec.maxStudents,
+                })
+              : client.post(`/sections`, {
+                  courseId: course._id,
+                  name: sec.name,
+                  schedule: sec.schedule || undefined,
+                  labSchedule: sec.labSchedule || undefined,
+                  room: sec.room || undefined,
+                  maxStudents: sec.maxStudents,
+                })
+          )
+        )
       } else {
         const courseRes = await client.post<{ _id: string }>("/courses", body)
         const courseId = courseRes.data._id

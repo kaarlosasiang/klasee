@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express"
+import multer from "multer"
 import { requireAuth } from "../../shared/middleware/auth.middleware.js"
 import { requireRole } from "../../shared/middleware/auth.middleware.js"
 import { requireCourseOwner } from "../../shared/middleware/course.middleware.js"
@@ -7,6 +8,7 @@ import { createCourseSchema, updateCourseSchema, bulkCourseActionSchema } from "
 import { courseController } from "./courseController.js"
 
 const router: IRouter = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
 router.get("/", requireAuth, courseController.list)
 router.get("/archived", requireAuth, courseController.listArchived)
@@ -19,5 +21,6 @@ router.patch("/:id/archive", requireAuth, requireRole("instructor", "admin"), re
 router.patch("/:id/unarchive", requireAuth, requireRole("instructor", "admin"), requireCourseOwner, courseController.unarchive)
 router.post("/bulk-archive", requireAuth, requireRole("instructor", "admin"), validate(bulkCourseActionSchema), courseController.bulkArchive)
 router.post("/bulk-delete", requireAuth, requireRole("instructor", "admin"), validate(bulkCourseActionSchema), courseController.bulkDelete)
+router.post("/parse-faculty-load", requireAuth, requireRole("instructor", "admin"), upload.single("file"), courseController.parseFacultyLoad)
 
 export default router

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, RefreshCw } from "lucide-react"
+import { AlertCircle, RefreshCw, Upload } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import {
   Pagination,
@@ -31,6 +31,7 @@ import {
 } from "@/components/common/course-search"
 import { CourseEmpty } from "@/components/common/course-empty"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
+import { ImportFacultyLoadDialog } from "@/components/common/import-faculty-load-dialog"
 
 export default function CoursesPage() {
   const [courses, setCourses] = React.useState<Course[]>([])
@@ -45,6 +46,7 @@ export default function CoursesPage() {
   const [showArchived, setShowArchived] = React.useState(false)
   const [courseDialogOpen, setCourseDialogOpen] = React.useState(false)
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null)
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false)
 
   async function fetchCourses() {
     setLoading(true)
@@ -198,11 +200,13 @@ export default function CoursesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">Courses</h1>
-        {courses.length > 0 && (
-          <div className="flex items-center gap-3">
-            <ViewToggle value={view} onChange={setView} />
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="mr-2 size-4" />
+            Import Faculty Load
+          </Button>
+          {courses.length > 0 && <ViewToggle value={view} onChange={setView} />}
+        </div>
       </div>
 
       <CourseSearch
@@ -277,6 +281,12 @@ export default function CoursesPage() {
         onOpenChange={handleDialogClose}
         course={editingCourse ?? undefined}
         onCreated={handleCreated}
+      />
+
+      <ImportFacultyLoadDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImported={fetchCourses}
       />
     </div>
   )

@@ -61,9 +61,16 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
       <div className="flex flex-col gap-2 px-4 pt-7 pb-3">
         <div className="flex items-start justify-between gap-2">
           <Link href={`/courses/${course._id}`} className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-foreground hover:text-primary">
-              {course.name}
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="truncate text-sm font-semibold text-foreground hover:text-primary">
+                {course.name}
+              </h3>
+              {course.isPublished === false && (
+                <Badge variant="outline" className="shrink-0 border-amber-300 text-[10px] text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                  Draft
+                </Badge>
+              )}
+            </div>
           </Link>
 
           <DropdownMenu>

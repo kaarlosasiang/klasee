@@ -9,6 +9,7 @@ export const createCourseSchema = z.object({
   icon: z.string().optional(),
   syllabus: z.string().optional(),
   gradeBase: z.enum(["50", "75"]).optional(),
+  isPublished: z.boolean().optional(),
 })
 
 export const updateCourseSchema = createCourseSchema.partial()

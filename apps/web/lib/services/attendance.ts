@@ -67,6 +67,10 @@ export const bulkUpsertAttendance = async (
   return response.data
 }
 
+export const deleteAttendance = async (id: string): Promise<void> => {
+  await client.delete(`/attendance/${id}`)
+}
+
 export const getMyAttendance = async (params: {
   courseId?: string
   sectionId?: string

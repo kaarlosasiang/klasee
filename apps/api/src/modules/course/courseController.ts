@@ -1,5 +1,9 @@
 import { NextFunction, Request, Response } from "express"
+import { createRequire } from "module"
+const require = createRequire(import.meta.url)
+const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { data: Buffer }) => { getText(): Promise<{ text: string }> } }
 import { courseService } from "./courseService.js"
+import { parseFacultyLoadText } from "./parseFacultyLoad.js"
 import {
   createCourseSchema,
   updateCourseSchema,
@@ -165,6 +169,21 @@ export const courseController = {
         (req.authUser as any)?.id as string
       )
       res.json({ deleted: count })
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async parseFacultyLoad(req: Request, res: Response, next: NextFunction) {
+    try {
+      const file = (req as any).file as Express.Multer.File | undefined
+      if (!file) {
+        return res.status(400).json({ message: "No PDF file uploaded" })
+      }
+      const parser = new PDFParse({ data: file.buffer })
+      const result = await parser.getText()
+      const rows = parseFacultyLoadText(result.text)
+      res.json({ rows })
     } catch (err) {
       next(err)
     }

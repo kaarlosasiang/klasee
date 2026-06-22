@@ -5,19 +5,18 @@ import {
   Archive,
   BarChart2,
   BookOpen,
-  Calendar,
   CalendarCheck,
-  CalendarDays,
   ChartNoAxesCombined,
   ClipboardList,
   Clock,
+  FileText,
   Home,
-  Layers,
+  Pencil,
   Settings,
   Users,
 } from "lucide-react"
 
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { NavMain } from "@/components/common/instructor-sidebar/nav-main"
 import { NavFavoritesProjects } from "@/components/common/instructor-sidebar/nav-projects"
 import { useSession } from "@/lib/config/auth-client"
@@ -55,13 +54,12 @@ import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/lib/hooks/useAuth"
 import { Badge } from "@workspace/ui/components/badge"
+import { getTodos, type InstructorTodos } from "@/lib/services/todos"
 
 const instructorNav = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Courses", url: "/courses", icon: BookOpen },
   { title: "Students", url: "/students", icon: Users },
-  { title: "Schedules", url: "/schedules", icon: CalendarDays },
-  { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Grades", url: "/grades", icon: ClipboardList },
 ]
 
@@ -119,6 +117,46 @@ function IconRailBtn({
         {comingSoon ? `${label} — Coming soon` : label}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+function PendingSection() {
+  const [todos, setTodos] = React.useState<InstructorTodos | null>(null)
+
+  React.useEffect(() => {
+    getTodos().then(setTodos).catch(() => {})
+  }, [])
+
+  if (!todos) return null
+  const { ungradedSubmissions, draftItems, upcomingDueDates, attendanceToTake } = todos
+  if (!ungradedSubmissions && !draftItems && !upcomingDueDates && !attendanceToTake) return null
+
+  const items = [
+    { icon: Pencil,       label: "Grade submissions", count: ungradedSubmissions, href: "/grades",    show: ungradedSubmissions > 0 },
+    { icon: FileText,     label: "Drafts",            count: draftItems,          href: "/courses",   show: draftItems > 0 },
+    { icon: Clock,        label: "Due this week",     count: upcomingDueDates,    href: "/courses",   show: upcomingDueDates > 0 },
+    { icon: CalendarCheck,label: "Attendance today",  count: attendanceToTake,    href: "/schedules", show: attendanceToTake > 0 },
+  ].filter((i) => i.show)
+
+  return (
+    <div className="mx-2 border-t border-border px-2 py-3">
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Pending
+      </p>
+      {items.map(({ icon: Icon, label, count, href }) => (
+        <Link
+          key={label}
+          href={href}
+          className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+        >
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Icon className="size-3.5" />
+            {label}
+          </span>
+          <Badge variant="secondary" className="text-[10px]">{count}</Badge>
+        </Link>
+      ))}
+    </div>
   )
 }
 
@@ -186,7 +224,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <IconRailBtn icon={Home} label="Dashboard" href="/dashboard" active={pathname === "/dashboard"} />
           <IconRailBtn icon={ChartNoAxesCombined} label="Analytics" comingSoon />
-          <IconRailBtn icon={CalendarDays} label="Calendar" comingSoon />
+          <IconRailBtn icon={CalendarCheck} label="Attendance" href="/schedules" active={pathname.startsWith("/schedules")} />
 
           <div className="my-1.5 w-6 border-t border-border" />
 
@@ -279,6 +317,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarContent>
             <NavMain items={navMain} />
             <NavFavoritesProjects favorites={favorites} />
+            {(role === "instructor" || role === "admin") && <PendingSection />}
           </SidebarContent>
         </div>
       </div>
