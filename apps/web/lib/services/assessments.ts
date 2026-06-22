@@ -17,6 +17,11 @@ export interface Assessment {
   isPublished: boolean
   timeLimit?: number
   randomizeQuestions?: boolean
+  showAnswerAfter?: boolean
+  redemptionQuestion?: boolean
+  skipQuestions?: boolean
+  estimatedDuration?: number
+  tags?: string[]
   instructions?: string
   allowedFileTypes?: string[]
   maxFiles?: number
@@ -66,6 +71,11 @@ export const createAssessment = async (data: {
   isPublished?: boolean
   timeLimit?: number
   randomizeQuestions?: boolean
+  showAnswerAfter?: boolean
+  redemptionQuestion?: boolean
+  skipQuestions?: boolean
+  estimatedDuration?: number
+  tags?: string[]
   instructions?: string
   allowedFileTypes?: string[]
   maxFiles?: number

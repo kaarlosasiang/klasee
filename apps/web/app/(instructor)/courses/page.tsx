@@ -222,7 +222,7 @@ export default function CoursesPage() {
         <CourseEmpty onCreateCourse={() => setCourseDialogOpen(true)} />
       ) : view === "grid" ? (
         <>
-          <div className="3xl:grid-cols-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {courses.map((course) => (
               <CourseCard
                 key={course._id}

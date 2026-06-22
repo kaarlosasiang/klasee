@@ -6,6 +6,7 @@ const router: IRouter = Router()
 
 router.get("/", requireAuth, requireRole("instructor", "admin"), assignmentSubmissionController.list)
 router.get("/my", requireAuth, assignmentSubmissionController.mySubmission)
+router.get("/recent", requireAuth, requireRole("instructor", "admin"), assignmentSubmissionController.recent)
 router.get("/:id", requireAuth, assignmentSubmissionController.getById)
 router.post("/submit", requireAuth, assignmentSubmissionController.submit)
 router.put("/:id/grade", requireAuth, requireRole("instructor", "admin"), assignmentSubmissionController.grade)

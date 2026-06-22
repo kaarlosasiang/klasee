@@ -1,5 +1,6 @@
 import { AssignmentSubmission } from "../../models/assignmentSubmissionModel.js"
 import { Assessment } from "../../models/assessmentModel.js"
+import { Course } from "../../models/courseModel.js"
 import { calcLatePenalty } from "../../shared/utils/latePenalty.js"
 import { getEffectiveDueDate } from "../../shared/utils/effectiveDueDate.js"
 
@@ -52,6 +53,40 @@ export const assignmentSubmissionService = {
       content: data.content,
       files: data.files,
     })
+  },
+
+  async findRecent(instructorId: string, limit = 6) {
+    const courses = await Course.find(
+      { instructorId, isArchived: { $ne: true } },
+      "_id"
+    ).lean()
+    const courseIds = courses.map((c) => c._id)
+
+    const assessments = await Assessment.find(
+      { courseId: { $in: courseIds } },
+      "_id title courseId"
+    )
+      .populate("courseId", "name code")
+      .lean()
+
+    const assessmentMap = new Map(assessments.map((a) => [String(a._id), a]))
+    const assessmentIds = assessments.map((a) => a._id)
+
+    const submissions = await AssignmentSubmission.find(
+      { assessmentId: { $in: assessmentIds }, gradedAt: null },
+      "_id assessmentId userId submittedAt"
+    )
+      .sort({ submittedAt: -1 })
+      .limit(limit)
+      .populate("userId", "name email")
+      .lean()
+
+    return submissions.map((s) => ({
+      _id: s._id,
+      submittedAt: s.submittedAt,
+      student: s.userId,
+      assessment: assessmentMap.get(String(s.assessmentId)),
+    }))
   },
 
   async grade(

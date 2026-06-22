@@ -79,6 +79,17 @@ export const assignmentSubmissionController = {
     }
   },
 
+  async recent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const instructorId = (req.authUser as any)?.id as string
+      const limit = Math.min(parseInt(req.query["limit"] as string) || 6, 20)
+      const data = await assignmentSubmissionService.findRecent(instructorId, limit)
+      res.json(data)
+    } catch (err) {
+      next(err)
+    }
+  },
+
   async grade(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params["id"] as string

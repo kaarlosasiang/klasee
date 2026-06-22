@@ -21,6 +21,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Bell, Mail, Plus, Upload, HelpCircle, ClipboardCheck, BookMarked } from "lucide-react"
 import { NewContentDialog } from "@/components/common/new-content-dialog"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
+import { NewQuizDialog } from "@/components/assessments/new-quiz-dialog"
 import { UploadDialog } from "@/components/common/upload-dialog"
 import { SearchDialog } from "@/components/common/search-dialog"
 import {
@@ -41,6 +42,7 @@ export default function InstructorLayout({
   const router = useRouter()
   const { data: session, isPending } = useSession()
   const [courseDialogOpen, setCourseDialogOpen] = React.useState(false)
+  const [newQuizCourseId, setNewQuizCourseId] = React.useState<string | null>(null)
   const [selectingCourse, setSelectingCourse] = React.useState<{
     open: boolean
     target: "quiz" | "assignment" | "wiki" | null
@@ -136,6 +138,12 @@ export default function InstructorLayout({
         onOpenChange={setCourseDialogOpen}
       />
 
+      <NewQuizDialog
+        open={newQuizCourseId !== null}
+        onOpenChange={(o) => { if (!o) setNewQuizCourseId(null) }}
+        courseId={newQuizCourseId ?? ""}
+      />
+
       <Dialog
         open={selectingCourse.open}
         onOpenChange={(o) => setSelectingCourse((prev) => ({ ...prev, open: o }))}
@@ -168,6 +176,8 @@ export default function InstructorLayout({
                     setSelectingCourse({ open: false, target: null })
                     if (target === "wiki") {
                       router.push(`/courses/${course._id}?tab=wiki`)
+                    } else if (target === "quiz") {
+                      setNewQuizCourseId(course._id)
                     } else if (target) {
                       router.push(`/courses/${course._id}/assessments/new`)
                     }

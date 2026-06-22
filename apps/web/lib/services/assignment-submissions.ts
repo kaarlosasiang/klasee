@@ -33,6 +33,18 @@ export interface GradeAssignmentInput {
   feedback?: string
 }
 
+export interface RecentSubmission {
+  _id: string
+  submittedAt: string
+  student: { name: string; email: string }
+  assessment: { _id: string; title: string; courseId: { name: string; code: string } }
+}
+
+export const getRecentSubmissions = async (limit = 6): Promise<RecentSubmission[]> => {
+  const response = await client.get("/assignment-submissions/recent", { params: { limit } })
+  return response.data
+}
+
 export const getAssignmentSubmissions = async (
   assessmentId: string
 ): Promise<AssignmentSubmission[]> => {

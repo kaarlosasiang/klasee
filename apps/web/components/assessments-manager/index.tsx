@@ -62,6 +62,7 @@ import {
   type Assessment,
   type LatePolicy,
 } from "@/lib/services/assessments"
+import { NewQuizDialog } from "@/components/assessments/new-quiz-dialog"
 import {
   getOverrides,
   upsertOverride,
@@ -118,6 +119,7 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
   const [submitting, setSubmitting] = React.useState(false)
   const [titleError, setTitleError] = React.useState("")
   const [pointsError, setPointsError] = React.useState("")
+  const [newQuizDialogOpen, setNewQuizDialogOpen] = React.useState(false)
 
   // Due date overrides state
   const [overrides, setOverrides] = React.useState<DueDateOverride[]>([])
@@ -341,7 +343,7 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
           </span>
           <Button
             size="sm"
-            onClick={() => router.push(`/courses/${courseId}/assessments/new`)}
+            onClick={() => setNewQuizDialogOpen(true)}
           >
             <Plus className="mr-2 size-4" />
             New Assessment
@@ -357,7 +359,7 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/courses/${courseId}/assessments/new`)}
+              onClick={() => setNewQuizDialogOpen(true)}
             >
               <Plus className="mr-2 size-4" />
               Create your first assessment
@@ -734,6 +736,12 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
             })}
           </div>
         )}
+
+        <NewQuizDialog
+          open={newQuizDialogOpen}
+          onOpenChange={setNewQuizDialogOpen}
+          courseId={courseId}
+        />
 
         {/* Delete confirmation dialog */}
         <AlertDialog

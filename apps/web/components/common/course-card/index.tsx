@@ -41,14 +41,14 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
       <Link href={`/courses/${course._id}`} className="block">
         <div
           className={cn(
-            "relative h-36 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50",
+            "relative h-24 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50",
             !course.cover && "dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30"
           )}
         >
           {course.cover && (
             <img src={course.cover} alt="" className="h-full w-full object-cover" />
           )}
-          <div className="absolute -bottom-5 left-4 flex size-11 items-center justify-center overflow-hidden rounded-xl border-2 border-background bg-blue-500 text-white shadow-md">
+          <div className="absolute -bottom-4 left-4 flex size-9 items-center justify-center overflow-hidden rounded-xl border-2 border-background bg-blue-500 text-white shadow-md">
             {course.icon ? (
               <img src={course.icon} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -58,7 +58,7 @@ export function CourseCard({ course, onEdit, showArchived, onUnarchive, onDelete
         </div>
       </Link>
 
-      <div className="flex flex-col gap-2 px-4 pt-7 pb-3">
+      <div className="flex flex-col gap-2 px-4 pt-6 pb-3">
         <div className="flex items-start justify-between gap-2">
           <Link href={`/courses/${course._id}`} className="min-w-0">
             <div className="flex items-center gap-1.5">
