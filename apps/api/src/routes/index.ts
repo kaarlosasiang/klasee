@@ -20,6 +20,7 @@ import quizAttemptRoutes from "../modules/quiz-attempt/quizAttemptRoutes.js"
 import sectionRoutes from "../modules/section/sectionRoutes.js"
 import studentRoutes from "../modules/student/studentRoutes.js"
 import wikiRoutes from "../modules/wiki/wikiRoutes.js"
+import tipRoutes from "../modules/tip/tipRoutes.js"
 import todosRoutes from "../modules/todos/todosRoutes.js"
 import usersRoutes from "../modules/users/usersRoutes.js"
 
@@ -47,6 +48,7 @@ export default (app: Application): void => {
   app.use(`${API_PREFIX}/quiz-attempts`, quizAttemptRoutes)
   app.use(`${API_PREFIX}/students`, studentRoutes)
   app.use(`${API_PREFIX}/wiki`, wikiRoutes)
+  app.use(`${API_PREFIX}/tips`, tipRoutes)
   app.use(`${API_PREFIX}/todos`, todosRoutes)
   app.use(`${API_PREFIX}/users`, usersRoutes)
 }

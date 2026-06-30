@@ -8,6 +8,7 @@ import { Course } from "./models/courseModel.js"
 import { Enrollment } from "./models/enrollmentModel.js"
 import { Assessment } from "./models/assessmentModel.js"
 import { AssessmentScore } from "./models/assessmentScore.js"
+import { Tip } from "./models/tipModel.js"
 
 const STUDENT_EMAIL = "test.student@klasee.com"
 const STUDENT_NAME = "Test Student"
@@ -144,6 +145,38 @@ async function seed() {
       console.log(`Scored ${user.name}: ${data.title} = ${data.score}/${(assessment as any).totalPoints}`)
     } else {
       console.log(`${user.name} already scored on "${data.title}"`)
+    }
+  }
+
+  // 7. Seed tips
+  const tips = [
+    { context: "attendanceToTake", title: "Classes need attendance today", description: "You have sections scheduled today without attendance records. Mark attendance now while students are still fresh in your mind — it takes under two minutes per section." },
+    { context: "attendanceToTake", title: "Don't let attendance slip", description: "Missing attendance data makes it hard to track participation patterns. Head to the Schedules page and mark today's sessions before you move on." },
+    { context: "attendanceToTake", title: "Attendance affects student records", description: "Consistent tracking gives students a fair and transparent record. Log today's sessions so nothing falls through the cracks." },
+    { context: "ungradedSubmissions", title: "Students are waiting for feedback", description: "You have ungraded submissions. Even a brief comment alongside a score helps students understand where they stand and how to improve." },
+    { context: "ungradedSubmissions", title: "Grade while the work is fresh", description: "Grading soon after submission makes your feedback more accurate. Open the Grades page to work through your queue." },
+    { context: "ungradedSubmissions", title: "Timely grading builds trust", description: "Students check their grades frequently. Returning scored work quickly shows you're engaged and gives them time to act on your feedback." },
+    { context: "draftItems", title: "Drafts are invisible to students", description: "You have courses or assessments still in draft mode. Students can't see or attempt them until they're published — review and publish when ready." },
+    { context: "draftItems", title: "Ready to publish?", description: "Keeping assessments in draft too long can push due dates uncomfortably close. Review your draft items and publish them with enough lead time for students to prepare." },
+    { context: "draftItems", title: "Check your unpublished content", description: "Draft items are safe to hold until you're confident everything is correct. Publishing a course or assessment takes just one click from the course settings." },
+    { context: "upcomingDueDates", title: "Due dates are coming up this week", description: "You have assessments due within the next seven days. Make sure students have had enough time — consider posting a reminder announcement." },
+    { context: "upcomingDueDates", title: "Send a reminder announcement", description: "A quick announcement reminding students of upcoming due dates significantly reduces late submissions. It only takes a minute to post from any course page." },
+    { context: "upcomingDueDates", title: "Review assessment instructions", description: "With due dates approaching, re-read your assessment instructions from a student's perspective. Unclear wording is easier to fix before the deadline." },
+    { context: "general", title: "Use announcements proactively", description: "Instructors who post regular announcements report higher student engagement. Even a short weekly update keeps your class informed and connected." },
+    { context: "general", title: "Set up your course modules", description: "Organizing content into modules helps students follow a clear learning path. Group related lessons and assessments so the flow feels intentional." },
+    { context: "general", title: "Review your grading rubric", description: "Clear assessment instructions and point breakdowns reduce student confusion. Take a moment to revisit instructions before publishing your next assessment." },
+  ]
+
+  for (const tip of tips) {
+    const result = await Tip.updateOne(
+      { title: tip.title },
+      { $setOnInsert: { ...tip, isActive: true } },
+      { upsert: true }
+    )
+    if (result.upsertedCount) {
+      console.log(`Created tip: "${tip.title}"`)
+    } else {
+      console.log(`Tip already exists: "${tip.title}"`)
     }
   }
 

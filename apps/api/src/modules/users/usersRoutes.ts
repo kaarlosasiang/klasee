@@ -4,6 +4,8 @@ import { usersController } from "./usersController.js"
 
 const router = Router()
 
+router.get("/me", requireAuth, usersController.getMe)
+router.patch("/me", requireAuth, usersController.updateMe)
 router.patch("/me/onboarding", requireAuth, usersController.completeOnboarding)
 
 export default router

@@ -20,6 +20,8 @@ const ROLE_REDIRECTS: Record<string, string> = {
 
 const DEFAULT_AUTHENTICATED = "/my-dashboard"
 
+const STATIC_ASSET_PATTERN = /\.(?:png|jpe?g|gif|svg|webp|ico|css|js|json|txt|woff2?|ttf|eot|map)$/i
+
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL
   ? new URL(process.env.NEXT_PUBLIC_API_URL).origin
   : "http://localhost:4000"
@@ -28,6 +30,10 @@ const AUTH_API_URL = `${API_ORIGIN}/api/auth`
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  if (pathname.startsWith("/_next/") || pathname === "/favicon.ico" || STATIC_ASSET_PATTERN.test(pathname)) {
+    return NextResponse.next()
+  }
 
   let isAuthenticated = false
   let role: string | null = null

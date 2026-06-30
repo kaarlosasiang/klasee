@@ -1,13 +1,17 @@
+import { Skeleton } from "@workspace/ui/components/skeleton"
+
 interface LmsTipCardProps {
   title: string
   description: string
   backgroundColor?: string
+  isLoading?: boolean
 }
 
 export function LmsTipCard({
   title,
   description,
   backgroundColor = "from-white dark:from-background via-primary/20 to-primary",
+  isLoading = false,
 }: LmsTipCardProps) {
   return (
     <div
@@ -31,12 +35,22 @@ export function LmsTipCard({
         {/* Message bubble */}
         <div className="relative max-w-[500px] grow shadow-lg">
           <div className="relative rounded-2xl bg-white p-4 shadow-lg md:p-5">
-            <h3 className="mb-1 text-sm font-bold text-balance text-blue-900 md:text-base">
-              {title}
-            </h3>
-            <p className="text-xs leading-relaxed text-pretty text-gray-600 md:text-sm">
-              {description}
-            </p>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+              </div>
+            ) : (
+              <>
+                <h3 className="mb-1 text-sm font-bold text-balance text-blue-900 md:text-base">
+                  {title}
+                </h3>
+                <p className="text-xs leading-relaxed text-pretty text-gray-600 md:text-sm">
+                  {description}
+                </p>
+              </>
+            )}
             {/* Arrow pointer */}
             <div className="absolute top-6 left-0 -ml-2 h-0 w-0 border-t-8 border-r-8 border-b-8 border-t-transparent border-r-white border-b-transparent" />
           </div>

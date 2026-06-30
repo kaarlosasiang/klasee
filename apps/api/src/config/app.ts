@@ -30,28 +30,30 @@ export default (app: Application): Application => {
     })
   )
 
-  // Rate limiting — global
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 200,
-      standardHeaders: true,
-      legacyHeaders: false,
-      skip: (req) => req.path === "/health" || req.path === "/" || req.path === "/status",
-    })
-  )
+  if (constants.nodeEnv !== "development") {
+    // Rate limiting — global (production/staging only)
+    app.use(
+      rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 200,
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => req.path === "/health" || req.path === "/" || req.path === "/status",
+      })
+    )
 
-  // Stricter rate limit for auth endpoints
-  app.use(
-    ["/api/auth/sign-in", "/api/auth/sign-up", "/api/auth/forgot-password"],
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 20,
-      standardHeaders: true,
-      legacyHeaders: false,
-      message: { error: "Too many attempts, please try again later." },
-    })
-  )
+    // Stricter rate limit for credential-based auth endpoints only (not OAuth)
+    app.use(
+      ["/api/auth/sign-in/email", "/api/auth/sign-up/email", "/api/auth/forget-password"],
+      rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 20,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { error: "Too many attempts, please try again later." },
+      })
+    )
+  }
 
   // CORS configuration — env-driven origin list
   const allowedOrigins = [

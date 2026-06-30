@@ -6,6 +6,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { getCourses, type Course } from "@/lib/services/courses"
 import { getSections, type Section } from "@/lib/services/sections"
 import { getRecentSubmissions, type RecentSubmission } from "@/lib/services/assignment-submissions"
+import { getRelevantTip, type RelevantTip } from "@/lib/services/tips"
 import { CourseCard } from "@/components/common/course-card"
 import { NewCourseDialog } from "@/components/common/new-course-dialog"
 import Link from "next/link"
@@ -26,15 +27,15 @@ export default function InstructorDashboardPage() {
   const [recentSubmissions, setRecentSubmissions] = React.useState<RecentSubmission[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editCourse, setEditCourse] = React.useState<Course | null>(null)
+  const [tip, setTip] = React.useState<RelevantTip | null>(null)
 
   React.useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       getCourses().then((d) => setCourses(d.courses)),
       getSections().then(setSections),
       getRecentSubmissions(6).then(setRecentSubmissions),
-    ])
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      getRelevantTip().then((t) => { if (t) setTip(t) }),
+    ]).finally(() => setLoading(false))
   }, [])
 
   const { data: session } = useSession()
@@ -79,8 +80,8 @@ export default function InstructorDashboardPage() {
           {greeting}, {firstName}!
         </h1>
         <LmsTipCard
-          title="Stay Consistent with Your Learning"
-          description="Dedicating just 30 minutes daily to your courses is more effective than cramming. Small, consistent efforts compound into significant progress over time."
+          title={tip?.title ?? "Stay Consistent with Your Learning"}
+          description={tip?.description ?? "Dedicating just 30 minutes daily to your courses is more effective than cramming. Small, consistent efforts compound into significant progress over time."}
         />
       </div>
 
