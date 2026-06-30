@@ -11,6 +11,7 @@ import {
   ensureCourseFoldersSchema,
 } from "@workspace/validators"
 import { verifyCourseOwnership } from "../../shared/utils/ownership.js"
+import { SAFE_INLINE_MIME_TYPES } from "../../shared/utils/fileUploadPolicy.js"
 
 function getUserId(req: Request): string {
   return String((req.authUser as any)?._id ?? (req.authUser as any)?.id)
@@ -161,14 +162,17 @@ export const driveController = {
 
       const driveFile = await CourseFile.findOne({ driveFileId: id }).lean()
       const mimeType = driveFile?.mimeType ?? "application/octet-stream"
+      const isSafeToRenderInline = SAFE_INLINE_MIME_TYPES.has(mimeType)
 
       const response = await driveService.streamFile(userId, id)
 
       res.setHeader("Content-Type", mimeType)
-      res.setHeader("Content-Disposition", "inline")
+      res.setHeader("Content-Disposition", isSafeToRenderInline ? "inline" : "attachment")
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin")
       res.setHeader("Cache-Control", "private, max-age=3600")
-      res.removeHeader("X-Frame-Options")
+      if (isSafeToRenderInline) {
+        res.removeHeader("X-Frame-Options")
+      }
 
       response.data.pipe(res)
     } catch (err) {

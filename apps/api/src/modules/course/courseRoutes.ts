@@ -4,11 +4,16 @@ import { requireAuth } from "../../shared/middleware/auth.middleware.js"
 import { requireRole } from "../../shared/middleware/auth.middleware.js"
 import { requireCourseOwner } from "../../shared/middleware/course.middleware.js"
 import { validate } from "../../shared/middleware/validate.middleware.js"
+import { pdfOnlyFileFilter } from "../../shared/utils/fileUploadPolicy.js"
 import { createCourseSchema, updateCourseSchema, bulkCourseActionSchema } from "@workspace/validators"
 import { courseController } from "./courseController.js"
 
 const router: IRouter = Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: pdfOnlyFileFilter,
+})
 
 router.get("/", requireAuth, courseController.list)
 router.get("/archived", requireAuth, courseController.listArchived)

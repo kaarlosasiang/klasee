@@ -65,5 +65,33 @@
     "description": "Ran 7 scanner(s) for node (pnpm) ecosystem. 0 passed, 1 failed.",
     "status": "partial",
     "details": {}
+  },
+  {
+    "id": "activity-1782851976553-1",
+    "timestamp": "2026-06-30T20:39:36.553Z",
+    "source": "cli",
+    "action": "audit",
+    "title": "Compliance audit completed",
+    "description": "Scanned 922 files, found 16 findings (13 critical, 1 high, 2 medium, 0 low). Overall score: 0%.",
+    "status": "failed",
+    "details": {
+      "findings_count": 16,
+      "score": 0,
+      "files_scanned": 922
+    }
+  },
+  {
+    "id": "activity-1782853434916-1",
+    "timestamp": "2026-06-30T21:03:54.916Z",
+    "source": "mcp",
+    "action": "audit",
+    "title": "MCP audit completed",
+    "description": "Scanned 923 files, found 16 findings (13 critical, 1 high, 2 medium, 0 low). Overall score: 0%.",
+    "status": "failed",
+    "details": {
+      "findings_count": 16,
+      "score": 0,
+      "files_scanned": 923
+    }
   }
 ]

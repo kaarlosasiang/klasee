@@ -1,10 +1,15 @@
 import { Router, type IRouter } from "express"
 import multer from "multer"
 import { requireAuth, requireRole } from "../../shared/middleware/auth.middleware.js"
+import { multerFileFilter } from "../../shared/utils/fileUploadPolicy.js"
 import { driveController } from "./driveController.js"
 
 const router: IRouter = Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: multerFileFilter,
+})
 
 router.get("/status", requireAuth, driveController.status)
 router.post("/setup", requireAuth, driveController.setup)
