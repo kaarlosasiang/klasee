@@ -8,6 +8,8 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { toast } from "sonner"
 import { useSession, updateUser } from "@/lib/config/auth-client"
+import { Checkbox } from "@workspace/ui/components/checkbox"
+import { PrivacyNoticeModal } from "@/components/common/privacy-notice-modal"
 
 type Step = 1 | 2
 
@@ -22,6 +24,8 @@ export default function OnboardingPage() {
   const [phoneNumber, setPhoneNumber] = React.useState("")
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [submitting, setSubmitting] = React.useState(false)
+  const [consentChecked, setConsentChecked] = React.useState(false)
+  const [privacyOpen, setPrivacyOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (!isPending && !session) {
@@ -52,11 +56,12 @@ export default function OnboardingPage() {
   async function handleFinish() {
     setSubmitting(true)
     try {
-      const result = await updateUser({
+      const result = await (updateUser as any)({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim() || undefined,
         onboardingCompleted: true,
+        consentGivenAt: Date.now(),
       })
       if (result.error) throw result.error
       toast.success("Welcome to Klasee!")
@@ -175,11 +180,27 @@ export default function OnboardingPage() {
               {phoneNumber && <p><span className="text-muted-foreground">Phone:</span> {phoneNumber}</p>}
               <p><span className="text-muted-foreground">Role:</span> <span className="capitalize">{(user as any)?.role ?? "student"}</span></p>
             </div>
+            <div className="flex items-start gap-2.5">
+              <Checkbox
+                id="onboarding-consent"
+                checked={consentChecked}
+                onCheckedChange={(v) => setConsentChecked(!!v)}
+                className="mt-0.5 shrink-0"
+              />
+              <label htmlFor="onboarding-consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                I have read and agree to the{" "}
+                <button type="button" onClick={() => setPrivacyOpen(true)} className="underline text-primary hover:text-primary/80">
+                  Privacy Notice
+                </button>
+                . I understand how Klasee collects and uses my personal data.
+              </label>
+            </div>
+            <PrivacyNoticeModal open={privacyOpen} onOpenChange={setPrivacyOpen} />
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
                 Back
               </Button>
-              <Button className="flex-1" onClick={handleFinish} disabled={submitting}>
+              <Button className="flex-1" onClick={handleFinish} disabled={submitting || !consentChecked}>
                 {submitting && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Get Started
               </Button>

@@ -7,9 +7,20 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Switch } from "@workspace/ui/components/switch"
 import { Separator } from "@workspace/ui/components/separator"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@workspace/ui/components/alert-dialog"
 import { toast } from "sonner"
-import { useSession } from "@/lib/config/auth-client"
+import { useSession, signOut } from "@/lib/config/auth-client"
 import { changePassword } from "@/lib/config/auth-client"
+import { useRouter } from "next/navigation"
+import { deleteAccount } from "@/lib/services/users"
 
 const PREFS_KEY = "klasee_notification_prefs"
 
@@ -32,8 +43,13 @@ function savePrefs(prefs: NotificationPrefs) {
 }
 
 export default function StudentSettingsPage() {
+  const router = useRouter()
   const { data: session } = useSession()
   const user = session?.user
+
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState("")
+  const [deleting, setDeleting] = React.useState(false)
 
   const [currentPassword, setCurrentPassword] = React.useState("")
   const [newPassword, setNewPassword] = React.useState("")
@@ -67,6 +83,18 @@ export default function StudentSettingsPage() {
     if (!/[0-9]/.test(newPassword)) errors.push("New password must contain a number")
     if (newPassword !== confirmPassword) errors.push("Passwords do not match")
     return errors
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      await signOut()
+      router.replace("/login")
+    } catch {
+      toast.error("Failed to delete account. Please try again.")
+      setDeleting(false)
+    }
   }
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -214,6 +242,57 @@ export default function StudentSettingsPage() {
           ))}
         </div>
       </section>
+      {/* Danger Zone */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-destructive uppercase tracking-wide">
+          Danger Zone
+        </h2>
+        <div className="rounded-2xl border border-destructive/40 bg-card p-6 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Delete Account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Permanently delete your account and all personal data. This cannot be undone.
+              </p>
+            </div>
+            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+              Delete Account
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your account, enrollment history, grades, quiz attempts,
+              and attendance records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-1.5">
+            <Label htmlFor="delete-confirm">Type <span className="font-semibold">DELETE</span> to confirm</Label>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmText !== "DELETE" || deleting}
+              onClick={handleDeleteAccount}
+            >
+              {deleting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              Delete Account
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

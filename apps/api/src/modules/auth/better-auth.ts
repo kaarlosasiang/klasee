@@ -104,6 +104,7 @@ export const auth = betterAuth({
       isActive: { type: "boolean", required: false },
       onboardingCompleted: { type: "boolean", required: false },
       profileSetupCompletedAt: { type: "number", required: false },
+      consentGivenAt: { type: "number", required: false },
     },
   },
   session: {

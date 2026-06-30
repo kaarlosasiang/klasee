@@ -31,6 +31,11 @@ export const updateProfile = async (data: {
   firstName?: string
   lastName?: string
   phoneNumber?: string
+  consentGivenAt?: number
 }): Promise<void> => {
   await client.patch("/users/me", data)
+}
+
+export const deleteAccount = async (): Promise<void> => {
+  await client.delete("/users/me")
 }

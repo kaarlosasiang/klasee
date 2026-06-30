@@ -9,6 +9,8 @@ import {
   Unlink,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
+import { Label } from "@workspace/ui/components/label"
 import {
   Card,
   CardContent,
@@ -16,9 +18,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@workspace/ui/components/alert-dialog"
 import { Badge } from "@workspace/ui/components/badge"
 import { toast } from "sonner"
-import { linkGoogleDrive } from "@/lib/config/auth-client"
+import { linkGoogleDrive, signOut } from "@/lib/config/auth-client"
+import { useRouter } from "next/navigation"
+import { deleteAccount } from "@/lib/services/users"
 import {
   getDriveStatus,
   setupDrive,
@@ -27,9 +40,26 @@ import {
 } from "@/lib/services/drive"
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [driveStatus, setDriveStatus] = React.useState<DriveStatus | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [connecting, setConnecting] = React.useState(false)
+
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState("")
+  const [deleting, setDeleting] = React.useState(false)
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      await signOut()
+      router.replace("/login")
+    } catch {
+      toast.error("Failed to delete account. Please try again.")
+      setDeleting(false)
+    }
+  }
 
   React.useEffect(() => {
     getDriveStatus()
@@ -148,6 +178,60 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Danger Zone */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-destructive uppercase tracking-wide">
+          Danger Zone
+        </h2>
+        <div className="rounded-2xl border border-destructive/40 bg-card p-6 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Delete Account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Permanently delete your account and personal data. Your courses will be archived
+                and remain accessible to enrolled students.
+              </p>
+            </div>
+            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+              Delete Account
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your account and personal data. Your courses will be
+              archived and remain accessible to enrolled students, but you will no longer be
+              able to manage them. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-1.5">
+            <Label htmlFor="delete-confirm">Type <span className="font-semibold">DELETE</span> to confirm</Label>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmText !== "DELETE" || deleting}
+              onClick={handleDeleteAccount}
+            >
+              {deleting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              Delete Account
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

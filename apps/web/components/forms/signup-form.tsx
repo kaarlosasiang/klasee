@@ -1,11 +1,13 @@
 "use client"
 
+import * as React from "react"
 import { Controller, useForm, type SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { SignUpInput, signUpSchema } from "@workspace/validators"
 
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
+import { Checkbox } from "@workspace/ui/components/checkbox"
 import {
   Field,
   FieldDescription,
@@ -24,6 +26,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/hooks/useAuth"
 import { useAuthStore } from "@/lib/hooks/useAuthStore"
 import { signInWithSocial } from "@/lib/config/auth-client"
+import { PrivacyNoticeModal } from "@/components/common/privacy-notice-modal"
 
 export function SignupForm({
   className,
@@ -32,6 +35,8 @@ export function SignupForm({
   const router = useRouter()
   const { signup } = useAuth()
   const { isLoading, error } = useAuthStore()
+  const [consentChecked, setConsentChecked] = React.useState(false)
+  const [privacyOpen, setPrivacyOpen] = React.useState(false)
   const { control, handleSubmit } = useForm<SignUpInput>({
     defaultValues: {
       firstName: "",
@@ -189,8 +194,29 @@ export function SignupForm({
             )}
           />
 
+          <div className="flex items-start gap-2.5">
+            <Checkbox
+              id="consent"
+              checked={consentChecked}
+              onCheckedChange={(v) => setConsentChecked(!!v)}
+              className="mt-0.5 shrink-0"
+            />
+            <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+              I have read and agree to the{" "}
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(true)}
+                className="underline text-primary hover:text-primary/80"
+              >
+                Privacy Notice
+              </button>
+              . I understand how Klasee collects and uses my personal data.
+            </label>
+          </div>
+          <PrivacyNoticeModal open={privacyOpen} onOpenChange={setPrivacyOpen} />
+
           <Field>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || !consentChecked}>
               {isLoading ? "Signing up..." : "Sign Up"}
             </Button>
           </Field>
@@ -227,10 +253,6 @@ export function SignupForm({
           </Field>
         </FieldGroup>
       </form>
-      <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
-      </FieldDescription>
     </div>
   )
 }
