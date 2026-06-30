@@ -1,0 +1,69 @@
+[
+  {
+    "id": "activity-1782832308880-1",
+    "timestamp": "2026-06-30T15:11:48.880Z",
+    "source": "cli",
+    "action": "init",
+    "title": "Project initialized: klasee",
+    "description": "Initialized GESF for saas project in Philippines with frameworks: GDPR, OWASP, CIS, NIST, ISO27001, ISO27701. Installed 8 policy packs: gdpr, owasp, cis, nist, iso27001, iso27701, privacy-core, ph-dpa. Genesis governance record created: gov-1782832308879-1.",
+    "status": "success",
+    "details": {
+      "packs_affected": [
+        "gdpr",
+        "owasp",
+        "cis",
+        "nist",
+        "iso27001",
+        "iso27701",
+        "privacy-core",
+        "ph-dpa"
+      ],
+      "frameworks_added": [
+        "GDPR",
+        "OWASP",
+        "CIS",
+        "NIST",
+        "ISO27001",
+        "ISO27701"
+      ],
+      "country": "PH",
+      "genesis_governance_record_id": "gov-1782832308879-1"
+    }
+  },
+  {
+    "id": "activity-1782832329434-1",
+    "timestamp": "2026-06-30T15:12:09.434Z",
+    "source": "cli",
+    "action": "audit",
+    "title": "Compliance audit completed",
+    "description": "Scanned 915 files, found 16 findings (13 critical, 1 high, 2 medium, 0 low). Overall score: 0%.",
+    "status": "failed",
+    "details": {
+      "findings_count": 16,
+      "score": 0,
+      "files_scanned": 915
+    }
+  },
+  {
+    "id": "activity-1782832333593-1",
+    "timestamp": "2026-06-30T15:12:13.593Z",
+    "source": "cli",
+    "action": "score",
+    "title": "Score displayed: 0% (F)",
+    "description": "Compliance score: 0% (Grade F) across 23 frameworks.",
+    "status": "success",
+    "details": {
+      "score": 0
+    }
+  },
+  {
+    "id": "activity-1782832451965-1",
+    "timestamp": "2026-06-30T15:14:11.965Z",
+    "source": "cli",
+    "action": "scan",
+    "title": "Security scans completed (7 tools)",
+    "description": "Ran 7 scanner(s) for node (pnpm) ecosystem. 0 passed, 1 failed.",
+    "status": "partial",
+    "details": {}
+  }
+]

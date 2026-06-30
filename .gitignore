@@ -34,3 +34,6 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+
+# GESF developer logs (developer-only, not for remote)
+.dev-logs/
