@@ -20,9 +20,41 @@ import type { CourseGradebook, GradebookStudent, GradeEntry } from "@/lib/servic
 import { exportGradebook } from "@/lib/services/gradebook"
 import { upsertScore } from "@/lib/services/assessments"
 
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    cellClassName?: string
+    headerClassName?: string
+    cellStyle?: React.CSSProperties
+    headerStyle?: React.CSSProperties
+  }
+}
+
+export interface AttendanceStat {
+  present: number
+  late: number
+  excused: number
+  absent: number
+  total: number
+}
+
+const GROUP_STYLES: React.CSSProperties[] = [
+  { backgroundColor: "rgba(139, 92, 246, 0.07)" },
+  { backgroundColor: "rgba(14, 165, 233, 0.07)" },
+  { backgroundColor: "rgba(16, 185, 129, 0.07)" },
+  { backgroundColor: "rgba(245, 158, 11, 0.07)" },
+  { backgroundColor: "rgba(244, 63, 94, 0.07)" },
+  { backgroundColor: "rgba(99, 102, 241, 0.07)" },
+  { backgroundColor: "rgba(20, 184, 166, 0.07)" },
+  { backgroundColor: "rgba(249, 115, 22, 0.07)" },
+]
+
+const ATTENDANCE_STYLE: React.CSSProperties = { backgroundColor: "rgba(34, 197, 94, 0.07)" }
+
 interface GradebookDataTableProps {
   courseId: string
   gradebook: CourseGradebook
+  attendanceStats: Map<string, AttendanceStat>
   onPaginationChange: (page: number, limit: number) => void
   onScoreSaved?: () => void
 }
@@ -154,7 +186,7 @@ function EditableScoreCell({
             setEditing(false)
           }
         }}
-        className="h-7 w-16 rounded-md border border-input bg-background px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+        className="h-7 w-16 rounded-md border-2 border-primary bg-background px-2 text-center text-xs focus:outline-none focus:ring-2 focus:ring-ring"
       />
     )
   }
@@ -164,13 +196,13 @@ function EditableScoreCell({
       type="button"
       onClick={() => setEditing(true)}
       disabled={saving}
-      className="rounded px-2 py-0.5 text-xs tabular-nums hover:bg-muted focus:outline-none"
-      title="Click to edit"
+      className="min-w-[56px] rounded-md border border-dashed border-border px-2 py-1 text-xs tabular-nums hover:border-primary hover:bg-muted focus:outline-none focus:ring-1 focus:ring-ring"
+      title="Click to edit score"
     >
       {earned !== null ? (
-        `${earned}/${possible}`
+        <span className="font-medium">{earned}/{possible}</span>
       ) : (
-        <span className="text-muted-foreground/40">—/{possible}</span>
+        <span className="text-muted-foreground">—/{possible}</span>
       )}
     </button>
   )
@@ -184,6 +216,7 @@ function PctCell({ value }: { value: number | null }) {
 export function GradebookDataTable({
   courseId,
   gradebook,
+  attendanceStats,
   onPaginationChange,
   onScoreSaved,
 }: GradebookDataTableProps) {
@@ -213,7 +246,15 @@ export function GradebookDataTable({
     }
   }
 
-  const { assessments, groups, students } = gradebook
+  const { assessments, students } = gradebook
+  // Attendance-named groups always render last among grade groups
+  const groups = [...gradebook.groups].sort((a, b) => {
+    const aAttend = a.name.toLowerCase().includes("attendance")
+    const bAttend = b.name.toLowerCase().includes("attendance")
+    if (aAttend && !bAttend) return 1
+    if (!aAttend && bAttend) return -1
+    return 0
+  })
   const ungrouped = assessments.filter((a) => !a.groupId)
 
   const columns = React.useMemo<ColumnDef<GradebookStudent>[]>(() => {
@@ -230,7 +271,7 @@ export function GradebookDataTable({
                 {row.original.student.name}
               </span>
               <span className="whitespace-nowrap text-xs text-muted-foreground">
-                {row.original.student.email}
+                {row.original.student.section ?? row.original.student.email}
               </span>
             </div>
           </div>
@@ -240,9 +281,9 @@ export function GradebookDataTable({
       },
     ]
 
-    for (const group of groups) {
+    groups.forEach((group, groupIdx) => {
+      const bgStyle = GROUP_STYLES[groupIdx % GROUP_STYLES.length]
       const groupAssessments = assessments.filter((a) => a.groupId === group._id)
-      if (groupAssessments.length === 0) continue
 
       const groupCols: ColumnDef<GradebookStudent>[] = [
         ...groupAssessments.map<ColumnDef<GradebookStudent>>((a) => ({
@@ -270,37 +311,65 @@ export function GradebookDataTable({
             )
           },
           enableSorting: true,
+          meta: { cellStyle: bgStyle, headerStyle: bgStyle },
         })),
-        {
-          id: `sub-${group._id}`,
-          accessorFn: (row) =>
-            row.groupSummaries.find((s) => s.groupId === group._id)?.currentPct ?? null,
-          header: () => (
-            <div className="text-center text-[10px] text-muted-foreground/70">Subtotal</div>
-          ),
-          cell: ({ row }) => {
-            const summary = row.original.groupSummaries.find((s) => s.groupId === group._id)
-            return (
-              <div className="flex justify-center">
-                <PctCell value={summary?.currentPct ?? null} />
-              </div>
-            )
-          },
-          enableSorting: true,
-        },
+        group.name.toLowerCase().includes("attendance") && groupAssessments.length === 0
+          ? {
+              id: `sub-${group._id}`,
+              accessorFn: (row) => {
+                const s = attendanceStats.get(row.student._id)
+                return s && s.total > 0 ? Math.round(((s.present + s.late) / s.total) * 100) : null
+              },
+              header: () => (
+                <div className="text-center text-[10px] text-muted-foreground/70">Subtotal</div>
+              ),
+              cell: ({ row }) => {
+                const s = attendanceStats.get(row.original.student._id)
+                if (!s || s.total === 0) return <div className="flex justify-center"><span className="text-muted-foreground/40">—</span></div>
+                const attended = s.present + s.late
+                const pct = Math.round((attended / s.total) * 100)
+                return (
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-semibold tabular-nums">{attended}/{s.total}</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{pct}%</span>
+                  </div>
+                )
+              },
+              enableSorting: true,
+              meta: { cellStyle: bgStyle, headerStyle: bgStyle },
+            }
+          : {
+              id: `sub-${group._id}`,
+              accessorFn: (row) =>
+                row.groupSummaries.find((s) => s.groupId === group._id)?.currentPct ?? null,
+              header: () => (
+                <div className="text-center text-[10px] text-muted-foreground/70">Subtotal</div>
+              ),
+              cell: ({ row }) => {
+                const summary = row.original.groupSummaries.find((s) => s.groupId === group._id)
+                return (
+                  <div className="flex justify-center">
+                    <PctCell value={summary?.currentPct ?? null} />
+                  </div>
+                )
+              },
+              enableSorting: true,
+              meta: { cellStyle: bgStyle, headerStyle: bgStyle },
+            },
       ]
 
       cols.push({
         id: `group-${group._id}`,
         header: () => (
-          <span className="font-semibold">
+          <div className="text-center font-semibold">
             {group.name}{" "}
             <span className="font-normal text-muted-foreground/60">{group.weight}%</span>
-          </span>
+          </div>
         ),
         columns: groupCols,
+        meta: { headerStyle: bgStyle },
       } as ColumnDef<GradebookStudent>)
-    }
+    })
 
     for (const a of ungrouped) {
       cols.push({
@@ -384,7 +453,7 @@ export function GradebookDataTable({
     })
 
     return cols
-  }, [assessments, groups, ungrouped])
+  }, [assessments, groups, ungrouped, attendanceStats, onScoreSaved])
 
   const table = useReactTable({
     data: students,

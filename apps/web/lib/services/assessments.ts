@@ -79,6 +79,7 @@ export const createAssessment = async (data: {
   instructions?: string
   allowedFileTypes?: string[]
   maxFiles?: number
+  groupId?: string
   latePolicy?: LatePolicy
 }): Promise<Assessment> => {
   const response = await client.post("/assessments", data)
@@ -98,7 +99,7 @@ export const updateAssessment = async (
     instructions: string
     allowedFileTypes: string[]
     maxFiles: number
-    groupId: string
+    groupId: string | null
     latePolicy: LatePolicy
   }>
 ): Promise<Assessment> => {

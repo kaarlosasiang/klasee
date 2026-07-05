@@ -60,8 +60,16 @@ export const assessmentService = {
     return Assessment.create(data)
   },
 
-  async update(id: string, data: Partial<{ title: string; type: string; totalPoints: number; dueDate: string | Date; isPublished: boolean }>) {
-    return Assessment.findByIdAndUpdate(id, data, { new: true }).lean()
+  async update(id: string, data: Partial<{ title: string; type: string; totalPoints: number; dueDate: string | Date; isPublished: boolean; groupId: string | null }>) {
+    const { groupId, ...rest } = data as any
+    const update: Record<string, unknown> = {}
+    if (Object.keys(rest).length > 0) update.$set = rest
+    if (groupId === null) {
+      update.$unset = { groupId: 1 }
+    } else if (groupId !== undefined) {
+      update.$set = { ...(update.$set as object ?? {}), groupId }
+    }
+    return Assessment.findByIdAndUpdate(id, update, { new: true }).lean()
   },
 
   async delete(id: string) {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   ChevronRight,
   Clock,
+  Layers,
   Loader2,
   RotateCcw,
   Shuffle,
@@ -20,9 +21,17 @@ import {
   DialogContent,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { Separator } from "@workspace/ui/components/separator"
 import { Switch } from "@workspace/ui/components/switch"
 import { createAssessment } from "@/lib/services/assessments"
+import { getAssignmentGroups, type AssignmentGroup } from "@/lib/services/assignment-groups"
 
 const MAX_INSTRUCTIONS = 800
 
@@ -64,7 +73,15 @@ export function NewQuizDialog({ open, onOpenChange, courseId }: NewQuizDialogPro
   const [tags, setTags] = React.useState<string[]>([])
   const [estimatedDuration, setEstimatedDuration] = React.useState("")
   const [instructions, setInstructions] = React.useState("")
+  const [groupId, setGroupId] = React.useState("")
+  const [groups, setGroups] = React.useState<AssignmentGroup[]>([])
   const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (open && courseId) {
+      getAssignmentGroups(courseId).then(setGroups).catch(() => {})
+    }
+  }, [open, courseId])
 
   // Settings
   const [shuffleQuestions, setShuffleQuestions] = React.useState(false)
@@ -79,6 +96,7 @@ export function NewQuizDialog({ open, onOpenChange, courseId }: NewQuizDialogPro
     setTags([])
     setEstimatedDuration("")
     setInstructions("")
+    setGroupId("")
     setShuffleQuestions(false)
     setRedemptionQuestion(false)
     setSkipQuestions(false)
@@ -131,6 +149,7 @@ export function NewQuizDialog({ open, onOpenChange, courseId }: NewQuizDialogPro
         estimatedDuration: estimatedDuration ? parseInt(estimatedDuration) : undefined,
         tags,
         instructions: instructions.trim() || undefined,
+        groupId: groupId || undefined,
       })
       handleClose(false)
       router.push(`/courses/${courseId}/assessments/${assessment._id}/questions`)
@@ -239,6 +258,28 @@ export function NewQuizDialog({ open, onOpenChange, courseId }: NewQuizDialogPro
                   )}
                 </div>
               </div>
+
+              {/* Grade Group */}
+              {groups.length > 0 && (
+                <div className="flex items-center gap-4 py-3">
+                  <div className="flex w-40 shrink-0 items-center gap-2 text-sm text-muted-foreground">
+                    <Layers className="size-4" />
+                    <span>Grade Group</span>
+                  </div>
+                  <Select value={groupId} onValueChange={setGroupId}>
+                    <SelectTrigger className="h-8 w-48 text-sm">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map((g) => (
+                        <SelectItem key={g._id} value={g._id}>
+                          {g.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <Separator />

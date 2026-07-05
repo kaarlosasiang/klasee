@@ -5,6 +5,7 @@ import { Course } from "../../models/courseModel.js"
 import { Enrollment } from "../../models/enrollmentModel.js"
 import { QuizAttempt } from "../../models/quizAttemptModel.js"
 import { AssignmentSubmission } from "../../models/assignmentSubmissionModel.js"
+import { AssessmentScore } from "../../models/assessmentScore.js"
 
 interface RawScore {
   earned: number
@@ -94,6 +95,7 @@ export const gradebookService = {
       AssignmentGroup.find({ courseId }).sort({ order: 1 }).lean(),
       Enrollment.find({ courseId, status: "active" })
         .populate("studentId", "name email")
+        .populate("sectionId", "name")
         .lean(),
       Course.findById(courseId).select("gradeBase").lean(),
     ])
@@ -106,7 +108,7 @@ export const gradebookService = {
     const assessmentIds = assessments.map((a) => a._id)
     const studentIds = enrollments.map((e) => toId((e.studentId as any)._id))
 
-    const [quizAttempts, submissions] = await Promise.all([
+    const [quizAttempts, submissions, manualScores] = await Promise.all([
       QuizAttempt.find({
         assessmentId: { $in: assessmentIds },
         userId: { $in: studentIds },
@@ -116,6 +118,10 @@ export const gradebookService = {
         assessmentId: { $in: assessmentIds },
         userId: { $in: studentIds },
         grade: { $exists: true, $ne: null },
+      }).lean(),
+      AssessmentScore.find({
+        assessmentId: { $in: assessmentIds },
+        studentId: { $in: studentIds },
       }).lean(),
     ])
 
@@ -144,6 +150,19 @@ export const gradebookService = {
         earned: Math.max(0, (sub.grade as number) - penalty),
         possible: assessment?.totalPoints ?? 0,
         latePenalty: penalty,
+      })
+    }
+
+    // Manual scores override quiz/submission scores
+    for (const ms of manualScores) {
+      const sid = toId(ms.studentId)
+      const aid = toId(ms.assessmentId)
+      const assessment = assessments.find((a) => toId(a._id) === aid)
+      if (!scoreMap.has(sid)) scoreMap.set(sid, new Map())
+      scoreMap.get(sid)!.set(aid, {
+        earned: ms.score,
+        possible: assessment?.totalPoints ?? 0,
+        latePenalty: 0,
       })
     }
 
@@ -193,23 +212,45 @@ export const gradebookService = {
         }
       })
 
-      // Weighted final score (treat missing as 0, sum across all groups)
-      const totalWeight = groupSummaries.reduce((s, g) => s + g.weight, 0)
-      const finalScore =
-        totalWeight > 0
-          ? groupSummaries.reduce((s, g) => s + (g.finalPct * g.weight) / 100, 0)
-          : null
+      // Only weight groups that actually have assessments assigned
+      const activeGroupSummaries = groupSummaries.filter((g) =>
+        assessments.some((a) => a.groupId && toId(a.groupId) === g.groupId)
+      )
+      const totalWeight = activeGroupSummaries.reduce((s, g) => s + g.weight, 0)
 
-      // Weighted current score (only groups that have graded work, normalise weights)
-      const gradedGroups = groupSummaries.filter((g) => g.currentPct !== null)
-      const gradedWeight = gradedGroups.reduce((s, g) => s + g.weight, 0)
-      const currentScore =
-        gradedWeight > 0
-          ? gradedGroups.reduce((s, g) => s + (g.currentPct! * g.weight) / gradedWeight, 0)
-          : null
+      let finalScore: number | null
+      let currentScore: number | null
+
+      if (totalWeight > 0) {
+        finalScore = activeGroupSummaries.reduce((s, g) => s + (g.finalPct * g.weight) / 100, 0)
+        const gradedGroups = activeGroupSummaries.filter((g) => g.currentPct !== null)
+        const gradedWeight = gradedGroups.reduce((s, g) => s + g.weight, 0)
+        currentScore =
+          gradedWeight > 0
+            ? gradedGroups.reduce((s, g) => s + (g.currentPct! * g.weight) / gradedWeight, 0)
+            : null
+      } else {
+        // No grouped assessments — fall back to simple total earned / total possible
+        const totalPossible = assessments.reduce((s, a) => s + a.totalPoints, 0)
+        const totalEarned = assessments.reduce((s, a) => {
+          const sc = studentScores.get(toId(a._id))
+          return s + (sc?.earned ?? 0)
+        }, 0)
+        finalScore = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : null
+
+        const gradedPossible = assessments.reduce((s, a) => {
+          const sc = studentScores.get(toId(a._id))
+          return sc ? s + a.totalPoints : s
+        }, 0)
+        const gradedEarned = assessments.reduce((s, a) => {
+          const sc = studentScores.get(toId(a._id))
+          return sc ? s + sc.earned : s
+        }, 0)
+        currentScore = gradedPossible > 0 ? (gradedEarned / gradedPossible) * 100 : null
+      }
 
       return {
-        student: { _id: sid, name: student.name, email: student.email },
+        student: { _id: sid, name: student.name, email: student.email, section: (enrollment.sectionId as any)?.name ?? null },
         assessmentScores,
         groupSummaries,
         currentScore,
@@ -232,7 +273,7 @@ export const gradebookService = {
 
     const assessmentIds = assessments.map((a) => a._id)
 
-    const [quizAttempts, submissions] = await Promise.all([
+    const [quizAttempts, submissions, manualScores] = await Promise.all([
       QuizAttempt.find({
         assessmentId: { $in: assessmentIds },
         userId: studentId,
@@ -242,6 +283,10 @@ export const gradebookService = {
         assessmentId: { $in: assessmentIds },
         userId: studentId,
         grade: { $exists: true, $ne: null },
+      }).lean(),
+      AssessmentScore.find({
+        assessmentId: { $in: assessmentIds },
+        studentId,
       }).lean(),
     ])
 
@@ -264,6 +309,17 @@ export const gradebookService = {
         earned: Math.max(0, (sub.grade as number) - penalty),
         possible: assessment?.totalPoints ?? 0,
         latePenalty: penalty,
+      })
+    }
+
+    // Manual scores override quiz/submission scores
+    for (const ms of manualScores) {
+      const aid = toId(ms.assessmentId)
+      const assessment = assessments.find((a) => toId(a._id) === aid)
+      studentScores.set(aid, {
+        earned: ms.score,
+        possible: assessment?.totalPoints ?? 0,
+        latePenalty: 0,
       })
     }
 
@@ -308,18 +364,40 @@ export const gradebookService = {
       }
     })
 
-    const totalWeight = groupSummaries.reduce((s, g) => s + g.weight, 0)
-    const finalScore =
-      totalWeight > 0
-        ? groupSummaries.reduce((s, g) => s + (g.finalPct * g.weight) / 100, 0)
-        : null
+    const activeGroupSummaries = groupSummaries.filter((g) =>
+      assessments.some((a) => a.groupId && toId(a.groupId) === g.groupId)
+    )
+    const totalWeight = activeGroupSummaries.reduce((s, g) => s + g.weight, 0)
 
-    const gradedGroups = groupSummaries.filter((g) => g.currentPct !== null)
-    const gradedWeight = gradedGroups.reduce((s, g) => s + g.weight, 0)
-    const currentScore =
-      gradedWeight > 0
-        ? gradedGroups.reduce((s, g) => s + (g.currentPct! * g.weight) / gradedWeight, 0)
-        : null
+    let finalScore: number | null
+    let currentScore: number | null
+
+    if (totalWeight > 0) {
+      finalScore = activeGroupSummaries.reduce((s, g) => s + (g.finalPct * g.weight) / 100, 0)
+      const gradedGroups = activeGroupSummaries.filter((g) => g.currentPct !== null)
+      const gradedWeight = gradedGroups.reduce((s, g) => s + g.weight, 0)
+      currentScore =
+        gradedWeight > 0
+          ? gradedGroups.reduce((s, g) => s + (g.currentPct! * g.weight) / gradedWeight, 0)
+          : null
+    } else {
+      const totalPossible = assessments.reduce((s, a) => s + a.totalPoints, 0)
+      const totalEarned = assessments.reduce((s, a) => {
+        const sc = studentScores.get(toId(a._id))
+        return s + (sc?.earned ?? 0)
+      }, 0)
+      finalScore = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : null
+
+      const gradedPossible = assessments.reduce((s, a) => {
+        const sc = studentScores.get(toId(a._id))
+        return sc ? s + a.totalPoints : s
+      }, 0)
+      const gradedEarned = assessments.reduce((s, a) => {
+        const sc = studentScores.get(toId(a._id))
+        return sc ? s + sc.earned : s
+      }, 0)
+      currentScore = gradedPossible > 0 ? (gradedEarned / gradedPossible) * 100 : null
+    }
 
     return {
       assessments: assessmentScores,

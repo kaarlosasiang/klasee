@@ -62,6 +62,7 @@ import {
   type Assessment,
   type LatePolicy,
 } from "@/lib/services/assessments"
+import { getAssignmentGroups, type AssignmentGroup } from "@/lib/services/assignment-groups"
 import { NewQuizDialog } from "@/components/assessments/new-quiz-dialog"
 import {
   getOverrides,
@@ -119,6 +120,8 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
   const [submitting, setSubmitting] = React.useState(false)
   const [titleError, setTitleError] = React.useState("")
   const [pointsError, setPointsError] = React.useState("")
+  const [groupId, setGroupId] = React.useState("")
+  const [groups, setGroups] = React.useState<AssignmentGroup[]>([])
   const [newQuizDialogOpen, setNewQuizDialogOpen] = React.useState(false)
 
   // Due date overrides state
@@ -146,13 +149,15 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
 
   React.useEffect(() => {
     fetchAssessments()
-  }, [fetchAssessments])
+    getAssignmentGroups(courseId).then(setGroups).catch(() => {})
+  }, [fetchAssessments, courseId])
 
   function resetForm() {
     setTitle("")
     setType("quiz")
     setTotalPoints("")
     setDueDate("")
+    setGroupId("")
     setLatePolicyEnabled(false)
     setDeductionType("percent")
     setDeductionPerDay("")
@@ -194,6 +199,7 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
         type,
         totalPoints: points,
         dueDate: dueDate || undefined,
+        groupId: groupId || null,
         latePolicy: buildLatePolicy(),
       })
       setEditingId(null)
@@ -241,6 +247,7 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
     setType(assessment.type)
     setTotalPoints(String(assessment.totalPoints))
     setDueDate(assessment.dueDate ?? "")
+    setGroupId(assessment.groupId ?? "")
     setLatePolicyEnabled(assessment.latePolicy?.enabled ?? false)
     setDeductionType(assessment.latePolicy?.deductionType ?? "percent")
     setDeductionPerDay(String(assessment.latePolicy?.deductionPerDay ?? ""))
@@ -429,6 +436,33 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
                             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           />
                         </div>
+                      </div>
+                      <div className="mb-3 space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          Grade Group
+                        </Label>
+                        <Select
+                          value={groupId || "__none__"}
+                          onValueChange={(v) => setGroupId(v === "__none__" ? "" : v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="No group (unweighted)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">No group (unweighted)</SelectItem>
+                            {groups.map((g) => (
+                              <SelectItem key={g._id} value={g._id}>
+                                {g.name}
+                                <span className="ml-1.5 text-muted-foreground">{g.weight}%</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {groups.length === 0 && (
+                          <p className="text-[10px] text-muted-foreground">
+                            No grade groups configured for this course yet.
+                          </p>
+                        )}
                       </div>
                       {/* Late policy */}
                       <div className="mt-3 border-t border-border pt-3">
@@ -648,6 +682,15 @@ export function AssessmentsManager({ courseId }: AssessmentsManagerProps) {
                               <span>Due {formatDate(assessment.dueDate)}</span>
                             </>
                           )}
+                          {assessment.groupId && (() => {
+                            const g = groups.find((gr) => gr._id === assessment.groupId)
+                            return g ? (
+                              <>
+                                <span className="text-muted-foreground/30">·</span>
+                                <span>{g.name}</span>
+                              </>
+                            ) : null
+                          })()}
                         </div>
                       </div>
 

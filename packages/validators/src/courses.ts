@@ -115,7 +115,7 @@ export const createAssessmentSchema = z.object({
   instructions: z.string().optional(),
   allowedFileTypes: z.array(z.string()).optional(),
   maxFiles: z.number().int().min(1).optional(),
-  groupId: z.string().optional(),
+  groupId: z.string().nullable().optional(),
   latePolicy: latePolicySchema.optional(),
 })
 

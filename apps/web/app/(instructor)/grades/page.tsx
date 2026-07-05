@@ -14,6 +14,8 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
 import { getCourses, type Course } from "@/lib/services/courses"
 import { getCourseGradebook, type CourseGradebook } from "@/lib/services/gradebook"
+import { getAttendance } from "@/lib/services/attendance"
+import type { AttendanceStat } from "@/components/data-table/gradebook-data-table"
 
 function StatCard({
   icon: Icon,
@@ -46,6 +48,7 @@ export default function GradesPage() {
   const [loadingGradebook, setLoadingGradebook] = React.useState(false)
   const [page, setPage] = React.useState(1)
   const [limit, setLimit] = React.useState(20)
+  const [attendanceStats, setAttendanceStats] = React.useState<Map<string, AttendanceStat>>(new Map())
 
   React.useEffect(() => {
     getCourses()
@@ -68,10 +71,27 @@ export default function GradesPage() {
   React.useEffect(() => {
     if (!courseId) {
       setGradebook(null)
+      setAttendanceStats(new Map())
       return
     }
     setPage(1)
     fetchGradebook(courseId, 1, limit)
+    getAttendance({ courseId }).then((records) => {
+      const totalSessions = new Set(records.map((r) => r.date)).size
+      const stats = new Map<string, AttendanceStat>()
+      for (const r of records) {
+        const sid = r.studentId._id
+        if (!stats.has(sid)) {
+          stats.set(sid, { present: 0, late: 0, excused: 0, absent: 0, total: totalSessions })
+        }
+        const s = stats.get(sid)!
+        if (r.status === "present") s.present++
+        else if (r.status === "late") s.late++
+        else if (r.status === "excused") s.excused++
+        else if (r.status === "absent") s.absent++
+      }
+      setAttendanceStats(stats)
+    }).catch(() => {})
   }, [courseId, limit, fetchGradebook])
 
   const handlePaginationChange = React.useCallback(
@@ -202,6 +222,7 @@ export default function GradesPage() {
             <GradebookDataTable
               courseId={courseId}
               gradebook={gradebook}
+              attendanceStats={attendanceStats}
               onPaginationChange={handlePaginationChange}
               onScoreSaved={() => fetchGradebook(courseId, page, limit)}
             />

@@ -44,7 +44,9 @@ export function DataTable<TData>({
                     colSpan={header.colSpan}
                     style={{
                       ...getColumnPinningStyle({ column: header.column }),
+                      ...(header.column.columnDef.meta as any)?.headerStyle,
                     }}
+                    className={cn((header.column.columnDef.meta as any)?.headerClassName)}
                   >
                     {header.isPlaceholder
                       ? null
@@ -71,7 +73,9 @@ export function DataTable<TData>({
                       key={cell.id}
                       style={{
                         ...getColumnPinningStyle({ column: cell.column }),
+                        ...(cell.column.columnDef.meta as any)?.cellStyle,
                       }}
+                      className={cn((cell.column.columnDef.meta as any)?.cellClassName)}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,

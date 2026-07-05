@@ -33,7 +33,7 @@ export interface GroupSummary {
 }
 
 export interface GradebookStudent {
-  student: { _id: string; name: string; email: string }
+  student: { _id: string; name: string; email: string; section: string | null }
   assessmentScores: AssessmentScoreEntry[]
   groupSummaries: GroupSummary[]
   currentScore: number | null
