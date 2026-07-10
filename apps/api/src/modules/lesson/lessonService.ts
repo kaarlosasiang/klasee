@@ -2,7 +2,10 @@ import { Lesson } from "../../models/lessonModel.js"
 
 export const lessonService = {
   async findByModule(moduleId: string, filter: Record<string, unknown> = {}) {
-    return Lesson.find({ moduleId, ...filter }).sort({ order: 1, createdAt: 1 }).lean()
+    return Lesson.find({ moduleId, ...filter })
+      .sort({ order: 1, createdAt: 1 })
+      .populate("fileId", "name mimeType driveFileId")
+      .lean()
   },
 
   async findById(id: string) {
@@ -13,7 +16,7 @@ export const lessonService = {
     moduleId: string
     title: string
     content?: string
-    type?: "page" | "video" | "file" | "embed"
+    type?: "page" | "video" | "file" | "embed" | "link"
     order?: number
     fileId?: string
   }) {

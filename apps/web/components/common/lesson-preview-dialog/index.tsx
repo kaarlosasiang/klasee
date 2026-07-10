@@ -87,7 +87,7 @@ export function LessonPreviewDialog({
         {/* Page content */}
         {isPage && (
           lesson.content ? (
-            lesson.content.startsWith("<") ? (
+            lesson.content.trim().startsWith("<") ? (
               <div
                 className="prose prose-sm max-w-none dark:prose-invert flex-1 min-h-0 overflow-y-auto"
                 dangerouslySetInnerHTML={{ __html: lesson.content }}

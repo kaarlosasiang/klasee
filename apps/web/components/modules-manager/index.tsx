@@ -15,6 +15,7 @@ import {
   FileText,
   Video,
   Link2,
+  ExternalLink,
   File,
   Upload,
   X,
@@ -92,6 +93,7 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   video: Video,
   file: File,
   embed: Link2,
+  link: ExternalLink,
 }
 
 const TYPE_CHIP_BG: Record<string, string> = {
@@ -99,6 +101,7 @@ const TYPE_CHIP_BG: Record<string, string> = {
   video: "bg-violet-500/10 dark:bg-violet-500/20",
   file:  "bg-amber-500/10 dark:bg-amber-500/20",
   embed: "bg-emerald-500/10 dark:bg-emerald-500/20",
+  link:  "bg-teal-500/10 dark:bg-teal-500/20",
 }
 
 const TYPE_CHIP_COLOR: Record<string, string> = {
@@ -106,12 +109,13 @@ const TYPE_CHIP_COLOR: Record<string, string> = {
   video: "text-violet-600 dark:text-violet-400",
   file:  "text-amber-600 dark:text-amber-400",
   embed: "text-emerald-600 dark:text-emerald-400",
+  link:  "text-teal-600 dark:text-teal-400",
 }
 
 interface NewLessonDraft {
   localId: string
   title: string
-  type: "page" | "video" | "file" | "embed"
+  type: "page" | "video" | "file" | "embed" | "link"
   content: string
   fileId: string | null
   fileName: string | null
@@ -146,6 +150,7 @@ function DraftLessonRow({ draft, courseId, onChange, onRemove }: DraftLessonRowP
             <SelectItem value="video">Video</SelectItem>
             <SelectItem value="file">File</SelectItem>
             <SelectItem value="embed">Embed</SelectItem>
+            <SelectItem value="link">Link</SelectItem>
           </SelectContent>
         </Select>
         <Input
@@ -191,8 +196,8 @@ interface SortableLessonRowProps {
   setLessonTitle: (v: string) => void
   lessonContent: string
   setLessonContent: (v: string) => void
-  lessonType: "page" | "video" | "file" | "embed"
-  setLessonType: (v: "page" | "video" | "file" | "embed") => void
+  lessonType: "page" | "video" | "file" | "embed" | "link"
+  setLessonType: (v: "page" | "video" | "file" | "embed" | "link") => void
   lessonFileId: string | null
   lessonFileName: string | null
   setLessonFile: (id: string | null, name: string | null) => void
@@ -246,7 +251,7 @@ function SortableLessonRow({
         <div className="mb-2">
           <Select
             value={lessonType}
-            onValueChange={(v) => setLessonType(v as "page" | "video" | "file" | "embed")}
+            onValueChange={(v) => setLessonType(v as "page" | "video" | "file" | "embed" | "link")}
           >
             <SelectTrigger className="h-8 text-xs">
               <SelectValue />
@@ -256,6 +261,7 @@ function SortableLessonRow({
               <SelectItem value="video">Video</SelectItem>
               <SelectItem value="file">File</SelectItem>
               <SelectItem value="embed">Embed</SelectItem>
+              <SelectItem value="link">Link</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -378,7 +384,7 @@ function LessonContentField({
   fileName,
   onFileChange,
 }: {
-  type: "page" | "video" | "file" | "embed"
+  type: "page" | "video" | "file" | "embed" | "link"
   value: string
   onChange: (v: string) => void
   courseId: string
@@ -446,6 +452,17 @@ function LessonContentField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={type === "video" ? "Video URL (YouTube, Vimeo…)" : "Embed URL"}
+        className="mb-2"
+      />
+    )
+  }
+  if (type === "link") {
+    return (
+      <Input
+        type="url"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://…"
         className="mb-2"
       />
     )
@@ -563,8 +580,8 @@ interface SortableModuleRowProps {
   setLessonTitle: (v: string) => void
   lessonContent: string
   setLessonContent: (v: string) => void
-  lessonType: "page" | "video" | "file" | "embed"
-  setLessonType: (v: "page" | "video" | "file" | "embed") => void
+  lessonType: "page" | "video" | "file" | "embed" | "link"
+  setLessonType: (v: "page" | "video" | "file" | "embed" | "link") => void
   lessonFileId: string | null
   lessonFileName: string | null
   setLessonFile: (id: string | null, name: string | null) => void
@@ -786,7 +803,7 @@ function SortableModuleRow({
                 <div className="mb-2">
                   <Select
                     value={lessonType}
-                    onValueChange={(v) => setLessonType(v as "page" | "video" | "file" | "embed")}
+                    onValueChange={(v) => setLessonType(v as "page" | "video" | "file" | "embed" | "link")}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
@@ -796,6 +813,7 @@ function SortableModuleRow({
                       <SelectItem value="video">Video</SelectItem>
                       <SelectItem value="file">File</SelectItem>
                       <SelectItem value="embed">Embed</SelectItem>
+                      <SelectItem value="link">Link</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -869,7 +887,7 @@ export function ModulesManager({ courseId }: ModulesManagerProps) {
   const [editingLessonId, setEditingLessonId] = React.useState<string | null>(null)
   const [lessonTitle, setLessonTitle] = React.useState("")
   const [lessonContent, setLessonContent] = React.useState("")
-  const [lessonType, setLessonType] = React.useState<"page" | "video" | "file" | "embed">("page")
+  const [lessonType, setLessonType] = React.useState<"page" | "video" | "file" | "embed" | "link">("page")
   const [lessonFileId, setLessonFileId] = React.useState<string | null>(null)
   const [lessonFileName, setLessonFileName] = React.useState<string | null>(null)
   const [lessonSubmitting, setLessonSubmitting] = React.useState(false)

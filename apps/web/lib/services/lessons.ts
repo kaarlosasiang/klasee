@@ -5,7 +5,7 @@ export interface Lesson {
   moduleId: string
   title: string
   content?: string
-  type: "page" | "video" | "file" | "embed"
+  type: "page" | "video" | "file" | "embed" | "link"
   order: number
   fileId?: {
     _id: string
@@ -22,7 +22,7 @@ export interface CreateLessonInput {
   moduleId: string
   title: string
   content?: string
-  type?: "page" | "video" | "file" | "embed"
+  type?: "page" | "video" | "file" | "embed" | "link"
   order?: number
   fileId?: string | null
 }

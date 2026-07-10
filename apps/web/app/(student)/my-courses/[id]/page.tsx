@@ -18,6 +18,7 @@ import {
   PenLine,
   Video,
   Link2,
+  ExternalLink,
   ChevronRight,
 } from "lucide-react"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -35,6 +36,7 @@ import {
   type CourseFile,
 } from "@/lib/services/drive"
 import { Announcements } from "@/components/common/announcements"
+import { LessonFileActions } from "@/components/common/lesson-file-actions"
 import { getAssessments, type Assessment } from "@/lib/services/assessments"
 import { WikiEditor } from "@/components/common/wiki-editor"
 import Link from "next/link"
@@ -246,10 +248,62 @@ export default function StudentCourseDetailPage() {
                   {lessons.length > 0 && (
                     <div className="space-y-0.5 border-t border-border pt-2">
                       {lessons.map((lesson) => {
+                        if (lesson.type === "link") {
+                          if (!lesson.content) {
+                            return (
+                              <div
+                                key={lesson._id}
+                                className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-sm opacity-50"
+                              >
+                                <ExternalLink className="size-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
+                                <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                              </div>
+                            )
+                          }
+                          return (
+                            <a
+                              key={lesson._id}
+                              href={lesson.content}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                            >
+                              <ExternalLink className="size-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
+                              <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                              <ExternalLink className="size-3 shrink-0 text-muted-foreground/50" />
+                            </a>
+                          )
+                        }
+
+                        if (lesson.type === "file") {
+                          if (lesson.fileId) {
+                            return (
+                              <div
+                                key={lesson._id}
+                                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                              >
+                                <File className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                                <LessonFileActions lesson={lesson} />
+                              </div>
+                            )
+                          }
+                          return (
+                            <Link
+                              key={lesson._id}
+                              href={`/my-courses/${params.id}/lessons/${lesson._id}`}
+                              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                            >
+                              <File className="size-3.5 shrink-0 text-muted-foreground" />
+                              <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                            </Link>
+                          )
+                        }
+
                         const LessonTypeIcon =
                           lesson.type === "video" ? Video
                           : lesson.type === "embed" ? Link2
-                          : lesson.type === "file" ? File
                           : FileText
                         return (
                           <Link

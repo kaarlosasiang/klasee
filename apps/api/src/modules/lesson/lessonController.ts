@@ -47,7 +47,7 @@ export const lessonController = {
         moduleId: string
         title: string
         content?: string
-        type?: "page" | "video" | "file" | "embed"
+        type?: "page" | "video" | "file" | "embed" | "link"
         order?: number
         fileId?: string
       }

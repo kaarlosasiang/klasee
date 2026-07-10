@@ -1,6 +1,7 @@
-import { ArrowLeft, FileText, Video, Link2, File, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, FileText, Video, Link2, ExternalLink, File, ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getLessonById, getLessons } from "@/lib/services/lessons"
 import { getModules } from "@/lib/services/modules"
 import { getVideoEmbed } from "@/lib/utils/video"
@@ -11,6 +12,7 @@ const TYPE_LABELS: Record<string, string> = {
   video: "Video",
   file: "File",
   embed: "Embed",
+  link: "Link",
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -18,6 +20,7 @@ const TYPE_BADGE: Record<string, string> = {
   video: "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400",
   file: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
   embed: "bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400",
+  link: "bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400",
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -25,6 +28,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   video: Video,
   file: File,
   embed: Link2,
+  link: ExternalLink,
 }
 
 export default async function LessonPage({
@@ -50,6 +54,10 @@ export default async function LessonPage({
   const currentIndex = allLessons.findIndex((l) => l._id === lessonId)
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
+
+  if (lesson.type === "link" && lesson.content) {
+    redirect(lesson.content)
+  }
 
   const TypeIcon = TYPE_ICONS[lesson.type] ?? FileText
 
@@ -83,7 +91,7 @@ export default async function LessonPage({
       <div className="rounded-xl border border-border bg-card p-6">
         {lesson.type === "page" && (
           lesson.content ? (
-            lesson.content.startsWith("<") ? (
+            lesson.content.trim().startsWith("<") ? (
               <div
                 className="prose prose-sm max-w-none dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: lesson.content }}
@@ -134,6 +142,22 @@ export default async function LessonPage({
           </div>
         )}
 
+        {lesson.type === "link" && (
+          lesson.content ? (
+            <a
+              href={lesson.content}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-5 py-3 text-sm font-medium text-teal-700 transition-colors hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-950/60"
+            >
+              <ExternalLink className="size-4" />
+              Open Link ↗
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">No link provided.</p>
+          )
+        )}
+
         {lesson.type === "file" && (
           lesson.fileId ? (
             <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
@@ -151,7 +175,7 @@ export default async function LessonPage({
           )
         )}
 
-        {!lesson.content && lesson.type !== "file" && (
+        {!lesson.content && lesson.type !== "file" && lesson.type !== "link" && (
           <p className="text-sm text-muted-foreground">No content available.</p>
         )}
       </div>

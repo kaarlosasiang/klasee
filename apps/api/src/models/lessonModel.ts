@@ -11,7 +11,7 @@ const lessonSchema = new mongoose.Schema(
     content: { type: String, maxlength: 50000 },
     type: {
       type: String,
-      enum: ["page", "video", "file", "embed"],
+      enum: ["page", "video", "file", "embed", "link"],
       default: "page",
     },
     order: { type: Number, default: 0 },
